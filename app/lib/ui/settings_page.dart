@@ -380,6 +380,19 @@ class _SettingsPageState extends State<SettingsPage> {
             (ThemeMode.dark, l.themeDark, null),
           ],
         ),
+        _Choice<UiDesign>(
+          icon: Icons.design_services_outlined,
+          title: l.uiDesign,
+          value: s.uiDesign,
+          onChanged: (v) => s.update(uiDesign: v),
+          options: [
+            (UiDesign.pixel, l.designPixel, null),
+            (UiDesign.portal, l.designPortal, null),
+            (UiDesign.old, l.designOld, null),
+            (UiDesign.foxy, l.designFoxy, null),
+            (UiDesign.classic, l.designClassic, null),
+          ],
+        ),
         if (!Platform.isAndroid)
           _Choice<CloseAction>(
             icon: Icons.close_rounded,
@@ -398,6 +411,15 @@ class _SettingsPageState extends State<SettingsPage> {
           child: Switch(
             value: s.showPublicIp,
             onChanged: (v) => s.update(showPublicIp: v),
+          ),
+        ),
+        _Row(
+          icon: Icons.animation_rounded,
+          label: l.homeAnimations,
+          value: l.homeAnimationsSubtitle,
+          child: Switch(
+            value: s.animationsEnabled,
+            onChanged: (v) => s.update(animationsEnabled: v),
           ),
         ),
         if (Platform.isAndroid)

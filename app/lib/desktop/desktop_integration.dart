@@ -358,17 +358,17 @@ class DesktopIntegration {
   }
 
   /// TUN mode from the tray: with the window open, as on the home page (it
-  /// says why an install did not happen); hidden, installing the service
-  /// first when needed, without a word but the system's prompt.
+  /// says why a start did not happen); hidden, making sure the service
+  /// runs first (it never starts with the computer), without a word but
+  /// the system's prompt.
   Future<void> _chooseTun() async {
     final context = navigatorKey.currentContext;
     if (!_hidden && context != null && context.mounted) {
       await chooseConnectionMode(context, core, 'tun');
       return;
     }
-    if (!(core.status?.tun?.installed ?? false) &&
-        await core.installTunService(prompt: _l.tunInstallPrompt)
-            is! TunServiceDone) {
+    if (await core.startTunService(prompt: _l.tunInstallPrompt)
+        is! TunServiceDone) {
       return;
     }
     await core.setSystemProxy('tun').catchError((_) {});

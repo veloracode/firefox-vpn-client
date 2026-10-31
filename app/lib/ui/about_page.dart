@@ -72,8 +72,6 @@ class _AboutPageState extends State<AboutPage> {
         Panel(
           child: Column(
             children: [
-              const AppLogo(size: 72),
-              const SizedBox(height: 10),
               Text(l.appTitle, style: theme.textTheme.titleLarge),
               const SizedBox(height: 4),
               Text(l.unofficialNote, style: muted, textAlign: TextAlign.center),

@@ -9,6 +9,7 @@ import '../core/core_controller.dart';
 import '../core/models.dart';
 import '../l10n/app_localizations.dart';
 import '../platform.dart';
+import 'account_help.dart';
 import 'format.dart';
 import 'widgets.dart';
 
@@ -326,6 +327,8 @@ class _SignInDialogState extends State<_SignInDialog> {
               validator: (v) => (v ?? '').isEmpty ? l.passwordEmpty : null,
               onFieldSubmitted: (_) => _start(),
             ),
+            const SizedBox(height: 8),
+            const AccountHelpLinks(),
             if (_error != null) ...[
               const SizedBox(height: 12),
               _ErrorBox(_error!),
@@ -333,21 +336,14 @@ class _SignInDialogState extends State<_SignInDialog> {
               const SizedBox(height: 12),
               _ErrorBox(_problem(l, _formProblem, _formProblemText)),
             ],
-            // No Firefox Account has this email: how to make one.
+            // No Firefox Account has this email: how to make one (the
+            // create-account button is the help row above the form's
+            // problems, always on this form).
             if (_formProblem == SignInError.noAccount) ...[
               const SizedBox(height: 12),
               Text(
                 l.signInNoAccountHint,
                 style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 8),
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: OutlinedButton.icon(
-                  onPressed: () => openUrl(firefoxAccountSignUpUrl),
-                  icon: const Icon(Icons.open_in_new_rounded, size: 18),
-                  label: Text(l.createAccountButton),
-                ),
               ),
             ],
           ],

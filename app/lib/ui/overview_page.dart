@@ -273,16 +273,6 @@ class _DesktopHome extends StatelessWidget {
   final VoidCallback? onOpenAccounts;
   final VoidCallback? onOpenConnection;
 
-  /// The connection mode shown as chosen; changing it (chooseConnectionMode)
-  /// keeps the proxy running and connected.
-  String get _mode => connectionModeShown(status);
-
-  /// The button: off, or on with a test that confirms the connection.
-  Future<void> _power(bool on) async {
-    await core.setOn(on);
-    if (on) unawaited(core.runTest().catchError((_) {}));
-  }
-
   @override
   Widget build(BuildContext context) {
     final base = Theme.of(context);
@@ -346,7 +336,7 @@ class _DesktopHome extends StatelessWidget {
   bool get _running => status.state.phase == Phase.running;
 
   /// The proxy runs but no test since it started passed.
-  bool get _confirming => _running && !status.confirmedBy(core.lastTest);
+  bool get _confirming => _running && !connectionLive(status, core.lastTest);
 
   Color _accent(_HomePalette p) => switch (status.state.phase) {
     Phase.error => p.error,
@@ -361,7 +351,7 @@ class _DesktopHome extends StatelessWidget {
     final theme = Theme.of(context);
     final look = PhaseLook.of(l, status);
     final proxy = status.proxy;
-    final on = status.state.phase != Phase.off;
+    final on = engineOn(status);
     final confirming = _confirming;
     final failing =
         confirming &&
@@ -370,7 +360,7 @@ class _DesktopHome extends StatelessWidget {
     final failure = failing ? failureText(l, proxy, core.lastTest) : null;
     // The last connect was given up: why, until the next one.
     final gaveUp = !on && status.connectFailure.isNotEmpty;
-    final connected = _running && !confirming;
+    final connected = connectionLive(status, core.lastTest);
     final accent = _accent(p);
     final ip = !showIp
         ? ''
@@ -404,10 +394,13 @@ class _DesktopHome extends StatelessWidget {
             accent: accent,
             busy: core.switchingProxy,
             tooltip: on ? l.tapToDisconnect : l.tapToConnect,
-            // No account yet: the accounts page, which explains them.
-            onPressed: () => status.totalAccounts == 0
-                ? _openAccounts(context, core, onOpenAccounts)
-                : runShowingErrors(context, () => _power(!on)),
+            // The one power behavior every home shares; no account yet:
+            // the accounts page, which explains them.
+            onPressed: () => homePowerPressed(
+              context,
+              core,
+              onNoAccounts: () => _openAccounts(context, core, onOpenAccounts),
+            ),
           ),
         ),
         const SizedBox(height: 10),
@@ -496,43 +489,18 @@ class _DesktopHome extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 16),
-        // The same choice as the button and the tray, by name, where this
+        // The same selector as every home shows, by name, where this
         // computer has more than proxy only.
         if (status.systemProxySupported || status.tunSupported)
           Center(
-            child: _ModeSwitch(
-              palette: p,
+            child: ConnectionModeSelector(
+              core: core,
+              status: status,
+              card: p.card,
+              cardBorder: p.cardBorder,
+              text: p.text,
+              muted: p.muted,
               accent: accent,
-              selected: _mode,
-              onSelected: core.switchingProxy || core.installingTun
-                  ? null
-                  : (mode) => chooseConnectionMode(context, core, mode),
-              modes: [
-                (
-                  value: 'clear',
-                  icon: Icons.settings_ethernet_rounded,
-                  label: l.modeProxy,
-                  // Where apps set up by hand find the proxy, which always
-                  // runs.
-                  tooltip: _running && proxy != null
-                      ? '${l.proxyServiceActive} · ${proxy.listen}'
-                      : '',
-                ),
-                if (status.systemProxySupported)
-                  (
-                    value: 'set',
-                    icon: Icons.computer_rounded,
-                    label: l.systemProxy,
-                    tooltip: '',
-                  ),
-                if (status.tunSupported)
-                  (
-                    value: 'tun',
-                    icon: Icons.vpn_lock_rounded,
-                    label: l.modeTun,
-                    tooltip: '',
-                  ),
-              ],
             ),
           ),
         const SizedBox(height: 8),
@@ -606,177 +574,6 @@ class _HomePill extends StatelessWidget {
     ),
     child: child,
   );
-}
-
-/// A connection mode in [_ModeSwitch]; an empty tooltip shows none.
-typedef _Mode = ({String value, IconData icon, String label, String tooltip});
-
-/// The connection modes as one rounded track with no lines between them:
-/// the chosen mode sits on a pill that slides to the one tapped. The modes
-/// are equally wide (the widest one's width), and the whole track shrinks
-/// to fit a narrow window. A tap on the chosen mode changes nothing.
-class _ModeSwitch extends StatelessWidget {
-  const _ModeSwitch({
-    required this.palette,
-    required this.accent,
-    required this.modes,
-    required this.selected,
-    required this.onSelected,
-  });
-
-  final _HomePalette palette;
-  final Color accent;
-  final List<_Mode> modes;
-  final String selected;
-
-  /// Null while a change is under way.
-  final ValueChanged<String>? onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = palette;
-    final theme = Theme.of(context);
-    final n = modes.length;
-    final index = modes.indexWhere((m) => m.value == selected);
-    final still = MediaQuery.of(context).disableAnimations;
-    final onSelected = this.onSelected;
-    Widget option(_Mode m) {
-      final chosen = m.value == selected;
-      final color = chosen ? p.text : p.muted;
-      Widget child = InkWell(
-        customBorder: const StadiumBorder(),
-        onTap: onSelected == null || chosen ? null : () => onSelected(m.value),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(m.icon, size: 18, color: color),
-              const SizedBox(width: 8),
-              Text(
-                m.label,
-                maxLines: 1,
-                softWrap: false,
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: color,
-                  fontWeight: chosen ? FontWeight.w700 : FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-      if (m.tooltip.isNotEmpty) {
-        child = Tooltip(message: m.tooltip, child: child);
-      }
-      return Semantics(
-        button: true,
-        selected: chosen,
-        enabled: onSelected != null,
-        child: child,
-      );
-    }
-
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      child: AnimatedOpacity(
-        opacity: onSelected == null ? 0.6 : 1,
-        duration: const Duration(milliseconds: 150),
-        child: DecoratedBox(
-          decoration: ShapeDecoration(
-            color: p.card,
-            shape: StadiumBorder(side: BorderSide(color: p.cardBorder)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(4),
-            // The row is as wide as its widest mode times their number
-            // (each mode Expanded under IntrinsicWidth), so the pill is one
-            // mode wide wherever it is.
-            child: IntrinsicWidth(
-              child: Stack(
-                children: [
-                  if (index >= 0)
-                    Positioned.fill(
-                      child: AnimatedAlign(
-                        alignment: AlignmentDirectional(
-                          n == 1 ? 0 : -1 + 2 * index / (n - 1),
-                          0,
-                        ),
-                        duration: still
-                            ? Duration.zero
-                            : const Duration(milliseconds: 240),
-                        curve: Curves.easeOutCubic,
-                        child: FractionallySizedBox(
-                          widthFactor: 1 / n,
-                          heightFactor: 1,
-                          child: DecoratedBox(
-                            decoration: ShapeDecoration(
-                              color: accent.withValues(alpha: 0.2),
-                              shape: StadiumBorder(
-                                side: BorderSide(
-                                  color: accent.withValues(alpha: 0.35),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  // A line between two modes, so each reads as a button of
-                  // its own; none beside the pill, which marks its mode.
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: Row(
-                        children: [
-                          for (var i = 0; i < n; i++)
-                            Expanded(
-                              child: Align(
-                                alignment: AlignmentDirectional.centerEnd,
-                                child: i == n - 1
-                                    ? null
-                                    : AnimatedOpacity(
-                                        opacity: i == index || i + 1 == index
-                                            ? 0
-                                            : 1,
-                                        duration: still
-                                            ? Duration.zero
-                                            : const Duration(milliseconds: 180),
-                                        child: Container(
-                                          width: 1.2,
-                                          height: 22,
-                                          decoration: BoxDecoration(
-                                            color: p.muted.withValues(
-                                              alpha: 0.45,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              1,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Material(
-                    type: MaterialType.transparency,
-                    child: Row(
-                      children: [
-                        for (final m in modes) Expanded(child: option(m)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 /// Where the traffic goes: the flag and the country, under how the
@@ -1083,8 +880,6 @@ class _PhoneHome extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const AppLogo(size: 28),
-                  const SizedBox(width: 8),
                   Text(
                     l.appTitle,
                     style: theme.textTheme.titleMedium?.copyWith(

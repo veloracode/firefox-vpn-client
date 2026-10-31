@@ -7,8 +7,9 @@ import 'dart:io';
 const appVersion = String.fromEnvironment('APP_VERSION', defaultValue: '0.0.0');
 
 /// The GitHub repository, "owner/name", for the source link and the update
-/// check.
-const githubRepo = 'armanlife/firefox-vpn-client';
+/// check. This build is the FoxyVPN fork, so its updates and source are
+/// the fork's, not the upstream project's.
+const githubRepo = 'veloracode/firefox-vpn-client';
 
 /// A newer release on GitHub.
 class Release {

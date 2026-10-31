@@ -23,11 +23,13 @@ class TunServiceFailed extends TunServiceResult {
 }
 
 /// The TUN mode's service (core/cmd/firefox-vpn-tun), beside the core: its
-/// install command asks for administrator rights itself (one prompt:
-/// Windows', polkit's on Linux, the administrator password on macOS),
-/// installs the service, and starts it; its uninstall command removes it,
-/// through the running service without a prompt. The core then uses the
-/// service; the app only installs it.
+/// start command asks for administrator rights itself (one prompt:
+/// Windows', polkit's on Linux, the administrator password on macOS) —
+/// and only when the service is not already running: it installs the
+/// service on the first use and starts it on every use, because the
+/// service never starts with the computer. Its uninstall command removes
+/// it, through the running service without a prompt. The core then uses
+/// the service; the app only starts it.
 class TunService {
   TunService(this.executable);
 
@@ -42,6 +44,10 @@ class TunService {
   /// [prompt] is the reason macOS' administrator prompt shows, in the
   /// user's language; Windows and polkit name the program themselves.
   Future<TunServiceResult> install({String? prompt}) => _run('install', prompt);
+
+  /// Makes sure the service runs: nothing when it already does, an
+  /// install when it is missing, a start when it is stopped.
+  Future<TunServiceResult> start({String? prompt}) => _run('start', prompt);
 
   Future<TunServiceResult> uninstall({String? prompt}) =>
       _run('uninstall', prompt);

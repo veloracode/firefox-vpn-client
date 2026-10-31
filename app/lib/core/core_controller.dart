@@ -204,6 +204,13 @@ class CoreController extends ChangeNotifier {
   Future<TunServiceResult> installTunService({String? prompt}) =>
       _tunService(() => tunService!.install(prompt: prompt), installing: true);
 
+  /// Makes sure the TUN service runs, with the system's administrator
+  /// prompt only when it does not: the service never starts with the
+  /// computer, so choosing the TUN mode starts it (installing it on the
+  /// first use). [prompt] is the prompt's reason on macOS.
+  Future<TunServiceResult> startTunService({String? prompt}) =>
+      _tunService(() => tunService!.start(prompt: prompt), installing: true);
+
   /// Removes the TUN service; [prompt] is the reason macOS' administrator
   /// prompt shows when the service does not run.
   Future<TunServiceResult> removeTunService({String? prompt}) => _tunService(

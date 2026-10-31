@@ -7,11 +7,16 @@ import '../core/core_controller.dart';
 import '../l10n/app_localizations.dart';
 import 'about_page.dart';
 import 'accounts_page.dart';
+import 'foxy_accounts_page.dart';
+import 'foxy_overview_page.dart';
 import 'logs_page.dart';
 import 'overview_page.dart';
 import 'servers_page.dart';
 import 'settings_page.dart';
 import 'widgets.dart';
+import 'zed_old_home.dart';
+import 'zed_pixel_home.dart';
+import 'zed_portal_home.dart';
 
 /// The phone layout: two tabs, Home and Settings, as phone apps have. The
 /// rest (accounts, servers, each group of settings, logs, about) opens as a
@@ -75,7 +80,14 @@ class _MobileShellState extends State<MobileShell> {
     final settings = widget.settings;
     void openServers() =>
         _push(l.navServers, () => ServersPage(core: core, settings: settings));
-    void openAccounts() => _push(l.navAccounts, () => AccountsPage(core: core));
+    // The design is the user's (Settings, General): FoxyVPN's accounts
+    // page for every design but the classic one.
+    void openAccounts() => _push(
+      l.navAccounts,
+      () => settings.uiDesign == UiDesign.classic
+          ? AccountsPage(core: core)
+          : FoxyAccountsPage(core: core),
+    );
     void openConnection() => _push(
       l.sectionConnection,
       () => SettingsPage(
@@ -84,17 +96,45 @@ class _MobileShellState extends State<MobileShell> {
         section: SettingsSection.connection,
       ),
     );
+    final home = switch (settings.uiDesign) {
+      UiDesign.pixel => ZedPixelHome(
+        core: core,
+        settings: settings,
+        onOpenServers: openServers,
+        onOpenAccounts: openAccounts,
+      ),
+      UiDesign.portal => ZedPortalHome(
+        core: core,
+        settings: settings,
+        onOpenServers: openServers,
+        onOpenAccounts: openAccounts,
+      ),
+      UiDesign.old => ZedOldHome(
+        core: core,
+        settings: settings,
+        onOpenServers: openServers,
+        onOpenAccounts: openAccounts,
+      ),
+      UiDesign.foxy => FoxyOverviewPage(
+        core: core,
+        settings: settings,
+        onOpenServers: openServers,
+        onOpenAccounts: openAccounts,
+        onOpenConnection: openConnection,
+      ),
+      UiDesign.classic => OverviewPage(
+        core: core,
+        settings: settings,
+        onOpenServers: openServers,
+        onOpenAccounts: openAccounts,
+        onOpenConnection: openConnection,
+        phone: true,
+      ),
+    };
     final page =
         widget.noCore ??
         (_tab == 0
-            ? OverviewPage(
-                core: core,
-                settings: settings,
-                onOpenServers: openServers,
-                onOpenAccounts: openAccounts,
-                onOpenConnection: openConnection,
-                phone: true,
-              )
+            ? home
             : _readable(
                 _SettingsList(
                   onOpenServers: openServers,

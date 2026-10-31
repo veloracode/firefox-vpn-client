@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../core/android_core.dart';
 import '../core/core_api.dart';
+import '../core/core_controller.dart';
 import '../core/models.dart';
 import '../core/ports.dart';
 import '../core/remote_flags.dart';
@@ -10,29 +13,12 @@ import '../l10n/app_localizations.dart';
 import 'country_names.dart';
 import 'local_country_names.dart';
 
-/// Where a Firefox Account is made: Mozilla's site.
-const firefoxAccountSignUpUrl = 'https://accounts.firefox.com/';
+/// Where a Firefox Account is made: Mozilla's sign-up page.
+const firefoxAccountSignUpUrl = 'https://accounts.firefox.com/signup';
 
 /// Where an account made with Google or Apple sign-in gets a password.
 const firefoxAccountSetPasswordUrl =
     'https://accounts.firefox.com/reset_password/';
-
-/// The program's logo, Mozilla VPN's tile (assets/logo.png, made by
-/// tool/app_icons.py), [size] logical pixels square.
-class AppLogo extends StatelessWidget {
-  const AppLogo({super.key, required this.size});
-
-  final double size;
-
-  @override
-  Widget build(BuildContext context) => Image.asset(
-    'assets/logo.png',
-    width: size,
-    height: size,
-    filterQuality: FilterQuality.medium,
-    excludeFromSemantics: true,
-  );
-}
 
 /// Status colors that read in both themes.
 abstract final class StatusColors {
@@ -654,6 +640,43 @@ class Pill extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The engine is on: any phase but off. The one derivation every home
+/// design uses, so no design can disagree with another about whether
+/// the VPN is on.
+bool engineOn(CoreStatus status) => status.state.phase != Phase.off;
+
+/// The connection is live: the engine runs and a connection test passed
+/// since it started (CoreStatus.confirmedBy). Every home shows
+/// "Connected" only then and "Connecting" until then — the classic
+/// desktop home's semantics, shared by all designs, so a design never
+/// claims a connection the test has not confirmed.
+bool connectionLive(CoreStatus status, ConnectionTest? lastTest) =>
+    status.confirmedBy(lastTest);
+
+/// The connect button's one behavior in every home design: with no
+/// accounts it opens the accounts page ([onNoAccounts]); otherwise it
+/// turns the power off or on — setOn, the engine's power, never the
+/// connection mode — and, when turning on, runs the test that confirms
+/// the connection. The classic desktop home's behavior, shared verbatim
+/// so every design connects in exactly the same way and time.
+void homePowerPressed(
+  BuildContext context,
+  CoreController core, {
+  required VoidCallback onNoAccounts,
+}) {
+  final status = core.status;
+  if (status == null) return;
+  if (status.totalAccounts == 0) {
+    onNoAccounts();
+    return;
+  }
+  final on = engineOn(status);
+  runShowingErrors(context, () async {
+    await core.setOn(!on);
+    if (!on) unawaited(core.runTest().catchError((_) {}));
+  });
 }
 
 /// Runs [action] and shows its error, if any, in a snack bar.

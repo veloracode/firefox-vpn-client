@@ -6,6 +6,11 @@ import 'package:flutter/material.dart';
 /// What the window's close button does.
 enum CloseAction { ask, tray, quit }
 
+/// The home and accounts pages' design: the phone's three designs
+/// (Pixel, Portal, Old), FoxyVPN's phone look (the big connect button),
+/// or the classic pages this app shipped with.
+enum UiDesign { foxy, classic, pixel, portal, old }
+
 /// The app's own preferences (language, theme, close button), kept in
 /// `app-settings.json` in the data folder beside the core's files. The VPN
 /// settings belong to the core.
@@ -19,6 +24,18 @@ class AppSettings extends ChangeNotifier {
   String language = '';
   ThemeMode themeMode = ThemeMode.system;
   CloseAction closeAction = CloseAction.ask;
+
+  /// The home and accounts design. A bare settings object (a test, a
+  /// preview) starts classic; [AppSettings.load] — how the app itself
+  /// starts — starts pixel until the user picks otherwise.
+  UiDesign uiDesign = UiDesign.classic;
+
+  /// The phone designs' door animation (the morphing, turning connect
+  /// core). On by default: the full motion, as the designs intend.
+  /// The user can turn it off — the animation repaints for as long as
+  /// it runs and keeps a CPU core busy; with it off the door stands
+  /// still in every phase.
+  bool animationsEnabled = true;
 
   /// True until the user finished the welcome page.
   bool firstRun = false;
@@ -45,9 +62,9 @@ class AppSettings extends ChangeNotifier {
   /// the user turned it off.
   bool autoUpdate = true;
 
-  /// Starts the app in the tray when the user signs in to Windows; on
-  /// unless the user turned it off.
-  bool autostart = true;
+  /// Starts the app in the tray when the user signs in to Windows;
+  /// off unless the user turned it on.
+  bool autostart = false;
 
   /// Connects by itself when started with the computer ([autostart]); off
   /// until the user turns it on. The core decides how (Daemon.AutoConnect).
@@ -152,6 +169,9 @@ class AppSettings extends ChangeNotifier {
     final s = AppSettings(
       file: File('$dataDir${Platform.pathSeparator}app-settings.json'),
     );
+    // The app's design until the settings file says otherwise: the
+    // phone's Pixel design.
+    s.uiDesign = UiDesign.pixel;
     try {
       final j = jsonDecode(await s.file!.readAsString());
       if (j is Map<String, Object?>) {
@@ -159,6 +179,11 @@ class AppSettings extends ChangeNotifier {
             when supportedLanguages.contains(l)) {
           s.language = l;
         }
+        s.uiDesign =
+            UiDesign.values.asNameMap()[j['ui_design']] ?? UiDesign.pixel;
+        // Home animations are on until the user turns them off: only
+        // an explicit false disables them.
+        s.animationsEnabled = j['animations_enabled'] != false;
         s.themeMode =
             ThemeMode.values.asNameMap()[j['theme']] ?? ThemeMode.system;
         s.closeAction =
@@ -176,8 +201,15 @@ class AppSettings extends ChangeNotifier {
           final String t => DateTime.tryParse(t),
           _ => null,
         };
-        s.autostart = j['autostart'] != false;
-        s.autoConnect = j['auto_connect'] == true;
+        // Start on boot is off until the user turns it on: only an
+        // explicit true enables it.
+        s.autostart = j['autostart'] == true;
+        // One-time reset (2.4.6): a persisted auto_connect from an older
+        // version could turn the proxy on at every launch. Until the user
+        // turns it on again under this version, it stays off.
+        s.autoConnect =
+            j['auto_connect_default_off_v246'] == true &&
+            j['auto_connect'] == true;
         s.autoUpdate = j['auto_update'] != false;
         s.udpNotice = j['udp_notice'] != false;
         if (j['hidden_connection_columns'] case final List<Object?> v) {
@@ -197,6 +229,8 @@ class AppSettings extends ChangeNotifier {
     String? language,
     ThemeMode? themeMode,
     CloseAction? closeAction,
+    UiDesign? uiDesign,
+    bool? animationsEnabled,
     bool? firstRun,
     bool? showPublicIp,
     DateTime? lowQuotaDismissedAt,
@@ -226,6 +260,8 @@ class AppSettings extends ChangeNotifier {
     this.language = language ?? this.language;
     this.themeMode = themeMode ?? this.themeMode;
     this.closeAction = closeAction ?? this.closeAction;
+    this.uiDesign = uiDesign ?? this.uiDesign;
+    this.animationsEnabled = animationsEnabled ?? this.animationsEnabled;
     notifyListeners();
     _save();
   }
@@ -240,6 +276,8 @@ class AppSettings extends ChangeNotifier {
           'language': language,
           'theme': themeMode.name,
           'close': closeAction.name,
+          'ui_design': uiDesign.name,
+          'animations_enabled': animationsEnabled,
           'welcome_done': !firstRun,
           'show_public_ip': showPublicIp,
           'low_quota_dismissed_at': lowQuotaDismissedAt?.toIso8601String(),
@@ -249,6 +287,7 @@ class AppSettings extends ChangeNotifier {
           'update_url': updateUrl,
           'autostart': autostart,
           'auto_connect': autoConnect,
+          'auto_connect_default_off_v246': true,
           'auto_update': autoUpdate,
           'udp_notice': udpNotice,
           'hidden_connection_columns': hiddenConnectionColumns.toList(),

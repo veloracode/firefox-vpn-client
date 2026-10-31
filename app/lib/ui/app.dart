@@ -11,6 +11,8 @@ import '../l10n/app_localizations.dart';
 import 'about_page.dart';
 import 'accounts_page.dart';
 import 'format.dart';
+import 'foxy_accounts_page.dart';
+import 'foxy_overview_page.dart';
 import 'logs_page.dart';
 import 'mobile_shell.dart';
 import 'overview_page.dart';
@@ -19,6 +21,9 @@ import 'servers_page.dart';
 import 'settings_page.dart';
 import 'welcome_page.dart';
 import 'widgets.dart';
+import 'zed_old_home.dart';
+import 'zed_pixel_home.dart';
+import 'zed_portal_home.dart';
 
 ThemeData _theme(Brightness brightness, Locale locale) {
   final scheme = ColorScheme.fromSeed(
@@ -208,24 +213,68 @@ class _ShellState extends State<Shell> {
             child: status == null
                 ? _NoCore(core: core)
                 : switch (page) {
-                    // Its cards open the pages beside it.
-                    _Page.overview => OverviewPage(
-                      core: core,
-                      settings: widget.settings,
-                      onOpenServers: () =>
-                          setState(() => _page = _Page.servers),
-                      onOpenAccounts: () =>
-                          setState(() => _page = _Page.accounts),
-                      onOpenConnection: () => setState(() {
-                        _page = _Page.settings;
-                        _settingsOpening = SettingsSection.connection;
-                      }),
-                    ),
+                    // Its cards open the pages beside it. The design is
+                    // the user's (Settings, General): the phone's three
+                    // designs, FoxyVPN's pages, or the classic ones, for
+                    // the home; the accounts follow but for classic.
+                    _Page.overview => switch (widget.settings.uiDesign) {
+                      UiDesign.pixel => ZedPixelHome(
+                        core: core,
+                        settings: widget.settings,
+                        onOpenServers: () =>
+                            setState(() => _page = _Page.servers),
+                        onOpenAccounts: () =>
+                            setState(() => _page = _Page.accounts),
+                      ),
+                      UiDesign.portal => ZedPortalHome(
+                        core: core,
+                        settings: widget.settings,
+                        onOpenServers: () =>
+                            setState(() => _page = _Page.servers),
+                        onOpenAccounts: () =>
+                            setState(() => _page = _Page.accounts),
+                      ),
+                      UiDesign.old => ZedOldHome(
+                        core: core,
+                        settings: widget.settings,
+                        onOpenServers: () =>
+                            setState(() => _page = _Page.servers),
+                        onOpenAccounts: () =>
+                            setState(() => _page = _Page.accounts),
+                      ),
+                      UiDesign.foxy => FoxyOverviewPage(
+                        core: core,
+                        settings: widget.settings,
+                        onOpenServers: () =>
+                            setState(() => _page = _Page.servers),
+                        onOpenAccounts: () =>
+                            setState(() => _page = _Page.accounts),
+                        onOpenConnection: () => setState(() {
+                          _page = _Page.settings;
+                          _settingsOpening = SettingsSection.connection;
+                        }),
+                      ),
+                      UiDesign.classic => OverviewPage(
+                        core: core,
+                        settings: widget.settings,
+                        onOpenServers: () =>
+                            setState(() => _page = _Page.servers),
+                        onOpenAccounts: () =>
+                            setState(() => _page = _Page.accounts),
+                        onOpenConnection: () => setState(() {
+                          _page = _Page.settings;
+                          _settingsOpening = SettingsSection.connection;
+                        }),
+                      ),
+                    },
                     _Page.servers => ServersPage(
                       core: core,
                       settings: widget.settings,
                     ),
-                    _Page.accounts => AccountsPage(core: core),
+                    _Page.accounts =>
+                      widget.settings.uiDesign == UiDesign.classic
+                          ? AccountsPage(core: core)
+                          : FoxyAccountsPage(core: core),
                     _Page.settings => SettingsPage(
                       key: ValueKey(_settingsOpening),
                       core: core,
@@ -271,8 +320,6 @@ class _ShellState extends State<Shell> {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
                 child: Row(
                   children: [
-                    const AppLogo(size: 34),
-                    const SizedBox(width: 10),
                     Text(
                       l.appTitle,
                       style: Theme.of(context).textTheme.titleMedium
