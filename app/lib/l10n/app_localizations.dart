@@ -126,7 +126,7 @@ abstract class AppLocalizations {
   /// No description provided for @appTitle.
   ///
   /// In en, this message translates to:
-  /// **'Firefox VPN'**
+  /// **'FoxyVPN'**
   String get appTitle;
 
   /// No description provided for @navOverview.
@@ -710,6 +710,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Create a Firefox Account'**
   String get createAccountButton;
+
+  /// No description provided for @dotMethodEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'How to create multiple accounts with one Gmail'**
+  String get dotMethodEntry;
+
+  /// No description provided for @dotMethodTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Multiple accounts with one Gmail'**
+  String get dotMethodTitle;
+
+  /// No description provided for @dotMethodIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Gmail ignores dots in an address: a.b@gmail.com and ab@gmail.com are the same inbox.'**
+  String get dotMethodIntro;
+
+  /// No description provided for @dotMethodPoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Each dotted version counts as a NEW email address when you sign up for a Firefox account — but every verification email still arrives in that same one inbox.'**
+  String get dotMethodPoint;
+
+  /// No description provided for @dotMethodStep1.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a Firefox account with a new dotted version of your address.'**
+  String get dotMethodStep1;
+
+  /// No description provided for @dotMethodStep2.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the verification email in your one inbox and confirm it, or note the code it carries.'**
+  String get dotMethodStep2;
+
+  /// No description provided for @dotMethodStep3.
+  ///
+  /// In en, this message translates to:
+  /// **'Come back here and add the account. Repeat with another dotted version for more accounts.'**
+  String get dotMethodStep3;
+
+  /// No description provided for @dotMethodExample.
+  ///
+  /// In en, this message translates to:
+  /// **'Example'**
+  String get dotMethodExample;
 
   /// No description provided for @signInWrongPassword.
   ///
@@ -2109,12 +2157,6 @@ abstract class AppLocalizations {
   /// **'Suggested apps'**
   String get suggestedApps;
 
-  /// No description provided for @showSystemApps.
-  ///
-  /// In en, this message translates to:
-  /// **'Show system apps'**
-  String get showSystemApps;
-
   /// No description provided for @suggestedAdded.
   ///
   /// In en, this message translates to:
@@ -2529,107 +2571,263 @@ abstract class AppLocalizations {
   /// **'No other programs are running.'**
   String get runningProgramsEmpty;
 
-  /// No description provided for @tabLog.
+  /// No description provided for @uiDesign.
   ///
   /// In en, this message translates to:
-  /// **'Log'**
-  String get tabLog;
+  /// **'Design'**
+  String get uiDesign;
 
-  /// Logs page: the tab that lists the proxy's connections (GET /api/connections).
+  /// No description provided for @homeAnimations.
   ///
   /// In en, this message translates to:
-  /// **'Connections'**
-  String get tabConnections;
+  /// **'Home animations'**
+  String get homeAnimations;
 
-  /// No description provided for @connectionsEmpty.
+  /// No description provided for @homeAnimationsSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'No connections yet.'**
-  String get connectionsEmpty;
+  /// **'Uses more CPU'**
+  String get homeAnimationsSubtitle;
 
-  /// No description provided for @connectionsOpen.
+  /// No description provided for @designFoxy.
   ///
   /// In en, this message translates to:
-  /// **'{count} open'**
-  String connectionsOpen(int count);
+  /// **'Foxy'**
+  String get designFoxy;
 
-  /// No description provided for @connTime.
+  /// No description provided for @designClassic.
   ///
   /// In en, this message translates to:
-  /// **'Time'**
-  String get connTime;
+  /// **'Original'**
+  String get designClassic;
 
-  /// No description provided for @connRoute.
+  /// No description provided for @designPixel.
   ///
   /// In en, this message translates to:
-  /// **'Rule'**
-  String get connRoute;
+  /// **'Pixel'**
+  String get designPixel;
 
-  /// No description provided for @connDestination.
+  /// No description provided for @designPortal.
   ///
   /// In en, this message translates to:
-  /// **'Destination'**
-  String get connDestination;
+  /// **'Portal'**
+  String get designPortal;
 
-  /// How the client came: SOCKS5, HTTP, or TUN.
+  /// No description provided for @designOld.
   ///
   /// In en, this message translates to:
-  /// **'Inbound'**
-  String get connInbound;
+  /// **'Old'**
+  String get designOld;
 
-  /// TCP or UDP.
+  /// No description provided for @zedTapCoreConnect.
   ///
   /// In en, this message translates to:
-  /// **'Protocol'**
-  String get connProtocol;
+  /// **'Tap the core to connect'**
+  String get zedTapCoreConnect;
 
-  /// No description provided for @connColumns.
+  /// No description provided for @zedTapCoreCancel.
   ///
   /// In en, this message translates to:
-  /// **'Columns'**
-  String get connColumns;
+  /// **'Tap the core to cancel'**
+  String get zedTapCoreCancel;
 
-  /// No description provided for @connTraffic.
+  /// No description provided for @zedTrafficProtected.
   ///
   /// In en, this message translates to:
-  /// **'Traffic'**
-  String get connTraffic;
+  /// **'All traffic is protected'**
+  String get zedTrafficProtected;
 
-  /// No description provided for @connDuration.
+  /// No description provided for @zedVpnOn.
   ///
   /// In en, this message translates to:
-  /// **'Duration'**
-  String get connDuration;
+  /// **'VPN is ON'**
+  String get zedVpnOn;
 
-  /// No description provided for @connRouteVpn.
+  /// No description provided for @zedVpnOff.
   ///
   /// In en, this message translates to:
-  /// **'Proxy'**
-  String get connRouteVpn;
+  /// **'VPN is OFF'**
+  String get zedVpnOff;
 
-  /// No description provided for @connRouteDirect.
+  /// No description provided for @zedConnectedFor.
   ///
   /// In en, this message translates to:
-  /// **'Direct'**
-  String get connRouteDirect;
+  /// **'Connected for'**
+  String get zedConnectedFor;
 
-  /// No description provided for @connRouteBlocked.
+  /// No description provided for @zedPing.
   ///
   /// In en, this message translates to:
-  /// **'Blocked'**
-  String get connRouteBlocked;
+  /// **'Ping'**
+  String get zedPing;
 
-  /// Mozilla's proxy connects to ports 80, 443, 8080, and 8443 only.
+  /// No description provided for @zedPingMeasuring.
   ///
   /// In en, this message translates to:
-  /// **'Port refused'**
-  String get connRoutePort;
+  /// **'measuring…'**
+  String get zedPingMeasuring;
 
-  /// No description provided for @connRouteFailed.
+  /// No description provided for @zedPingUnavailable.
   ///
   /// In en, this message translates to:
-  /// **'Failed'**
-  String get connRouteFailed;
+  /// **'unavailable'**
+  String get zedPingUnavailable;
+
+  /// No description provided for @zedConnectionDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection details'**
+  String get zedConnectionDetails;
+
+  /// No description provided for @zedTapToChooseLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to choose a location'**
+  String get zedTapToChooseLocation;
+
+  /// No description provided for @zedRecommendedTapChoose.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended — tap to choose'**
+  String get zedRecommendedTapChoose;
+
+  /// No description provided for @zedAddFirstAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to add your first account'**
+  String get zedAddFirstAccount;
+
+  /// No description provided for @zedAccountsActive.
+  ///
+  /// In en, this message translates to:
+  /// **'{active}/{total} active'**
+  String zedAccountsActive(int active, int total);
+
+  /// No description provided for @zedAccountsOfConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'{connected} of {total} connected'**
+  String zedAccountsOfConnected(int connected, int total);
+
+  /// No description provided for @zedAccountsSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{enabled} enabled · {connected} connected'**
+  String zedAccountsSummary(int enabled, int connected);
+
+  /// No description provided for @zedAccountOff.
+  ///
+  /// In en, this message translates to:
+  /// **'off'**
+  String get zedAccountOff;
+
+  /// No description provided for @zedQuotaExhausted.
+  ///
+  /// In en, this message translates to:
+  /// **'quota exhausted'**
+  String get zedQuotaExhausted;
+
+  /// No description provided for @zedIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'idle'**
+  String get zedIdle;
+
+  /// No description provided for @zedSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed'**
+  String get zedSpeed;
+
+  /// No description provided for @zedSpeedLive.
+  ///
+  /// In en, this message translates to:
+  /// **'Live'**
+  String get zedSpeedLive;
+
+  /// No description provided for @zedDownload.
+  ///
+  /// In en, this message translates to:
+  /// **'Download'**
+  String get zedDownload;
+
+  /// No description provided for @zedUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload'**
+  String get zedUpload;
+
+  /// No description provided for @batchImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Batch import'**
+  String get batchImport;
+
+  /// No description provided for @batchImportHint.
+  ///
+  /// In en, this message translates to:
+  /// **'One account per line: email:password. The separators email----password, email,password and email password work too.'**
+  String get batchImportHint;
+
+  /// No description provided for @batchImportEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste at least one account first.'**
+  String get batchImportEmpty;
+
+  /// No description provided for @batchLineInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Not an account line'**
+  String get batchLineInvalid;
+
+  /// No description provided for @batchAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Added'**
+  String get batchAdded;
+
+  /// No description provided for @batchNeedsManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs manual sign-in'**
+  String get batchNeedsManual;
+
+  /// No description provided for @batchLineSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped'**
+  String get batchLineSkipped;
+
+  /// No description provided for @batchSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get batchSkip;
+
+  /// No description provided for @batchImportAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get batchImportAction;
+
+  /// No description provided for @batchProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Adding {current} of {total}…'**
+  String batchProgress(int current, int total);
+
+  /// No description provided for @batchSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'{skipped} skipped'**
+  String batchSkipped(int skipped);
+
+  /// No description provided for @batchSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{added} added, {failed} failed'**
+  String batchSummary(int added, int failed);
 }
 
 class _AppLocalizationsDelegate

@@ -10,7 +10,7 @@ class AppLocalizationsHu extends AppLocalizations {
   AppLocalizationsHu([String locale = 'hu']) : super(locale);
 
   @override
-  String get appTitle => 'Firefox VPN';
+  String get appTitle => 'FoxyVPN';
 
   @override
   String get navOverview => 'Áttekintés';
@@ -367,6 +367,35 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get createAccountButton => 'Firefox Account létrehozása';
+
+  @override
+  String get dotMethodEntry => 'How to create multiple accounts with one Gmail';
+
+  @override
+  String get dotMethodTitle => 'Multiple accounts with one Gmail';
+
+  @override
+  String get dotMethodIntro =>
+      'Gmail ignores dots in an address: a.b@gmail.com and ab@gmail.com are the same inbox.';
+
+  @override
+  String get dotMethodPoint =>
+      'Each dotted version counts as a NEW email address when you sign up for a Firefox account — but every verification email still arrives in that same one inbox.';
+
+  @override
+  String get dotMethodStep1 =>
+      'Create a Firefox account with a new dotted version of your address.';
+
+  @override
+  String get dotMethodStep2 =>
+      'Open the verification email in your one inbox and confirm it, or note the code it carries.';
+
+  @override
+  String get dotMethodStep3 =>
+      'Come back here and add the account. Repeat with another dotted version for more accounts.';
+
+  @override
+  String get dotMethodExample => 'Example';
 
   @override
   String get signInWrongPassword => 'Hibás jelszó.';
@@ -1171,9 +1200,6 @@ class AppLocalizationsHu extends AppLocalizations {
   String get suggestedApps => 'Javasolt alkalmazások';
 
   @override
-  String get showSystemApps => 'Rendszeralkalmazások megjelenítése';
-
-  @override
   String suggestedAdded(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -1434,55 +1460,144 @@ class AppLocalizationsHu extends AppLocalizations {
   String get runningProgramsEmpty => 'Más program nem fut.';
 
   @override
-  String get tabLog => 'Napló';
+  String get uiDesign => 'Design';
 
   @override
-  String get tabConnections => 'Kapcsolatok';
+  String get homeAnimations => 'Home animations';
 
   @override
-  String get connectionsEmpty => 'Még nincs kapcsolat.';
+  String get homeAnimationsSubtitle => 'Uses more CPU';
 
   @override
-  String connectionsOpen(int count) {
-    return '$count nyitott';
+  String get designFoxy => 'Foxy';
+
+  @override
+  String get designClassic => 'Classic';
+
+  @override
+  String get designPixel => 'Pixel';
+
+  @override
+  String get designPortal => 'Portal';
+
+  @override
+  String get designOld => 'Old';
+
+  @override
+  String get zedTapCoreConnect => 'Tap the core to connect';
+
+  @override
+  String get zedTapCoreCancel => 'Tap the core to cancel';
+
+  @override
+  String get zedTrafficProtected => 'All traffic is protected';
+
+  @override
+  String get zedVpnOn => 'VPN is ON';
+
+  @override
+  String get zedVpnOff => 'VPN is OFF';
+
+  @override
+  String get zedConnectedFor => 'Connected for';
+
+  @override
+  String get zedPing => 'Ping';
+
+  @override
+  String get zedPingMeasuring => 'measuring…';
+
+  @override
+  String get zedPingUnavailable => 'unavailable';
+
+  @override
+  String get zedConnectionDetails => 'Connection details';
+
+  @override
+  String get zedTapToChooseLocation => 'Tap to choose a location';
+
+  @override
+  String get zedRecommendedTapChoose => 'Recommended — tap to choose';
+
+  @override
+  String get zedAddFirstAccount => 'Tap to add your first account';
+
+  @override
+  String zedAccountsActive(int active, int total) {
+    return '$active/$total active';
   }
 
   @override
-  String get connTime => 'Idő';
+  String zedAccountsOfConnected(int connected, int total) {
+    return '$connected of $total connected';
+  }
 
   @override
-  String get connRoute => 'Szabály';
+  String zedAccountsSummary(int enabled, int connected) {
+    return '$enabled enabled · $connected connected';
+  }
 
   @override
-  String get connDestination => 'Cél';
+  String get zedAccountOff => 'off';
 
   @override
-  String get connInbound => 'Bejövő';
+  String get zedQuotaExhausted => 'quota exhausted';
 
   @override
-  String get connProtocol => 'Protokoll';
+  String get zedIdle => 'idle';
 
   @override
-  String get connColumns => 'Oszlopok';
+  String get zedSpeed => 'Speed';
 
   @override
-  String get connTraffic => 'Forgalom';
+  String get zedSpeedLive => 'Live';
 
   @override
-  String get connDuration => 'Időtartam';
+  String get zedDownload => 'Download';
 
   @override
-  String get connRouteVpn => 'Proxy';
+  String get zedUpload => 'Upload';
 
   @override
-  String get connRouteDirect => 'Közvetlen';
+  String get batchImport => 'Batch import';
 
   @override
-  String get connRouteBlocked => 'Letiltva';
+  String get batchImportHint =>
+      'One account per line: email:password. The separators email----password, email,password and email password work too.';
 
   @override
-  String get connRoutePort => 'Port elutasítva';
+  String get batchImportEmpty => 'Paste at least one account first.';
 
   @override
-  String get connRouteFailed => 'Sikertelen';
+  String get batchLineInvalid => 'Not an account line';
+
+  @override
+  String get batchAdded => 'Added';
+
+  @override
+  String get batchNeedsManual => 'Needs manual sign-in';
+
+  @override
+  String get batchLineSkipped => 'Skipped';
+
+  @override
+  String get batchSkip => 'Skip';
+
+  @override
+  String get batchImportAction => 'Import';
+
+  @override
+  String batchProgress(int current, int total) {
+    return 'Adding $current of $total…';
+  }
+
+  @override
+  String batchSkipped(int skipped) {
+    return '$skipped skipped';
+  }
+
+  @override
+  String batchSummary(int added, int failed) {
+    return '$added added, $failed failed';
+  }
 }

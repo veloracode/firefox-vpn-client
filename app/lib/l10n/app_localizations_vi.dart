@@ -10,7 +10,7 @@ class AppLocalizationsVi extends AppLocalizations {
   AppLocalizationsVi([String locale = 'vi']) : super(locale);
 
   @override
-  String get appTitle => 'Firefox VPN';
+  String get appTitle => 'FoxyVPN';
 
   @override
   String get navOverview => 'Tổng quan';
@@ -364,6 +364,35 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get createAccountButton => 'Tạo Firefox Account';
+
+  @override
+  String get dotMethodEntry => 'How to create multiple accounts with one Gmail';
+
+  @override
+  String get dotMethodTitle => 'Multiple accounts with one Gmail';
+
+  @override
+  String get dotMethodIntro =>
+      'Gmail ignores dots in an address: a.b@gmail.com and ab@gmail.com are the same inbox.';
+
+  @override
+  String get dotMethodPoint =>
+      'Each dotted version counts as a NEW email address when you sign up for a Firefox account — but every verification email still arrives in that same one inbox.';
+
+  @override
+  String get dotMethodStep1 =>
+      'Create a Firefox account with a new dotted version of your address.';
+
+  @override
+  String get dotMethodStep2 =>
+      'Open the verification email in your one inbox and confirm it, or note the code it carries.';
+
+  @override
+  String get dotMethodStep3 =>
+      'Come back here and add the account. Repeat with another dotted version for more accounts.';
+
+  @override
+  String get dotMethodExample => 'Example';
 
   @override
   String get signInWrongPassword => 'Mật khẩu không đúng.';
@@ -1163,9 +1192,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get suggestedApps => 'Ứng dụng gợi ý';
 
   @override
-  String get showSystemApps => 'Hiện ứng dụng hệ thống';
-
-  @override
   String suggestedAdded(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -1424,55 +1450,144 @@ class AppLocalizationsVi extends AppLocalizations {
       'Không có chương trình nào khác đang chạy.';
 
   @override
-  String get tabLog => 'Nhật ký';
+  String get uiDesign => 'Design';
 
   @override
-  String get tabConnections => 'Kết nối';
+  String get homeAnimations => 'Home animations';
 
   @override
-  String get connectionsEmpty => 'Chưa có kết nối nào.';
+  String get homeAnimationsSubtitle => 'Uses more CPU';
 
   @override
-  String connectionsOpen(int count) {
-    return '$count đang mở';
+  String get designFoxy => 'Foxy';
+
+  @override
+  String get designClassic => 'Classic';
+
+  @override
+  String get designPixel => 'Pixel';
+
+  @override
+  String get designPortal => 'Portal';
+
+  @override
+  String get designOld => 'Old';
+
+  @override
+  String get zedTapCoreConnect => 'Tap the core to connect';
+
+  @override
+  String get zedTapCoreCancel => 'Tap the core to cancel';
+
+  @override
+  String get zedTrafficProtected => 'All traffic is protected';
+
+  @override
+  String get zedVpnOn => 'VPN is ON';
+
+  @override
+  String get zedVpnOff => 'VPN is OFF';
+
+  @override
+  String get zedConnectedFor => 'Connected for';
+
+  @override
+  String get zedPing => 'Ping';
+
+  @override
+  String get zedPingMeasuring => 'measuring…';
+
+  @override
+  String get zedPingUnavailable => 'unavailable';
+
+  @override
+  String get zedConnectionDetails => 'Connection details';
+
+  @override
+  String get zedTapToChooseLocation => 'Tap to choose a location';
+
+  @override
+  String get zedRecommendedTapChoose => 'Recommended — tap to choose';
+
+  @override
+  String get zedAddFirstAccount => 'Tap to add your first account';
+
+  @override
+  String zedAccountsActive(int active, int total) {
+    return '$active/$total active';
   }
 
   @override
-  String get connTime => 'Thời gian';
+  String zedAccountsOfConnected(int connected, int total) {
+    return '$connected of $total connected';
+  }
 
   @override
-  String get connRoute => 'Quy tắc';
+  String zedAccountsSummary(int enabled, int connected) {
+    return '$enabled enabled · $connected connected';
+  }
 
   @override
-  String get connDestination => 'Đích';
+  String get zedAccountOff => 'off';
 
   @override
-  String get connInbound => 'Đầu vào';
+  String get zedQuotaExhausted => 'quota exhausted';
 
   @override
-  String get connProtocol => 'Giao thức';
+  String get zedIdle => 'idle';
 
   @override
-  String get connColumns => 'Cột';
+  String get zedSpeed => 'Speed';
 
   @override
-  String get connTraffic => 'Lưu lượng';
+  String get zedSpeedLive => 'Live';
 
   @override
-  String get connDuration => 'Thời lượng';
+  String get zedDownload => 'Download';
 
   @override
-  String get connRouteVpn => 'Proxy';
+  String get zedUpload => 'Upload';
 
   @override
-  String get connRouteDirect => 'Trực tiếp';
+  String get batchImport => 'Batch import';
 
   @override
-  String get connRouteBlocked => 'Bị chặn';
+  String get batchImportHint =>
+      'One account per line: email:password. The separators email----password, email,password and email password work too.';
 
   @override
-  String get connRoutePort => 'Cổng bị từ chối';
+  String get batchImportEmpty => 'Paste at least one account first.';
 
   @override
-  String get connRouteFailed => 'Thất bại';
+  String get batchLineInvalid => 'Not an account line';
+
+  @override
+  String get batchAdded => 'Added';
+
+  @override
+  String get batchNeedsManual => 'Needs manual sign-in';
+
+  @override
+  String get batchLineSkipped => 'Skipped';
+
+  @override
+  String get batchSkip => 'Skip';
+
+  @override
+  String get batchImportAction => 'Import';
+
+  @override
+  String batchProgress(int current, int total) {
+    return 'Adding $current of $total…';
+  }
+
+  @override
+  String batchSkipped(int skipped) {
+    return '$skipped skipped';
+  }
+
+  @override
+  String batchSummary(int added, int failed) {
+    return '$added added, $failed failed';
+  }
 }

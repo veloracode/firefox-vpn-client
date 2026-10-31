@@ -10,7 +10,7 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
-  String get appTitle => 'Firefox VPN';
+  String get appTitle => 'FoxyVPN';
 
   @override
   String get navOverview => '概览';
@@ -359,6 +359,35 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get createAccountButton => '创建 Firefox 账户';
+
+  @override
+  String get dotMethodEntry => 'How to create multiple accounts with one Gmail';
+
+  @override
+  String get dotMethodTitle => 'Multiple accounts with one Gmail';
+
+  @override
+  String get dotMethodIntro =>
+      'Gmail ignores dots in an address: a.b@gmail.com and ab@gmail.com are the same inbox.';
+
+  @override
+  String get dotMethodPoint =>
+      'Each dotted version counts as a NEW email address when you sign up for a Firefox account — but every verification email still arrives in that same one inbox.';
+
+  @override
+  String get dotMethodStep1 =>
+      'Create a Firefox account with a new dotted version of your address.';
+
+  @override
+  String get dotMethodStep2 =>
+      'Open the verification email in your one inbox and confirm it, or note the code it carries.';
+
+  @override
+  String get dotMethodStep3 =>
+      'Come back here and add the account. Repeat with another dotted version for more accounts.';
+
+  @override
+  String get dotMethodExample => 'Example';
 
   @override
   String get signInWrongPassword => '密码错误。';
@@ -1123,9 +1152,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get suggestedApps => '推荐应用';
 
   @override
-  String get showSystemApps => '显示系统应用';
-
-  @override
   String suggestedAdded(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -1370,57 +1396,146 @@ class AppLocalizationsZh extends AppLocalizations {
   String get runningProgramsEmpty => '没有其他正在运行的程序。';
 
   @override
-  String get tabLog => '日志';
+  String get uiDesign => 'Design';
 
   @override
-  String get tabConnections => '连接';
+  String get homeAnimations => 'Home animations';
 
   @override
-  String get connectionsEmpty => '暂无连接。';
+  String get homeAnimationsSubtitle => 'Uses more CPU';
 
   @override
-  String connectionsOpen(int count) {
-    return '$count 个打开';
+  String get designFoxy => 'Foxy';
+
+  @override
+  String get designClassic => 'Classic';
+
+  @override
+  String get designPixel => 'Pixel';
+
+  @override
+  String get designPortal => 'Portal';
+
+  @override
+  String get designOld => 'Old';
+
+  @override
+  String get zedTapCoreConnect => 'Tap the core to connect';
+
+  @override
+  String get zedTapCoreCancel => 'Tap the core to cancel';
+
+  @override
+  String get zedTrafficProtected => 'All traffic is protected';
+
+  @override
+  String get zedVpnOn => 'VPN is ON';
+
+  @override
+  String get zedVpnOff => 'VPN is OFF';
+
+  @override
+  String get zedConnectedFor => 'Connected for';
+
+  @override
+  String get zedPing => 'Ping';
+
+  @override
+  String get zedPingMeasuring => 'measuring…';
+
+  @override
+  String get zedPingUnavailable => 'unavailable';
+
+  @override
+  String get zedConnectionDetails => 'Connection details';
+
+  @override
+  String get zedTapToChooseLocation => 'Tap to choose a location';
+
+  @override
+  String get zedRecommendedTapChoose => 'Recommended — tap to choose';
+
+  @override
+  String get zedAddFirstAccount => 'Tap to add your first account';
+
+  @override
+  String zedAccountsActive(int active, int total) {
+    return '$active/$total active';
   }
 
   @override
-  String get connTime => '时间';
+  String zedAccountsOfConnected(int connected, int total) {
+    return '$connected of $total connected';
+  }
 
   @override
-  String get connRoute => '规则';
+  String zedAccountsSummary(int enabled, int connected) {
+    return '$enabled enabled · $connected connected';
+  }
 
   @override
-  String get connDestination => '目标';
+  String get zedAccountOff => 'off';
 
   @override
-  String get connInbound => '入站';
+  String get zedQuotaExhausted => 'quota exhausted';
 
   @override
-  String get connProtocol => '协议';
+  String get zedIdle => 'idle';
 
   @override
-  String get connColumns => '列';
+  String get zedSpeed => 'Speed';
 
   @override
-  String get connTraffic => '流量';
+  String get zedSpeedLive => 'Live';
 
   @override
-  String get connDuration => '时长';
+  String get zedDownload => 'Download';
 
   @override
-  String get connRouteVpn => '代理';
+  String get zedUpload => 'Upload';
 
   @override
-  String get connRouteDirect => '直连';
+  String get batchImport => 'Batch import';
 
   @override
-  String get connRouteBlocked => '已拦截';
+  String get batchImportHint =>
+      'One account per line: email:password. The separators email----password, email,password and email password work too.';
 
   @override
-  String get connRoutePort => '端口被拒';
+  String get batchImportEmpty => 'Paste at least one account first.';
 
   @override
-  String get connRouteFailed => '失败';
+  String get batchLineInvalid => 'Not an account line';
+
+  @override
+  String get batchAdded => 'Added';
+
+  @override
+  String get batchNeedsManual => 'Needs manual sign-in';
+
+  @override
+  String get batchLineSkipped => 'Skipped';
+
+  @override
+  String get batchSkip => 'Skip';
+
+  @override
+  String get batchImportAction => 'Import';
+
+  @override
+  String batchProgress(int current, int total) {
+    return 'Adding $current of $total…';
+  }
+
+  @override
+  String batchSkipped(int skipped) {
+    return '$skipped skipped';
+  }
+
+  @override
+  String batchSummary(int added, int failed) {
+    return '$added added, $failed failed';
+  }
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -1428,7 +1543,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   AppLocalizationsZhHant() : super('zh_Hant');
 
   @override
-  String get appTitle => 'Firefox VPN';
+  String get appTitle => 'FoxyVPN';
 
   @override
   String get navOverview => '總覽';
@@ -1776,6 +1891,35 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get createAccountButton => '建立 Firefox Account';
+
+  @override
+  String get dotMethodEntry => 'How to create multiple accounts with one Gmail';
+
+  @override
+  String get dotMethodTitle => 'Multiple accounts with one Gmail';
+
+  @override
+  String get dotMethodIntro =>
+      'Gmail ignores dots in an address: a.b@gmail.com and ab@gmail.com are the same inbox.';
+
+  @override
+  String get dotMethodPoint =>
+      'Each dotted version counts as a NEW email address when you sign up for a Firefox account — but every verification email still arrives in that same one inbox.';
+
+  @override
+  String get dotMethodStep1 =>
+      'Create a Firefox account with a new dotted version of your address.';
+
+  @override
+  String get dotMethodStep2 =>
+      'Open the verification email in your one inbox and confirm it, or note the code it carries.';
+
+  @override
+  String get dotMethodStep3 =>
+      'Come back here and add the account. Repeat with another dotted version for more accounts.';
+
+  @override
+  String get dotMethodExample => 'Example';
 
   @override
   String get signInWrongPassword => '密碼錯誤。';
@@ -2539,9 +2683,6 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get suggestedApps => '推薦的應用程式';
 
   @override
-  String get showSystemApps => '顯示系統應用程式';
-
-  @override
   String suggestedAdded(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -2789,55 +2930,144 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get runningProgramsEmpty => '沒有其他正在執行的程式。';
 
   @override
-  String get tabLog => '記錄';
+  String get uiDesign => 'Design';
 
   @override
-  String get tabConnections => '連線';
+  String get homeAnimations => 'Home animations';
 
   @override
-  String get connectionsEmpty => '尚無連線。';
+  String get homeAnimationsSubtitle => 'Uses more CPU';
 
   @override
-  String connectionsOpen(int count) {
-    return '$count 個開啟';
+  String get designFoxy => 'Foxy';
+
+  @override
+  String get designClassic => 'Classic';
+
+  @override
+  String get designPixel => 'Pixel';
+
+  @override
+  String get designPortal => 'Portal';
+
+  @override
+  String get designOld => 'Old';
+
+  @override
+  String get zedTapCoreConnect => 'Tap the core to connect';
+
+  @override
+  String get zedTapCoreCancel => 'Tap the core to cancel';
+
+  @override
+  String get zedTrafficProtected => 'All traffic is protected';
+
+  @override
+  String get zedVpnOn => 'VPN is ON';
+
+  @override
+  String get zedVpnOff => 'VPN is OFF';
+
+  @override
+  String get zedConnectedFor => 'Connected for';
+
+  @override
+  String get zedPing => 'Ping';
+
+  @override
+  String get zedPingMeasuring => 'measuring…';
+
+  @override
+  String get zedPingUnavailable => 'unavailable';
+
+  @override
+  String get zedConnectionDetails => 'Connection details';
+
+  @override
+  String get zedTapToChooseLocation => 'Tap to choose a location';
+
+  @override
+  String get zedRecommendedTapChoose => 'Recommended — tap to choose';
+
+  @override
+  String get zedAddFirstAccount => 'Tap to add your first account';
+
+  @override
+  String zedAccountsActive(int active, int total) {
+    return '$active/$total active';
   }
 
   @override
-  String get connTime => '時間';
+  String zedAccountsOfConnected(int connected, int total) {
+    return '$connected of $total connected';
+  }
 
   @override
-  String get connRoute => '規則';
+  String zedAccountsSummary(int enabled, int connected) {
+    return '$enabled enabled · $connected connected';
+  }
 
   @override
-  String get connDestination => '目標';
+  String get zedAccountOff => 'off';
 
   @override
-  String get connInbound => '入站';
+  String get zedQuotaExhausted => 'quota exhausted';
 
   @override
-  String get connProtocol => '協定';
+  String get zedIdle => 'idle';
 
   @override
-  String get connColumns => '欄';
+  String get zedSpeed => 'Speed';
 
   @override
-  String get connTraffic => '流量';
+  String get zedSpeedLive => 'Live';
 
   @override
-  String get connDuration => '時長';
+  String get zedDownload => 'Download';
 
   @override
-  String get connRouteVpn => '代理';
+  String get zedUpload => 'Upload';
 
   @override
-  String get connRouteDirect => '直連';
+  String get batchImport => 'Batch import';
 
   @override
-  String get connRouteBlocked => '已封鎖';
+  String get batchImportHint =>
+      'One account per line: email:password. The separators email----password, email,password and email password work too.';
 
   @override
-  String get connRoutePort => '連接埠被拒';
+  String get batchImportEmpty => 'Paste at least one account first.';
 
   @override
-  String get connRouteFailed => '失敗';
+  String get batchLineInvalid => 'Not an account line';
+
+  @override
+  String get batchAdded => 'Added';
+
+  @override
+  String get batchNeedsManual => 'Needs manual sign-in';
+
+  @override
+  String get batchLineSkipped => 'Skipped';
+
+  @override
+  String get batchSkip => 'Skip';
+
+  @override
+  String get batchImportAction => 'Import';
+
+  @override
+  String batchProgress(int current, int total) {
+    return 'Adding $current of $total…';
+  }
+
+  @override
+  String batchSkipped(int skipped) {
+    return '$skipped skipped';
+  }
+
+  @override
+  String batchSummary(int added, int failed) {
+    return '$added added, $failed failed';
+  }
 }

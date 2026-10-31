@@ -1,6 +1,6 @@
 {
   "@@locale": "es",
-  "appTitle": "Firefox VPN",
+  "appTitle": "FoxyVPN",
   "navOverview": "Resumen",
   "navAccounts": "Cuentas",
   "navSettings": "Ajustes",
@@ -417,5 +417,83 @@
   "connRouteDirect": "Directo",
   "connRouteBlocked": "Bloqueado",
   "connRoutePort": "Puerto rechazado",
-  "connRouteFailed": "Fallido"
+  "connRouteFailed": "Fallido",
+  "dotMethodEntry": "How to create multiple accounts with one Gmail",
+  "dotMethodTitle": "Multiple accounts with one Gmail",
+  "dotMethodIntro": "Gmail ignores dots in an address: a.b@gmail.com and ab@gmail.com are the same inbox.",
+  "dotMethodPoint": "Each dotted version counts as a NEW email address when you sign up for a Firefox account — but every verification email still arrives in that same one inbox.",
+  "dotMethodStep1": "Create a Firefox account with a new dotted version of your address.",
+  "dotMethodStep2": "Open the verification email in your one inbox and confirm it, or note the code it carries.",
+  "dotMethodStep3": "Come back here and add the account. Repeat with another dotted version for more accounts.",
+  "dotMethodExample": "Example",
+  "uiDesign": "Design",
+  "homeAnimations": "Home animations",
+  "homeAnimationsSubtitle": "Uses more CPU",
+  "designFoxy": "Foxy",
+  "designClassic": "Classic",
+  "designPixel": "Pixel",
+  "designPortal": "Portal",
+  "designOld": "Old",
+  "zedTapCoreConnect": "Tap the core to connect",
+  "zedTapCoreCancel": "Tap the core to cancel",
+  "zedTrafficProtected": "All traffic is protected",
+  "zedVpnOn": "VPN is ON",
+  "zedVpnOff": "VPN is OFF",
+  "zedConnectedFor": "Connected for",
+  "zedPing": "Ping",
+  "zedPingMeasuring": "measuring…",
+  "zedPingUnavailable": "unavailable",
+  "zedConnectionDetails": "Connection details",
+  "zedTapToChooseLocation": "Tap to choose a location",
+  "zedRecommendedTapChoose": "Recommended — tap to choose",
+  "zedAddFirstAccount": "Tap to add your first account",
+  "zedAccountsActive": "{active}/{total} active",
+  "zedAccountsOfConnected": "{connected} of {total} connected",
+  "zedAccountsSummary": "{enabled} enabled · {connected} connected",
+  "zedAccountOff": "off",
+  "zedQuotaExhausted": "quota exhausted",
+  "zedIdle": "idle",
+  "zedSpeed": "Speed",
+  "zedSpeedLive": "Live",
+  "zedDownload": "Download",
+  "zedUpload": "Upload",
+  "batchImport": "Batch import",
+  "batchImportHint": "One account per line: email:password. The separators email----password, email,password and email password work too.",
+  "batchImportEmpty": "Paste at least one account first.",
+  "batchLineInvalid": "Not an account line",
+  "batchAdded": "Added",
+  "batchNeedsManual": "Needs manual sign-in",
+  "batchLineSkipped": "Skipped",
+  "batchSkip": "Skip",
+  "batchImportAction": "Import",
+  "batchProgress": "Adding {current} of {total}…",
+  "@batchProgress": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "batchSkipped": "{skipped} skipped",
+  "@batchSkipped": {
+    "placeholders": {
+      "skipped": {
+        "type": "int"
+      }
+    }
+  },
+  "batchSummary": "{added} added, {failed} failed",
+  "@batchSummary": {
+    "placeholders": {
+      "added": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  }
 }

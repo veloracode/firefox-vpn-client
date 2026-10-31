@@ -10,7 +10,7 @@ class AppLocalizationsFa extends AppLocalizations {
   AppLocalizationsFa([String locale = 'fa']) : super(locale);
 
   @override
-  String get appTitle => 'Firefox VPN';
+  String get appTitle => 'FoxyVPN';
 
   @override
   String get navOverview => 'نمای کلی';
@@ -365,6 +365,35 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get createAccountButton => 'ساخت Firefox Account';
+
+  @override
+  String get dotMethodEntry => 'چطور با یک جیمیل چند حساب بسازیم';
+
+  @override
+  String get dotMethodTitle => 'چند حساب با یک جیمیل';
+
+  @override
+  String get dotMethodIntro =>
+      'جیمیل نقطه‌های آدرس ایمیل را نادیده می‌گیرد: a.b@gmail.com و ab@gmail.com دقیقاً یک صندوق ورودی هستند.';
+
+  @override
+  String get dotMethodPoint =>
+      'هر نسخهٔ نقطه‌دار هنگام ساخت حساب فایرفاکس یک ایمیل تازه به حساب می‌آید، اما همهٔ ایمیل‌های تأیید باز هم به همان یک صندوق می‌رسند.';
+
+  @override
+  String get dotMethodStep1 =>
+      'با یک نسخهٔ نقطه‌دار تازه از آدرستان یک حساب فایرفاکس بسازید.';
+
+  @override
+  String get dotMethodStep2 =>
+      'ایمیل تأیید را در همان صندوق باز کنید و آن را تأیید کنید، یا کد داخلش را بردارید.';
+
+  @override
+  String get dotMethodStep3 =>
+      'برگردید اینجا و حساب را اضافه کنید. برای حساب‌های بیشتر، با یک نسخهٔ نقطه‌دار دیگر تکرار کنید.';
+
+  @override
+  String get dotMethodExample => 'مثال';
 
   @override
   String get signInWrongPassword => 'رمز عبور اشتباه است.';
@@ -1158,9 +1187,6 @@ class AppLocalizationsFa extends AppLocalizations {
   String get suggestedApps => 'برنامه‌های پیشنهادی';
 
   @override
-  String get showSystemApps => 'نمایش برنامه‌های سیستمی';
-
-  @override
   String suggestedAdded(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -1416,55 +1442,144 @@ class AppLocalizationsFa extends AppLocalizations {
   String get runningProgramsEmpty => 'برنامه دیگری در حال اجرا نیست.';
 
   @override
-  String get tabLog => 'لاگ';
+  String get uiDesign => 'طرح';
 
   @override
-  String get tabConnections => 'اتصال‌ها';
+  String get homeAnimations => 'انیمیشن‌های صفحه اصلی';
 
   @override
-  String get connectionsEmpty => 'هنوز اتصالی نیست.';
+  String get homeAnimationsSubtitle => 'مصرف CPU بیشتر';
 
   @override
-  String connectionsOpen(int count) {
-    return 'باز: $count';
+  String get designFoxy => 'فاکسی';
+
+  @override
+  String get designClassic => 'اصلی';
+
+  @override
+  String get designPixel => 'پیکسل';
+
+  @override
+  String get designPortal => 'پورتال';
+
+  @override
+  String get designOld => 'قدیمی';
+
+  @override
+  String get zedTapCoreConnect => 'برای اتصال روی دایره بزنید';
+
+  @override
+  String get zedTapCoreCancel => 'برای لغو اتصال روی دایره بزنید';
+
+  @override
+  String get zedTrafficProtected => 'همهٔ ترافیک محافظت می‌شود';
+
+  @override
+  String get zedVpnOn => 'VPN روشن است';
+
+  @override
+  String get zedVpnOff => 'VPN خاموش است';
+
+  @override
+  String get zedConnectedFor => 'مدت اتصال';
+
+  @override
+  String get zedPing => 'پینگ';
+
+  @override
+  String get zedPingMeasuring => 'در حال اندازه‌گیری…';
+
+  @override
+  String get zedPingUnavailable => 'در دسترس نیست';
+
+  @override
+  String get zedConnectionDetails => 'جزئیات اتصال';
+
+  @override
+  String get zedTapToChooseLocation => 'برای انتخاب مکان بزنید';
+
+  @override
+  String get zedRecommendedTapChoose => 'پیشنهادی — برای انتخاب بزنید';
+
+  @override
+  String get zedAddFirstAccount => 'برای افزودن اولین حسابتان بزنید';
+
+  @override
+  String zedAccountsActive(int active, int total) {
+    return '$active/$total فعال';
   }
 
   @override
-  String get connTime => 'زمان';
+  String zedAccountsOfConnected(int connected, int total) {
+    return '$connected از $total متصل';
+  }
 
   @override
-  String get connRoute => 'قانون';
+  String zedAccountsSummary(int enabled, int connected) {
+    return '$enabled روشن · $connected متصل';
+  }
 
   @override
-  String get connDestination => 'مقصد';
+  String get zedAccountOff => 'خاموش';
 
   @override
-  String get connInbound => 'ورودی';
+  String get zedQuotaExhausted => 'سهمیه تمام شد';
 
   @override
-  String get connProtocol => 'پروتکل';
+  String get zedIdle => 'بیکار';
 
   @override
-  String get connColumns => 'ستون‌ها';
+  String get zedSpeed => 'سرعت';
 
   @override
-  String get connTraffic => 'حجم';
+  String get zedSpeedLive => 'فعال';
 
   @override
-  String get connDuration => 'مدت';
+  String get zedDownload => 'دانلود';
 
   @override
-  String get connRouteVpn => 'پروکسی';
+  String get zedUpload => 'آپلود';
 
   @override
-  String get connRouteDirect => 'مستقیم';
+  String get batchImport => 'افزودن گروهی';
 
   @override
-  String get connRouteBlocked => 'مسدود';
+  String get batchImportHint =>
+      'هر خط یک حساب: ایمیل:رمز. جداکننده‌های ایمیل----رمز، ایمیل,رمز و ایمیل رمز هم کار می‌کنند.';
 
   @override
-  String get connRoutePort => 'پورت غیرمجاز';
+  String get batchImportEmpty => 'دست‌کم یک حساب وارد کنید.';
 
   @override
-  String get connRouteFailed => 'ناموفق';
+  String get batchLineInvalid => 'خط حساب نیست';
+
+  @override
+  String get batchAdded => 'اضافه شد';
+
+  @override
+  String get batchNeedsManual => 'نیاز به ورود دستی';
+
+  @override
+  String get batchLineSkipped => 'رد شد';
+
+  @override
+  String get batchSkip => 'رد کردن';
+
+  @override
+  String get batchImportAction => 'افزودن';
+
+  @override
+  String batchProgress(int current, int total) {
+    return 'در حال افزودن $current از $total…';
+  }
+
+  @override
+  String batchSkipped(int skipped) {
+    return '$skipped رد شد';
+  }
+
+  @override
+  String batchSummary(int added, int failed) {
+    return '$added اضافه شد، $failed ناموفق';
+  }
 }

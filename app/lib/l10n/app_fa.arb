@@ -1,6 +1,6 @@
 {
   "@@locale": "fa",
-  "appTitle": "Firefox VPN",
+  "appTitle": "FoxyVPN",
   "navOverview": "نمای کلی",
   "navAccounts": "حساب‌ها",
   "navSettings": "تنظیمات",
@@ -417,5 +417,83 @@
   "connRouteDirect": "مستقیم",
   "connRouteBlocked": "مسدود",
   "connRoutePort": "پورت غیرمجاز",
-  "connRouteFailed": "ناموفق"
+  "connRouteFailed": "ناموفق",
+  "dotMethodEntry": "چطور با یک جیمیل چند حساب بسازیم",
+  "dotMethodTitle": "چند حساب با یک جیمیل",
+  "dotMethodIntro": "جیمیل نقطه‌های آدرس ایمیل را نادیده می‌گیرد: a.b@gmail.com و ab@gmail.com دقیقاً یک صندوق ورودی هستند.",
+  "dotMethodPoint": "هر نسخهٔ نقطه‌دار هنگام ساخت حساب فایرفاکس یک ایمیل تازه به حساب می‌آید، اما همهٔ ایمیل‌های تأیید باز هم به همان یک صندوق می‌رسند.",
+  "dotMethodStep1": "با یک نسخهٔ نقطه‌دار تازه از آدرستان یک حساب فایرفاکس بسازید.",
+  "dotMethodStep2": "ایمیل تأیید را در همان صندوق باز کنید و آن را تأیید کنید، یا کد داخلش را بردارید.",
+  "dotMethodStep3": "برگردید اینجا و حساب را اضافه کنید. برای حساب‌های بیشتر، با یک نسخهٔ نقطه‌دار دیگر تکرار کنید.",
+  "dotMethodExample": "مثال",
+  "uiDesign": "طرح",
+  "homeAnimations": "انیمیشن‌های صفحه اصلی",
+  "homeAnimationsSubtitle": "مصرف CPU بیشتر",
+  "designFoxy": "فاکسی",
+  "designClassic": "اصلی",
+  "designPixel": "پیکسل",
+  "designPortal": "پورتال",
+  "designOld": "قدیمی",
+  "zedTapCoreConnect": "برای اتصال روی دایره بزنید",
+  "zedTapCoreCancel": "برای لغو اتصال روی دایره بزنید",
+  "zedTrafficProtected": "همهٔ ترافیک محافظت می‌شود",
+  "zedVpnOn": "VPN روشن است",
+  "zedVpnOff": "VPN خاموش است",
+  "zedConnectedFor": "مدت اتصال",
+  "zedPing": "پینگ",
+  "zedPingMeasuring": "در حال اندازه‌گیری…",
+  "zedPingUnavailable": "در دسترس نیست",
+  "zedConnectionDetails": "جزئیات اتصال",
+  "zedTapToChooseLocation": "برای انتخاب مکان بزنید",
+  "zedRecommendedTapChoose": "پیشنهادی — برای انتخاب بزنید",
+  "zedAddFirstAccount": "برای افزودن اولین حسابتان بزنید",
+  "zedAccountsActive": "{active}/{total} فعال",
+  "zedAccountsOfConnected": "{connected} از {total} متصل",
+  "zedAccountsSummary": "{enabled} روشن · {connected} متصل",
+  "zedAccountOff": "خاموش",
+  "zedQuotaExhausted": "سهمیه تمام شد",
+  "zedIdle": "بیکار",
+  "zedSpeed": "سرعت",
+  "zedSpeedLive": "فعال",
+  "zedDownload": "دانلود",
+  "zedUpload": "آپلود",
+  "batchImport": "افزودن گروهی",
+  "batchImportHint": "هر خط یک حساب: ایمیل:رمز. جداکننده‌های ایمیل----رمز، ایمیل,رمز و ایمیل رمز هم کار می‌کنند.",
+  "batchImportEmpty": "دست‌کم یک حساب وارد کنید.",
+  "batchLineInvalid": "خط حساب نیست",
+  "batchAdded": "اضافه شد",
+  "batchNeedsManual": "نیاز به ورود دستی",
+  "batchLineSkipped": "رد شد",
+  "batchSkip": "رد کردن",
+  "batchImportAction": "افزودن",
+  "batchProgress": "در حال افزودن {current} از {total}…",
+  "@batchProgress": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "batchSkipped": "{skipped} رد شد",
+  "@batchSkipped": {
+    "placeholders": {
+      "skipped": {
+        "type": "int"
+      }
+    }
+  },
+  "batchSummary": "{added} اضافه شد، {failed} ناموفق",
+  "@batchSummary": {
+    "placeholders": {
+      "added": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  }
 }

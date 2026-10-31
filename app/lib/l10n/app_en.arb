@@ -1,6 +1,6 @@
 {
   "@@locale": "en",
-  "appTitle": "Firefox VPN",
+  "appTitle": "FoxyVPN",
   "navOverview": "Overview",
   "navAccounts": "Accounts",
   "navSettings": "Settings",
@@ -194,7 +194,11 @@
   "reasonQuotaThreshold": "Used {percent}% of its data, so the next account took over.",
   "@reasonQuotaThreshold": {
     "description": "An account set aside at the switch threshold (percent, the setting) while the next account is used.",
-    "placeholders": {"percent": {"type": "int"}}
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
   },
   "reasonQuotaExhausted": "This month's data is used up; it is used again after the monthly reset.",
   "reasonSignInRequired": "Sign in again to use this account.",
@@ -956,5 +960,113 @@
   "@connRoutePort": {
     "description": "Mozilla's proxy connects to ports 80, 443, 8080, and 8443 only."
   },
-  "connRouteFailed": "Failed"
+  "connRouteFailed": "Failed",
+  "dotMethodEntry": "How to create multiple accounts with one Gmail",
+  "dotMethodTitle": "Multiple accounts with one Gmail",
+  "dotMethodIntro": "Gmail ignores dots in an address: a.b@gmail.com and ab@gmail.com are the same inbox.",
+  "dotMethodPoint": "Each dotted version counts as a NEW email address when you sign up for a Firefox account — but every verification email still arrives in that same one inbox.",
+  "dotMethodStep1": "Create a Firefox account with a new dotted version of your address.",
+  "dotMethodStep2": "Open the verification email in your one inbox and confirm it, or note the code it carries.",
+  "dotMethodStep3": "Come back here and add the account. Repeat with another dotted version for more accounts.",
+  "dotMethodExample": "Example",
+  "uiDesign": "Design",
+  "homeAnimations": "Home animations",
+  "homeAnimationsSubtitle": "Uses more CPU",
+  "designFoxy": "Foxy",
+  "designClassic": "Original",
+  "designPixel": "Pixel",
+  "designPortal": "Portal",
+  "designOld": "Old",
+  "zedTapCoreConnect": "Tap the core to connect",
+  "zedTapCoreCancel": "Tap the core to cancel",
+  "zedTrafficProtected": "All traffic is protected",
+  "zedVpnOn": "VPN is ON",
+  "zedVpnOff": "VPN is OFF",
+  "zedConnectedFor": "Connected for",
+  "zedPing": "Ping",
+  "zedPingMeasuring": "measuring…",
+  "zedPingUnavailable": "unavailable",
+  "zedConnectionDetails": "Connection details",
+  "zedTapToChooseLocation": "Tap to choose a location",
+  "zedRecommendedTapChoose": "Recommended — tap to choose",
+  "zedAddFirstAccount": "Tap to add your first account",
+  "zedAccountsActive": "{active}/{total} active",
+  "@zedAccountsActive": {
+    "placeholders": {
+      "active": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "zedAccountsOfConnected": "{connected} of {total} connected",
+  "@zedAccountsOfConnected": {
+    "placeholders": {
+      "connected": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "zedAccountsSummary": "{enabled} enabled · {connected} connected",
+  "@zedAccountsSummary": {
+    "placeholders": {
+      "enabled": {
+        "type": "int"
+      },
+      "connected": {
+        "type": "int"
+      }
+    }
+  },
+  "zedAccountOff": "off",
+  "zedQuotaExhausted": "quota exhausted",
+  "zedIdle": "idle",
+  "zedSpeed": "Speed",
+  "zedSpeedLive": "Live",
+  "zedDownload": "Download",
+  "zedUpload": "Upload",
+  "batchImport": "Batch import",
+  "batchImportHint": "One account per line: email:password. The separators email----password, email,password and email password work too.",
+  "batchImportEmpty": "Paste at least one account first.",
+  "batchLineInvalid": "Not an account line",
+  "batchAdded": "Added",
+  "batchNeedsManual": "Needs manual sign-in",
+  "batchLineSkipped": "Skipped",
+  "batchSkip": "Skip",
+  "batchImportAction": "Import",
+  "batchProgress": "Adding {current} of {total}…",
+  "@batchProgress": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "batchSkipped": "{skipped} skipped",
+  "@batchSkipped": {
+    "placeholders": {
+      "skipped": {
+        "type": "int"
+      }
+    }
+  },
+  "batchSummary": "{added} added, {failed} failed",
+  "@batchSummary": {
+    "placeholders": {
+      "added": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  }
 }
