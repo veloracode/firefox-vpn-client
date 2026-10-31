@@ -38,7 +38,7 @@ Tested on a Xiaomi Redmi Router AX6S: 12 MB of RAM idle, 20 MB with traffic.
 
 ```sh
 mkdir -p /root/firefox-vpn && cd /root/firefox-vpn
-wget -O core.tar.gz https://github.com/armanlife/firefox-vpn-client/releases/latest/download/firefox-vpn-core-linux-arm64.tar.gz
+wget -O core.tar.gz https://github.com/veloracode/firefox-vpn-client/releases/latest/download/firefox-vpn-core-linux-arm64.tar.gz
 tar -xzf core.tar.gz && mv firefox-vpn-core-linux-arm64/firefox-vpn-core . && rm -r core.tar.gz firefox-vpn-core-linux-arm64
 chmod +x firefox-vpn-core
 ```
@@ -48,7 +48,7 @@ chmod +x firefox-vpn-core
 
 **Way B: from a computer**
 
-1. Download [arm64](https://github.com/armanlife/firefox-vpn-client/releases/latest/download/firefox-vpn-core-linux-arm64.tar.gz) or [amd64](https://github.com/armanlife/firefox-vpn-client/releases/latest/download/firefox-vpn-core-linux-amd64.tar.gz) and unpack it.
+1. Download [arm64](https://github.com/veloracode/firefox-vpn-client/releases/latest/download/firefox-vpn-core-linux-arm64.tar.gz) or [amd64](https://github.com/veloracode/firefox-vpn-client/releases/latest/download/firefox-vpn-core-linux-amd64.tar.gz) and unpack it.
 2. Open [Bitvise SSH Client](https://www.bitvise.com/ssh-client-download) or [WinSCP](https://winscp.net/): router address, port 22, user `root`.
 3. Put `firefox-vpn-core` in `/root/firefox-vpn/` (make the folder).
 4. On the router: `chmod +x /root/firefox-vpn/firefox-vpn-core`

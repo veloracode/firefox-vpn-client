@@ -11,9 +11,9 @@
 
 <div align="center">
 
-[![Downloads](https://img.shields.io/github/downloads/armanlife/firefox-vpn-client/total?style=flat-square&logo=github&label=Downloads)](https://github.com/armanlife/firefox-vpn-client/releases)
-[![Last Version](https://img.shields.io/github/v/release/armanlife/firefox-vpn-client?style=flat-square&label=Version)](https://github.com/armanlife/firefox-vpn-client/releases/latest)
-[![License](https://img.shields.io/github/license/armanlife/firefox-vpn-client?style=flat-square&label=License)](../../LICENSE)
+[![Downloads](https://img.shields.io/github/downloads/veloracode/firefox-vpn-client/total?style=flat-square&logo=github&label=Downloads)](https://github.com/veloracode/firefox-vpn-client/releases)
+[![Last Version](https://img.shields.io/github/v/release/veloracode/firefox-vpn-client?style=flat-square&label=Version)](https://github.com/veloracode/firefox-vpn-client/releases/latest)
+[![License](https://img.shields.io/github/license/veloracode/firefox-vpn-client?style=flat-square&label=License)](../../LICENSE)
 
 </div>
 
@@ -24,8 +24,6 @@
 每个 Firefox 账户每月有 **50 GB 免费流量**，**多账户**功能让流量成倍增加：一个账户用完后，下一个会**自动**接上。
 
 支持 **Android、Windows、macOS 和 Linux**；完全免费，没有广告。
-
-<p align="center"><a href="https://raw.githubusercontent.com/armanlife/firefox-vpn-client/main/docs/screenshots/main.webp" target="_blank"><img src="../screenshots/main.webp" width="720" alt="Firefox VPN"></a></p>
 
 ## 🚀 主要功能
 
@@ -55,13 +53,6 @@
 
 🔄 自动检查更新
 
-## 📸 截图
-
-<p align="center">
-<img src="../screenshots/phone_01.webp" width="240" alt="Home">&nbsp;&nbsp;
-<img src="../screenshots/phone_02.webp" width="240" alt="Servers">&nbsp;&nbsp;
-<img src="../screenshots/phone_03.webp" width="240" alt="Settings">
-</p>
 
 ## 📥 下载
 
@@ -70,11 +61,11 @@
 <tr><th>系统</th><th>下载</th></tr>
 </thead>
 <tbody>
-<tr><td>Android</td><td><a href="https://github.com/armanlife/firefox-vpn-client/releases/latest/download/Firefox-VPN-Android-universal.apk"><img src="https://img.shields.io/badge/APK-Universal-1a7f37?logo=android&logoColor=white" alt="APK Universal"></a><br><a href="https://github.com/armanlife/firefox-vpn-client/releases/latest/download/Firefox-VPN-Android-arm64-v8a.apk"><img src="https://img.shields.io/badge/APK-ARMv8-2da44e?logo=android&logoColor=white" alt="APK ARMv8"></a><br><a href="https://github.com/armanlife/firefox-vpn-client/releases/latest/download/Firefox-VPN-Android-armeabi-v7a.apk"><img src="https://img.shields.io/badge/APK-ARMv7-4ac26b?logo=android&logoColor=white" alt="APK ARMv7"></a><br><a href="https://github.com/armanlife/firefox-vpn-client/releases/latest/download/Firefox-VPN-Android-x86_64.apk"><img src="https://img.shields.io/badge/APK-x64-6fdd8b?logo=android&logoColor=white" alt="APK x64"></a></td></tr>
-<tr><td>Windows</td><td><a href="https://github.com/armanlife/firefox-vpn-client/releases/latest/download/Firefox-VPN-Windows-Setup-x64.exe"><img src="https://img.shields.io/badge/Setup-x64-0550ae?logo=windows&logoColor=white" alt="Setup x64"></a><br><a href="https://github.com/armanlife/firefox-vpn-client/releases/latest/download/Firefox-VPN-Windows-x64.zip"><img src="https://img.shields.io/badge/Portable-x64-0969da" alt="Portable x64"></a></td></tr>
-<tr><td>macOS</td><td><a href="https://github.com/armanlife/firefox-vpn-client/releases/latest/download/Firefox-VPN-macOS.dmg"><img src="https://img.shields.io/badge/DMG-Universal-24292f?logo=apple&logoColor=white" alt="DMG Universal"></a></td></tr>
-<tr><td rowspan="2">Linux</td><td><a href="https://github.com/armanlife/firefox-vpn-client/releases/latest/download/Firefox-VPN-Linux-amd64.tar.gz"><img src="https://img.shields.io/badge/App-amd64-e36209?logo=linux&logoColor=white" alt="App amd64"></a><br><a href="https://github.com/armanlife/firefox-vpn-client/releases/latest/download/Firefox-VPN-Linux-arm64.tar.gz"><img src="https://img.shields.io/badge/App-ARM64-e36209?logo=linux&logoColor=white" alt="App ARM64"></a></td></tr>
-<tr><td><a href="https://github.com/armanlife/firefox-vpn-client/releases/latest/download/firefox-vpn-core-linux-amd64.tar.gz"><img src="https://img.shields.io/badge/Core-amd64-f0883e?logo=linux&logoColor=white" alt="Core amd64"></a><br><a href="https://github.com/armanlife/firefox-vpn-client/releases/latest/download/firefox-vpn-core-linux-arm64.tar.gz"><img src="https://img.shields.io/badge/Core-ARM64-f6a35e?logo=linux&logoColor=white" alt="Core ARM64"></a></td></tr>
+<tr><td>Android</td><td><a href="https://github.com/veloracode/firefox-vpn-client/releases/latest/download/Firefox-VPN-Android-universal.apk"><img src="https://img.shields.io/badge/APK-Universal-1a7f37?logo=android&logoColor=white" alt="APK Universal"></a><br><a href="https://github.com/veloracode/firefox-vpn-client/releases/latest/download/Firefox-VPN-Android-arm64-v8a.apk"><img src="https://img.shields.io/badge/APK-ARMv8-2da44e?logo=android&logoColor=white" alt="APK ARMv8"></a><br><a href="https://github.com/veloracode/firefox-vpn-client/releases/latest/download/Firefox-VPN-Android-armeabi-v7a.apk"><img src="https://img.shields.io/badge/APK-ARMv7-4ac26b?logo=android&logoColor=white" alt="APK ARMv7"></a><br><a href="https://github.com/veloracode/firefox-vpn-client/releases/latest/download/Firefox-VPN-Android-x86_64.apk"><img src="https://img.shields.io/badge/APK-x64-6fdd8b?logo=android&logoColor=white" alt="APK x64"></a></td></tr>
+<tr><td>Windows</td><td><a href="https://github.com/veloracode/firefox-vpn-client/releases/latest/download/Firefox-VPN-Windows-Setup-x64.exe"><img src="https://img.shields.io/badge/Setup-x64-0550ae?logo=windows&logoColor=white" alt="Setup x64"></a><br><a href="https://github.com/veloracode/firefox-vpn-client/releases/latest/download/Firefox-VPN-Windows-x64.zip"><img src="https://img.shields.io/badge/Portable-x64-0969da" alt="Portable x64"></a></td></tr>
+<tr><td>macOS</td><td><a href="https://github.com/veloracode/firefox-vpn-client/releases/latest/download/Firefox-VPN-macOS.dmg"><img src="https://img.shields.io/badge/DMG-Universal-24292f?logo=apple&logoColor=white" alt="DMG Universal"></a></td></tr>
+<tr><td rowspan="2">Linux</td><td><a href="https://github.com/veloracode/firefox-vpn-client/releases/latest/download/Firefox-VPN-Linux-amd64.tar.gz"><img src="https://img.shields.io/badge/App-amd64-e36209?logo=linux&logoColor=white" alt="App amd64"></a><br><a href="https://github.com/veloracode/firefox-vpn-client/releases/latest/download/Firefox-VPN-Linux-arm64.tar.gz"><img src="https://img.shields.io/badge/App-ARM64-e36209?logo=linux&logoColor=white" alt="App ARM64"></a></td></tr>
+<tr><td><a href="https://github.com/veloracode/firefox-vpn-client/releases/latest/download/firefox-vpn-core-linux-amd64.tar.gz"><img src="https://img.shields.io/badge/Core-amd64-f0883e?logo=linux&logoColor=white" alt="Core amd64"></a><br><a href="https://github.com/veloracode/firefox-vpn-client/releases/latest/download/firefox-vpn-core-linux-arm64.tar.gz"><img src="https://img.shields.io/badge/Core-ARM64-f6a35e?logo=linux&logoColor=white" alt="Core ARM64"></a></td></tr>
 </tbody>
 </table>
 
@@ -89,14 +80,12 @@
 > Windows 和 Android 用户无需阅读本节：直接从上方“下载”表格获取安装文件。
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/armanlife/firefox-vpn-client/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/veloracode/firefox-vpn-client/main/install.sh | bash
 ```
 
 ### 🌐 网页面板
 
 在 Linux 服务器上，Firefox VPN 提供一个**网页面板**，可在任何浏览器中打开，拥有应用的全部功能：管理账户和流量、选择服务器并测试延迟、连接测试、实时日志以及所有设置。
-
-<p align="center"><img src="../screenshots/web.webp" width="720" alt="Web panel"></p>
 
 - **面板地址：** `http://SERVER-IP:10820/app/`，需要用户名和密码。安装结束时会显示确切地址。
 - **代理：** 端口 `10810` 上的 SOCKS5 和 HTTP，使用单独的用户名和密码。

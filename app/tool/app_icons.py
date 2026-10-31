@@ -29,7 +29,6 @@ connecting, logo-animated1.png to logo-animated4.png (80 px):
   proxy runs, blue while Windows' system proxy points at it, faded while
   asleep, red on an error; the first frame while waiting.
 
-The fox shield of the documentation is docs/images/logo.png, kept as is.
 
 Run from app/ after changing the art or the colors (needs Pillow):
 
