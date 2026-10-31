@@ -1996,7 +1996,8 @@ void main() {
       expect(find.byType(SegmentedButton<String>), findsNothing);
       await tester.tap(find.text('TUN'));
       await tester.pumpAndSettle();
-      expect(service.installs, 1);
+      expect(service.starts, 1);
+      expect(service.installs, 0);
       // The reason macOS' prompt shows, in the app's language.
       expect(
         service.prompt,
@@ -2010,12 +2011,14 @@ void main() {
         find.text('All Windows traffic goes through the VPN.'),
         findsOneWidget,
       );
-      // Installed: choosing it again asks for nothing.
+      // Choosing it again only makes sure it runs (the service never
+      // starts with the computer): the program itself, finding it
+      // running, asks for nothing.
       await tester.tap(find.text('Proxy').first);
       await tester.pumpAndSettle();
       await tester.tap(find.text('TUN'));
       await tester.pumpAndSettle();
-      expect(service.installs, 1);
+      expect(service.starts, 2);
       expect(api.mode, 'tun');
       await done(tester, core);
     }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
@@ -2027,7 +2030,7 @@ void main() {
       expect(find.text('System proxy'), findsNothing);
       await tester.tap(find.text('TUN'));
       await tester.pumpAndSettle();
-      expect(service.installs, 1);
+      expect(service.starts, 1);
       expect(api.mode, 'tun');
       api.tun = {'state': 'on', 'installed': true};
       await core.refresh();
@@ -2279,7 +2282,7 @@ void main() {
       );
       await tester.tap(find.text('TUN'));
       await tester.pumpAndSettle();
-      expect(service.installs, 1);
+      expect(service.starts, 1);
       expect(api.mode, 'clear');
       expect(
         find.text(
@@ -2304,7 +2307,7 @@ void main() {
       );
       await tester.tap(find.text('Install again'));
       await tester.pumpAndSettle();
-      expect(service.installs, 1);
+      expect(service.starts, 1);
 
       for (final (code, text, button) in [
         (
@@ -2369,15 +2372,16 @@ void main() {
   });
 }
 
-/// The TUN service's program, without the system's: an install that works
-/// makes the core report it installed. It notes the reason it was given for
-/// macOS' prompt.
+/// The TUN service's program, without the system's: a start that works
+/// makes the core report it installed (a start installs it when it is
+/// missing). It notes the reason it was given for macOS' prompt.
 class FakeTunService implements TunService {
   FakeTunService(this.api, this.result);
 
   final FakeApi api;
   final TunServiceResult result;
   int installs = 0;
+  int starts = 0;
   int removals = 0;
   String? prompt;
 
@@ -2387,6 +2391,16 @@ class FakeTunService implements TunService {
   @override
   Future<TunServiceResult> install({String? prompt}) async {
     installs++;
+    this.prompt = prompt;
+    if (result is TunServiceDone) {
+      api.tun = {...?api.tun, 'installed': true};
+    }
+    return result;
+  }
+
+  @override
+  Future<TunServiceResult> start({String? prompt}) async {
+    starts++;
     this.prompt = prompt;
     if (result is TunServiceDone) {
       api.tun = {...?api.tun, 'installed': true};

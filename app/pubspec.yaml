@@ -2,7 +2,7 @@ name: firefox_vpn
 description: "Cross-platform shell for the Go VPN core"
 publish_to: 'none'
 
-version: 1.0.5+126
+version: 2.4.6+246
 
 environment:
   sdk: ^3.13.5
@@ -31,8 +31,6 @@ flutter:
   generate: true
 
   assets:
-    # The fox shield beside the app's name (tool/app_icons.py).
-    - assets/logo.png
     - assets/tray/
     # Country flags from flag-icons (MIT, assets/flags/LICENSE), the same
     # SVG files as the core's web dashboard.

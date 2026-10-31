@@ -58,7 +58,78 @@ class _AutoConnectingApi implements CoreApi {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+/// A core with a standing, confirmed connection: its status carries a
+/// test the test case ages as it pleases; [test] counts the app's own
+/// tests and answers with a fresh passing one.
+class _ConfirmedApi implements CoreApi {
+  int tests = 0;
+
+  /// The `at` of the status's last test, as an ISO string.
+  String testAt = DateTime.now()
+      .subtract(const Duration(seconds: 2))
+      .toIso8601String();
+
+  @override
+  Future<CoreStatus> status() async => CoreStatus.fromJson({
+    'state': {'phase': 'running', 'message': 'Proxy running'},
+    'system_proxy': 'set',
+    'system_proxy_supported': true,
+    'proxy': {
+      'started_at': DateTime.now()
+          .subtract(const Duration(minutes: 2))
+          .toIso8601String(),
+    },
+    'last_test': {'at': testAt, 'ok': true, 'response_ms': 99},
+  });
+
+  @override
+  Future<ConnectionTest> test() async {
+    tests++;
+    return ConnectionTest.fromJson({
+      'at': DateTime.now().toIso8601String(),
+      'ok': true,
+      'response_ms': 99,
+    });
+  }
+
+  @override
+  Future<AccountList> accounts() async => AccountList.fromJson({});
+
+  @override
+  void close() {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 void main() {
+  // A standing, confirmed connection is measured at connect time and
+  // when the user asks (a tap on the ping), never on a timer: the
+  // controller adds no tests of its own however old the last one gets.
+  test('a confirmed connection is not re-tested as its test ages', () async {
+    final api = _ConfirmedApi();
+    final core = CoreController(
+      () async => api,
+      pollInterval: const Duration(hours: 1),
+    );
+    await core.refresh();
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(api.tests, 0, reason: 'a fresh confirming test is kept');
+
+    api.testAt = DateTime.now()
+        .subtract(const Duration(seconds: 30))
+        .toIso8601String();
+    await core.refresh();
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(api.tests, 0, reason: 'no periodic re-test, however old');
+    expect(core.lastTest?.responseMs, 99);
+
+    await core.refresh();
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(api.tests, 0, reason: 'still none on later polls');
+    core.dispose();
+  });
+
   // The core's auto-connect tests by itself; the app adds none meanwhile.
   test('no tests of its own while the core auto-connects', () async {
     final api = _AutoConnectingApi();

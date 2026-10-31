@@ -18,10 +18,12 @@ void main() {
     expect(s.themeMode, ThemeMode.system);
     expect(s.closeAction, CloseAction.ask);
     expect(s.firstRun, isTrue);
-    // Starting with Windows is on until the user turns it off.
-    expect(s.autostart, isTrue);
+    // Starting with the computer is off until the user turns it on.
+    expect(s.autostart, isFalse);
     // Connecting by itself is the user's choice.
     expect(s.autoConnect, isFalse);
+    // Home animations are on until the user turns them off.
+    expect(s.animationsEnabled, isTrue);
   });
 
   test('saves and loads the choices', () async {
@@ -31,8 +33,9 @@ void main() {
       themeMode: ThemeMode.dark,
       closeAction: CloseAction.tray,
       firstRun: false,
-      autostart: false,
+      autostart: true,
       autoConnect: true,
+      animationsEnabled: false,
     );
     // update saves in the background.
     await Future<void>.delayed(const Duration(milliseconds: 200));
@@ -41,8 +44,11 @@ void main() {
     expect(again.themeMode, ThemeMode.dark);
     expect(again.closeAction, CloseAction.tray);
     expect(again.firstRun, isFalse);
-    expect(again.autostart, isFalse);
+    // An explicit on for Start on boot survives the round trip.
+    expect(again.autostart, isTrue);
     expect(again.autoConnect, isTrue);
+    // An explicit off for Home animations survives the round trip.
+    expect(again.animationsEnabled, isFalse);
   });
 
   test('maps languages to routing regions', () {

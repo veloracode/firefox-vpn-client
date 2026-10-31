@@ -15,14 +15,16 @@
 ; of installed apps shows (AppId). An uninstall that keeps the data notes
 ; its folder, which the next install offers again.
 ;
-; The TUN mode's service is the one part that needs administrator rights:
-; Setup always runs core\firefox-vpn-tun.exe install, which asks for them
-; itself and installs the service in Program Files; the uninstall removes it
-; again.
+; The TUN mode's service is the one part that needs administrator rights,
+; and Setup does NOT install it: the app installs it in Program Files the
+; first time TUN mode is chosen, and starts it on every TUN use (it never
+; starts with the computer). Setup only takes a service an earlier
+; version installed out of Windows' start-at-boot list (below), and the
+; uninstall removes the service again.
 
-#define AppName "Firefox VPN"
+#define AppName "FoxyVPN"
 #define AppExe "firefox-vpn.exe"
-#define AppDir "Firefox VPN Client"
+#define AppDir "FoxyVPN Client"
 #ifndef AppVersion
   #define AppVersion "0.0.0"
 #endif
@@ -171,11 +173,15 @@ Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExe}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
 
 [Run]
-; The TUN service, always (no task to choose), with its own administrator
-; prompt; declined, the app installs it the first time TUN mode is chosen.
-; Not in a silent run: no prompt there, and an installed service updates
-; itself from the app.
-Filename: "{app}\core\firefox-vpn-tun.exe"; Parameters: "install"; Flags: waituntilterminated skipifsilent; Check: not TunServiceInstalled
+; No TUN service install here: the app installs it the first time TUN
+; mode is chosen and starts it on every TUN use. What Setup does do,
+; when an earlier version's service is installed, is take it out of
+; Windows' start-at-boot list and stop it (its "manual" command, with
+; its own administrator prompt) — earlier versions installed it to
+; start with the computer. Declined, nothing changes, and choosing TUN
+; mode in the app offers the same fix. Not in a silent run: no prompt
+; there.
+Filename: "{app}\core\firefox-vpn-tun.exe"; Parameters: "manual"; Flags: waituntilterminated skipifsilent; Check: TunServiceInstalled
 Filename: "{app}\{#AppExe}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
 
 ; The TUN service goes with the app: through its pipe, with no prompt while
