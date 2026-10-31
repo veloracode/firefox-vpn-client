@@ -12,15 +12,58 @@ import (
 	"github.com/armanlife/firefox-vpn-client/core/internal/version"
 )
 
-// The commands an ordinary user runs: the app (installing on the first TUN
-// use), Setup (installing and uninstalling), or a person in a terminal.
-// Only installing and uninstalling need administrator rights, and they ask
-// for them, in an elevated copy of this executable, once: Windows' prompt,
-// polkit's on Linux (pkexec), the administrator password on macOS
-// (client_*.go).
+// The commands an ordinary user runs: the app (starting the service on
+// every TUN use, installing it on the first), Setup (uninstalling, and
+// taking an earlier version's service out of the start-at-boot list), or
+// a person in a terminal. Only installing, starting a stopped service,
+// and uninstalling need administrator rights, and they ask for them, in
+// an elevated copy of this executable, once: Windows' prompt, polkit's
+// on Linux (pkexec), the administrator password on macOS (client_*.go).
 
 // ErrCancelled is the user declining the administrator prompt.
 var ErrCancelled = errors.New("the administrator permission was not given")
+
+// StartForUser makes sure the service runs, for the user running this
+// process: nothing at all when it already runs (in particular no
+// administrator prompt), an install when it is not installed, and an
+// administrator start when it is installed but not running. The service
+// never starts with the computer: it is installed to start manually,
+// and this is the only way it starts — the app calls it when the TUN
+// mode is chosen, and only then.
+func StartForUser(prompt string) error {
+	if serviceRunning() {
+		return nil
+	}
+	if installed, err := tunapi.Installed(); err == nil && !installed {
+		return InstallForUser(prompt)
+	}
+	return startForUser(prompt)
+}
+
+// ManualForUser takes an installed service out of the computer's
+// start-at-boot list and stops it, without removing it: Setup runs it
+// after an update, so a service an earlier version installed to start
+// at boot stops doing so, and the TUN mode's next use starts it again
+// (StartForUser). It does nothing when the service is not installed.
+func ManualForUser(prompt string) error {
+	if installed, err := tunapi.Installed(); err == nil && !installed {
+		return nil
+	}
+	return manualForUser(prompt)
+}
+
+// serviceRunning reports whether the service answers on its pipe or
+// socket, as waitForService polls for after a start.
+func serviceRunning() bool {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	c, err := tunapi.Dial(ctx)
+	if err != nil {
+		return false
+	}
+	c.Close()
+	return true
+}
 
 // UpdateService asks the running service to replace itself with the
 // signed executable exe.

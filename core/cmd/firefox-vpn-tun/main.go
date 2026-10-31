@@ -9,12 +9,15 @@
 // /Library/Application Support.
 //
 //	firefox-vpn-tun install     install or update the service for this user (asks for administrator rights)
+//	firefox-vpn-tun start       start the service if it does not run (installs it first when missing; the service never starts with the computer)
+//	firefox-vpn-tun manual      stop the service and take it out of the start-at-boot list, without removing it
 //	firefox-vpn-tun uninstall   remove the service (no prompt while it runs)
 //	firefox-vpn-tun update      make the running service this signed executable
 //	firefox-vpn-tun -version    print the version
 //
-// On macOS, install and uninstall take -prompt, the reason the
-// administrator prompt shows (the app passes it in the user's language).
+// On macOS, install, start, manual, and uninstall take -prompt, the
+// reason the administrator prompt shows (the app passes it in the user's
+// language).
 //
 // Started with no command, as from Explorer, it explains what it is and
 // links the project (on Windows in a console window of its own).
@@ -54,7 +57,7 @@ func main() {
 }
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "Usage: firefox-vpn-tun install | uninstall | update | -version")
+	fmt.Fprintln(os.Stderr, "Usage: firefox-vpn-tun install | start | manual | uninstall | update | -version")
 	os.Exit(exitUsage)
 }
 

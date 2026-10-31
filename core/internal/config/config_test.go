@@ -46,8 +46,8 @@ func TestLoadKeepsDefaultsForOmittedFields(t *testing.T) {
 	if cfg.Proxy.Transport != "h2" {
 		t.Fatalf("defaults not kept for omitted fields: %+v", cfg)
 	}
-	if cfg.SystemProxy.Mode != SystemProxyClear {
-		t.Fatalf("system_proxy.mode defaults to clear (proxy only), got %q", cfg.SystemProxy.Mode)
+	if cfg.SystemProxy.Mode != SystemProxySet {
+		t.Fatalf("system_proxy.mode defaults to set (the system proxy), got %q", cfg.SystemProxy.Mode)
 	}
 	if cfg.Proxy.IdleSleep.Duration() != DefaultIdleSleep {
 		t.Fatalf("idle sleep defaults to 15 minutes, got %s", cfg.Proxy.IdleSleep.Duration())
@@ -163,11 +163,11 @@ func TestLoadIgnoresAllowLocked(t *testing.T) {
 	}
 }
 
-// The connection modes are set, clear (the default: proxy only), and tun;
-// anything else is refused with the accepted values.
+// The connection modes are set (the default: the system proxy), clear,
+// and tun; anything else is refused with the accepted values.
 func TestSystemProxyModes(t *testing.T) {
 	cfg := Default()
-	if cfg.SystemProxy.Mode != SystemProxyClear {
+	if cfg.SystemProxy.Mode != SystemProxySet {
 		t.Fatalf("default system proxy mode %q", cfg.SystemProxy.Mode)
 	}
 	for _, mode := range []string{SystemProxySet, SystemProxyClear, SystemProxyTun} {

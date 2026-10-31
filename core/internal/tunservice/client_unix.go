@@ -24,6 +24,25 @@ func InstallForUser(prompt string) error {
 	return runElevated(prompt, "install-as-admin", "-user", uid)
 }
 
+// startForUser starts the installed service, as root through the
+// administrator's permission, unless this process already is root.
+func startForUser(prompt string) error {
+	if os.Geteuid() == 0 {
+		return StartInstalled()
+	}
+	return runElevated(prompt, "start-as-admin")
+}
+
+// manualForUser takes the installed service out of the start-at-boot
+// list and stops it, as root through the administrator's permission,
+// unless this process already is root.
+func manualForUser(prompt string) error {
+	if os.Geteuid() == 0 {
+		return MakeManual()
+	}
+	return runElevated(prompt, "manual-as-admin")
+}
+
 // UninstallForUser removes the service: through its socket while it runs,
 // with no prompt; else as the administrator.
 func UninstallForUser(prompt string) error {

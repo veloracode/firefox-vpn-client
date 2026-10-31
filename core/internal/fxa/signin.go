@@ -75,7 +75,7 @@ func SendUnblockCode(ctx context.Context, email string) error {
 			return nil, err
 		}
 		req.Header.Set("Content-Type", "application/json")
-		controlplane.ApplyFirefoxHeaders(req)
+		controlplane.ApplyVPNClientHeaders(req)
 		return req, nil
 	})
 	if err != nil {
@@ -109,7 +109,7 @@ func VerifyTOTP(ctx context.Context, sessionToken, code string) error {
 		}
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", authHeader)
-		controlplane.ApplyFirefoxHeaders(req)
+		controlplane.ApplyVPNClientHeaders(req)
 		return req, nil
 	})
 	if err != nil {

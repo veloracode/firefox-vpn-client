@@ -176,8 +176,11 @@ func Install(user string) error {
 		}
 	}
 	cfg := mgr.Config{
-		ServiceType:  windows.SERVICE_WIN32_OWN_PROCESS,
-		StartType:    mgr.StartAutomatic,
+		ServiceType: windows.SERVICE_WIN32_OWN_PROCESS,
+		// Manual: Windows never starts the service with the computer.
+		// The app starts it when the TUN mode is chosen (StartInstalled,
+		// through StartForUser), and only then.
+		StartType:    mgr.StartManual,
 		ErrorControl: mgr.ErrorNormal,
 		DisplayName:  displayName,
 		Description:  description,
@@ -209,6 +212,75 @@ func Install(user string) error {
 		return fmt.Errorf("starting the service: %w", err)
 	}
 	return waitForService(15 * time.Second)
+}
+
+// StartInstalled starts the installed service and waits until it
+// answers. It first makes the service's start manual, keeping the rest
+// of its configuration: a service an earlier version installed to start
+// with the computer (or one a person set to automatic or disabled)
+// stops doing so — it runs only when the TUN mode is chosen. It needs
+// administrator rights.
+func StartInstalled() error {
+	m, err := mgr.Connect()
+	if err != nil {
+		return fmt.Errorf("connecting to the service manager: %w", err)
+	}
+	defer m.Disconnect()
+	s, err := m.OpenService(tunapi.ServiceName)
+	if err != nil {
+		return fmt.Errorf("opening the service: %w", err)
+	}
+	defer s.Close()
+	if err := makeStartManual(s); err != nil {
+		return err
+	}
+	st, err := s.Query()
+	if err != nil {
+		return err
+	}
+	if st.State != svc.Running {
+		if err := s.Start(); err != nil && !errors.Is(err, windows.ERROR_SERVICE_ALREADY_RUNNING) {
+			return fmt.Errorf("starting the service: %w", err)
+		}
+	}
+	return waitForService(15 * time.Second)
+}
+
+// MakeManual makes the installed service's start manual and stops it,
+// so it no longer runs from the computer's start on. It needs
+// administrator rights.
+func MakeManual() error {
+	m, err := mgr.Connect()
+	if err != nil {
+		return fmt.Errorf("connecting to the service manager: %w", err)
+	}
+	defer m.Disconnect()
+	s, err := m.OpenService(tunapi.ServiceName)
+	if err != nil {
+		return fmt.Errorf("opening the service: %w", err)
+	}
+	defer s.Close()
+	if err := makeStartManual(s); err != nil {
+		return err
+	}
+	return stopService(s)
+}
+
+// makeStartManual sets the service's start type to manual when it is
+// not, keeping every other part of its configuration as it is.
+func makeStartManual(s *mgr.Service) error {
+	cfg, err := s.Config()
+	if err != nil {
+		return fmt.Errorf("reading the service's configuration: %w", err)
+	}
+	if cfg.StartType == mgr.StartManual {
+		return nil
+	}
+	cfg.StartType = mgr.StartManual
+	if err := s.UpdateConfig(cfg); err != nil {
+		return fmt.Errorf("making the service start manually: %w", err)
+	}
+	return nil
 }
 
 func stopService(s *mgr.Service) error {

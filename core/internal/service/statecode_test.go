@@ -107,6 +107,9 @@ func TestStartFailureHasCode(t *testing.T) {
 // forgets it.
 func TestSystemProxyTakenShowsInTheStatus(t *testing.T) {
 	d := newTestDaemon(t)
+	if err := d.SetSystemProxy(config.SystemProxyClear); err != nil {
+		t.Fatal(err)
+	}
 	if err := d.SetSystemProxy(config.SystemProxySet); err != nil {
 		t.Fatal(err)
 	}

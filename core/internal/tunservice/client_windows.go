@@ -29,6 +29,25 @@ func InstallForUser(prompt string) error {
 	return runElevated("install-as-admin", "-user", user)
 }
 
+// startForUser starts the installed service, as an administrator after
+// Windows' prompt, unless this process already is one.
+func startForUser(_ string) error {
+	if windows.GetCurrentProcessToken().IsElevated() {
+		return StartInstalled()
+	}
+	return runElevated("start-as-admin")
+}
+
+// manualForUser takes the installed service out of the start-at-boot
+// list and stops it, as an administrator after Windows' prompt, unless
+// this process already is one.
+func manualForUser(_ string) error {
+	if windows.GetCurrentProcessToken().IsElevated() {
+		return MakeManual()
+	}
+	return runElevated("manual-as-admin")
+}
+
 // UninstallForUser removes the service: through its pipe while it runs,
 // with no prompt; else elevated.
 func UninstallForUser(prompt string) error {

@@ -261,10 +261,7 @@ func (s *signIn) signIn(ctx context.Context, d *Daemon, email, password string) 
 // verify completes the sign-in confirmation FxA asks for.
 func (s *signIn) verify(ctx context.Context, email string, resp *fxa.LoginResponse) error {
 	if resp.VerificationMethod == "email" {
-		if _, err := s.ask(ctx, stepEmailLink, fmt.Sprintf("Open the confirmation link sent to %s, then continue.", email), signInProblem{}, ""); err != nil {
-			return err
-		}
-		return nil
+		return s.verifyEmailLink(ctx, email, resp)
 	}
 	step, message, verifyCode := stepEmailCode, fmt.Sprintf("Enter the verification code sent to %s.", email), fxa.VerifySession
 	if resp.VerificationMethod == "totp-2fa" {
@@ -283,6 +280,71 @@ func (s *signIn) verify(ctx context.Context, email string, resp *fxa.LoginRespon
 		problem = codeProblem(err, step == stepTOTP)
 	}
 	return errTooManyCodes
+}
+
+// verifyEmailLink completes a sign-in Mozilla wants confirmed with the
+// link it emailed. The unverified session is HELD, never discarded, and
+// its status is polled — the same recovery_email/status check
+// Mozilla's own clients run while they wait — so the sign-in finishes
+// by itself the moment the confirmation lands. The person's Continue
+// press only triggers an immediate check; it is no longer trusted
+// blindly. (Before this, continuing went straight to the token
+// request, and Mozilla refusing that request for a still-unverified
+// session was the whole sign-in failing.) The flow's own timeout
+// bounds the wait, as before.
+func (s *signIn) verifyEmailLink(ctx context.Context, email string, resp *fxa.LoginResponse) error {
+	verified := make(chan struct{})
+	pollCtx, stopPoll := context.WithCancel(ctx)
+	defer stopPoll()
+	go func() {
+		ticker := time.NewTicker(3 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-pollCtx.Done():
+				return
+			case <-ticker.C:
+				if sessionVerified(pollCtx, resp.SessionToken) {
+					close(verified)
+					return
+				}
+			}
+		}
+	}()
+	askCtx, cancelAsk := context.WithCancel(ctx)
+	defer cancelAsk()
+	go func() {
+		select {
+		case <-verified:
+			cancelAsk()
+		case <-askCtx.Done():
+		}
+	}()
+
+	problem := signInProblem{}
+	for {
+		_, err := s.ask(askCtx, stepEmailLink, fmt.Sprintf("Open the confirmation link sent to %s. This finishes by itself once Mozilla confirms it.", email), problem, "")
+		select {
+		case <-verified:
+			return nil
+		default:
+		}
+		if err != nil {
+			return err
+		}
+		if sessionVerified(ctx, resp.SessionToken) {
+			return nil
+		}
+		problem = signInProblem{"", "Mozilla has not confirmed this sign-in yet. Open the latest confirmation link it emailed, then continue."}
+	}
+}
+
+// sessionVerified asks FxA whether the session behind the token is
+// verified now. A failed check counts as "not yet": a network hiccup
+// must not kill a sign-in that is only waiting on an email.
+func sessionVerified(ctx context.Context, sessionToken string) bool {
+	status, err := fxa.RecoveryEmailStatus(ctx, sessionToken)
+	return err == nil && status.SessionUsable()
 }
 
 // codeProblem explains a refused verification code.

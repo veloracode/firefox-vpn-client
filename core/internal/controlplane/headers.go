@@ -60,3 +60,19 @@ func ApplyFirefoxHeaders(req *http.Request) {
 	req.Header.Set("User-Agent", FirefoxUserAgent())
 	req.Header.Set("Accept", "*/*")
 }
+
+// MozillaVPNUserAgent is the User-Agent the Mozilla VPN client sends, the
+// one the phone app (FoxyVPN for Android) signs in to Firefox Accounts
+// with: "MozillaVPN/2.35.0 (sys:linux; iap:true)".
+const MozillaVPNUserAgent = "MozillaVPN/2.35.0 (sys:linux; iap:true)"
+
+// ApplyVPNClientHeaders sets the headers the Mozilla VPN client sends:
+// the client's own User-Agent and a JSON Accept. Firefox Accounts calls
+// use these, not the desktop Firefox ones above, so a sign-in from here
+// reaches FxA under the same client identity as the phone app's; the
+// desktop Firefox identity presented the sign-in as a browser's, the
+// class FxA asks to confirm by email the most readily.
+func ApplyVPNClientHeaders(req *http.Request) {
+	req.Header.Set("User-Agent", MozillaVPNUserAgent)
+	req.Header.Set("Accept", "application/json")
+}

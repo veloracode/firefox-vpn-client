@@ -26,8 +26,10 @@ import (
 // (InstallDir): it runs as root, so nobody else may replace its file. The
 // app carries the same executable beside its core, and installs it from
 // there. The init system (systemd, launchd; service_linux.go,
-// service_darwin.go) starts it at boot and again whenever it ends but by
-// an uninstall, which is how an update's new file starts.
+// service_darwin.go) never starts it with the computer: the app starts
+// it when the TUN mode is chosen, and from then on the init system
+// starts it again whenever it ends but by an uninstall, which is how an
+// update's new file starts.
 const (
 	newExeName = tunapi.ExeName + ".new"
 	// usersFile lists the user ids that may use the service, one a line.

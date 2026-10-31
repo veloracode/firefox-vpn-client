@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -359,6 +360,75 @@ func TestDashboardSignInWithEmailCode(t *testing.T) {
 	}
 	if strings.Contains(c.do(http.MethodGet, "/api/signin/"+id, nil).Body.String(), "access-new") {
 		t.Fatal("the sign-in view must never contain tokens")
+	}
+}
+
+// A sign-in Mozilla wants confirmed with the emailed LINK: the session
+// is held and its verification state is polled (recovery_email/status,
+// the check Mozilla's own clients run), so the sign-in completes by
+// itself when the link is clicked — the dialog offers no answer for
+// this step at all. Pressing Continue early must NOT proceed to the
+// token request while the session is still unverified: that blind
+// trust was the old flow's failure, the token request was refused and
+// the whole sign-in died.
+func TestDashboardSignInWithEmailLink(t *testing.T) {
+	d := newTestDaemon(t)
+	session := strings.Repeat("cd", 32)
+	var confirmed atomic.Bool
+	var tokenCalls atomic.Int32
+	setCoreControlPlane(t, func(r *http.Request) (*http.Response, error) {
+		switch {
+		case r.URL.Path == "/v1/account/login":
+			return coreResponse(r, http.StatusOK, `{"sessionToken":"`+session+`","uid":"u","verified":false,"verificationMethod":"email"}`, nil), nil
+		case r.URL.Path == "/v1/recovery_email/status":
+			if !strings.HasPrefix(r.Header.Get("Authorization"), "Hawk ") {
+				return coreResponse(r, http.StatusUnauthorized, `{"errno":110}`, nil), nil
+			}
+			return coreResponse(r, http.StatusOK, fmt.Sprintf(`{"email":"link@example.com","verified":%t,"sessionVerified":%t}`, confirmed.Load(), confirmed.Load()), nil), nil
+		case r.URL.Path == "/v1/oauth/token":
+			tokenCalls.Add(1)
+			if !confirmed.Load() {
+				return coreResponse(r, http.StatusBadRequest, `{"error":"invalid_grant","error_description":"Unverified session"}`, nil), nil
+			}
+			return coreResponse(r, http.StatusOK, `{"access_token":"access-link","refresh_token":"refresh-link","expires_in":3600,"scope":"profile"}`, nil), nil
+		case r.Method == http.MethodHead && strings.HasSuffix(r.URL.Path, "/api/v1/fpn/token"):
+			return coreResponse(r, http.StatusOK, "", quotaHeader(2)), nil
+		}
+		return nil, fmt.Errorf("unexpected request %s %s", r.Method, r.URL)
+	})
+	c := newDashboardClient(t, d)
+
+	rec := c.do(http.MethodPost, "/api/signin", map[string]string{"email": "link@example.com", "password": "pw"})
+	if rec.Code != http.StatusAccepted {
+		t.Fatalf("sign-in start failed: %d %s", rec.Code, rec.Body)
+	}
+	id := decodeBody[signInView](t, rec).ID
+	var view signInView
+	waitForCondition(t, 5*time.Second, func() bool {
+		view = decodeBody[signInView](t, c.do(http.MethodGet, "/api/signin/"+id, nil))
+		return view.Step == stepEmailLink
+	})
+
+	// Continue before the click: the flow must stay on the link step
+	// and keep the token endpoint untouched.
+	c.do(http.MethodPost, "/api/signin/"+id, map[string]string{"value": ""})
+	waitForCondition(t, 5*time.Second, func() bool {
+		view = decodeBody[signInView](t, c.do(http.MethodGet, "/api/signin/"+id, nil))
+		return view.Step == stepEmailLink && strings.Contains(view.Message+view.Error, "not confirmed")
+	})
+	if tokenCalls.Load() != 0 {
+		t.Fatal("the token endpoint was called for a still-unverified session")
+	}
+
+	// The click lands: polling notices on its own and finishes.
+	confirmed.Store(true)
+	waitForCondition(t, 10*time.Second, func() bool {
+		view = decodeBody[signInView](t, c.do(http.MethodGet, "/api/signin/"+id, nil))
+		return view.Step == stepDone
+	})
+	acc, err := d.store.Get(view.AccountID)
+	if err != nil || acc.Email != "link@example.com" {
+		t.Fatalf("expected the stored account, got %+v %v", acc, err)
 	}
 }
 

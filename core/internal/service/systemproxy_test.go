@@ -29,7 +29,7 @@ func waitPhase(t *testing.T, d *Daemon, want string) {
 func TestSystemProxyEndpointAcceptsSetAndClear(t *testing.T) {
 	d := newTestDaemon(t)
 	client := newDashboardClient(t, d)
-	if view, _ := d.StatusView(); view.SystemProxy != config.SystemProxyClear {
+	if view, _ := d.StatusView(); view.SystemProxy != config.SystemProxySet {
 		t.Fatalf("default system proxy mode %q", view.SystemProxy)
 	}
 	for _, mode := range []string{config.SystemProxySet, config.SystemProxyClear} {

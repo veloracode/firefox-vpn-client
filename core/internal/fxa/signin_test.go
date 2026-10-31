@@ -31,6 +31,77 @@ func useFxaFixture(t *testing.T, handler func(r *http.Request, body map[string]a
 	}))
 }
 
+// The login request is the phone app's: the same endpoint and body fields
+// (email, authPW, and verificationMethod "email-2fa" — no keys, metrics,
+// or reason fields), sent under the Mozilla VPN client's identity (the
+// User-Agent and Accept the phone sends), not desktop Firefox's.
+func TestLoginSendsThePhoneAppsRequest(t *testing.T) {
+	var gotUA, gotAccept, gotPath string
+	var gotBody map[string]any
+	useFxaFixture(t, func(r *http.Request, body map[string]any) (int, string) {
+		gotUA = r.Header.Get("User-Agent")
+		gotAccept = r.Header.Get("Accept")
+		gotPath = r.URL.Path
+		gotBody = body
+		return 200, `{"sessionToken":"00","uid":"u","verified":true}`
+	})
+	resp, err := Login(context.Background(), "user@example.com", "secret")
+	if err != nil || !resp.Verified {
+		t.Fatalf("expected a verified login, got %+v %v", resp, err)
+	}
+	if gotPath != "/v1/account/login" {
+		t.Fatalf("login path %q", gotPath)
+	}
+	if gotUA != controlplane.MozillaVPNUserAgent {
+		t.Fatalf("login user agent %q, want the VPN client's %q", gotUA, controlplane.MozillaVPNUserAgent)
+	}
+	if gotAccept != "application/json" {
+		t.Fatalf("login accept %q", gotAccept)
+	}
+	if len(gotBody) != 3 || gotBody["email"] != "user@example.com" || gotBody["verificationMethod"] != "email-2fa" {
+		t.Fatalf("login body %v", gotBody)
+	}
+	if authPW, ok := gotBody["authPW"].(string); !ok || len(authPW) != 64 {
+		t.Fatalf("login authPW %v", gotBody["authPW"])
+	}
+}
+
+// The session-verification poll is a HAWK-signed GET on
+// /recovery_email/status under the same VPN-client identity as login,
+// and it reads whichever of the verified fields FxA answers with.
+func TestRecoveryEmailStatusReadsTheSessionState(t *testing.T) {
+	session := strings.Repeat("ab", 32)
+	var gotPath, gotAuth, gotUA string
+	useFxaFixture(t, func(r *http.Request, body map[string]any) (int, string) {
+		gotPath, gotAuth, gotUA = r.URL.Path, r.Header.Get("Authorization"), r.Header.Get("User-Agent")
+		if r.Method != http.MethodGet {
+			return 500, "unexpected method"
+		}
+		return 200, `{"email":"user@example.com","verified":false,"sessionVerified":true}`
+	})
+	status, err := RecoveryEmailStatus(context.Background(), session)
+	if err != nil {
+		t.Fatalf("status: %v", err)
+	}
+	if gotPath != "/v1/recovery_email/status" || !strings.HasPrefix(gotAuth, "Hawk ") {
+		t.Fatalf("status request: %q auth %q", gotPath, gotAuth)
+	}
+	if gotUA != controlplane.MozillaVPNUserAgent {
+		t.Fatalf("status user agent %q", gotUA)
+	}
+	if status.Email != "user@example.com" || status.Verified || !status.SessionVerified || !status.SessionUsable() {
+		t.Fatalf("status parsed wrong: %+v", status)
+	}
+
+	useFxaFixture(t, func(r *http.Request, body map[string]any) (int, string) {
+		return 200, `{"email":"user@example.com","verified":false,"sessionVerified":false}`
+	})
+	status, err = RecoveryEmailStatus(context.Background(), session)
+	if err != nil || status.SessionUsable() {
+		t.Fatalf("an unverified session must not read usable: %+v %v", status, err)
+	}
+}
+
 func TestErrnoAndMessageReadFxaErrors(t *testing.T) {
 	err := error(newFxaAPIError(400, []byte(`{"errno":125,"message":"Request blocked"}`)))
 	if Errno(err) != ErrnoRequestBlocked || Message(err) != "Request blocked" {

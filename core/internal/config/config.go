@@ -292,9 +292,9 @@ func Default() Config {
 			Servers:          append([]string(nil), DefaultDNSServers...),
 			FallbackToSystem: true,
 		},
-		// Proxy only until the user chooses the system proxy; the choice is
-		// kept here.
-		SystemProxy: SystemProxy{Mode: SystemProxyClear},
+		// The system proxy until the user chooses another mode; a mode a
+		// config file names is kept as it is.
+		SystemProxy: SystemProxy{Mode: SystemProxySet},
 		Tun:         Tun{Programs: []TunProgram{}},
 		Routing: Routing{
 			Region:         routing.RegionIran,
