@@ -1587,4 +1587,43 @@ class AppLocalizationsBn extends AppLocalizations {
   String batchSummary(int added, int failed) {
     return '$added added, $failed failed';
   }
+
+  String get showSystemApps => 'সিস্টেম অ্যাপ দেখান';
+
+  String get tabLog => 'লগ';
+
+  String get tabConnections => 'সংযোগ';
+
+  String get connectionsEmpty => 'এখনও কোনো সংযোগ নেই।';
+
+  String connectionsOpen(int count) {
+    return '$countটি খোলা';
+  }
+
+  String get connTime => 'সময়';
+
+  String get connRoute => 'নিয়ম';
+
+  String get connDestination => 'গন্তব্য';
+
+  String get connInbound => 'ইনবাউন্ড';
+
+  String get connProtocol => 'প্রোটোকল';
+
+  String get connColumns => 'কলাম';
+
+  String get connTraffic => 'ট্রাফিক';
+
+  String get connDuration => 'সময়কাল';
+
+  String get connRouteVpn => 'প্রক্সি';
+
+  String get connRouteDirect => 'সরাসরি';
+
+  String get connRouteBlocked => 'অবরুদ্ধ';
+
+  String get connRoutePort => 'পোর্ট প্রত্যাখ্যাত';
+
+  String get connRouteFailed => 'ব্যর্থ';
+}
 }

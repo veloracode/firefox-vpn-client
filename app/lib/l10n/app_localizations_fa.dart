@@ -1582,4 +1582,43 @@ class AppLocalizationsFa extends AppLocalizations {
   String batchSummary(int added, int failed) {
     return '$added اضافه شد، $failed ناموفق';
   }
+
+  String get showSystemApps => 'نمایش برنامه‌های سیستمی';
+
+  String get tabLog => 'لاگ';
+
+  String get tabConnections => 'اتصال‌ها';
+
+  String get connectionsEmpty => 'هنوز اتصالی نیست.';
+
+  String connectionsOpen(int count) {
+    return 'باز: $count';
+  }
+
+  String get connTime => 'زمان';
+
+  String get connRoute => 'قانون';
+
+  String get connDestination => 'مقصد';
+
+  String get connInbound => 'ورودی';
+
+  String get connProtocol => 'پروتکل';
+
+  String get connColumns => 'ستون‌ها';
+
+  String get connTraffic => 'حجم';
+
+  String get connDuration => 'مدت';
+
+  String get connRouteVpn => 'پروکسی';
+
+  String get connRouteDirect => 'مستقیم';
+
+  String get connRouteBlocked => 'مسدود';
+
+  String get connRoutePort => 'پورت غیرمجاز';
+
+  String get connRouteFailed => 'ناموفق';
+}
 }

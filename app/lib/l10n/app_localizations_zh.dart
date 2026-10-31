@@ -1536,6 +1536,1580 @@ class AppLocalizationsZh extends AppLocalizations {
   String batchSummary(int added, int failed) {
     return '$added added, $failed failed';
   }
+
+  String get showSystemApps => '显示系统应用';
+
+  String get tabLog => '日志';
+
+  String get tabConnections => '连接';
+
+  String get connectionsEmpty => '暂无连接。';
+
+  String connectionsOpen(int count) {
+    return '$count 个打开';
+  }
+
+  String get connTime => '时间';
+
+  String get connRoute => '规则';
+
+  String get connDestination => '目标';
+
+  String get connInbound => '入站';
+
+  String get connProtocol => '协议';
+
+  String get connColumns => '列';
+
+  String get connTraffic => '流量';
+
+  String get connDuration => '时长';
+
+  String get connRouteVpn => '代理';
+
+  String get connRouteDirect => '直连';
+
+  String get connRouteBlocked => '已拦截';
+
+  String get connRoutePort => '端口被拒';
+
+  String get connRouteFailed => '失败';
+}
+
+/// The translations for Chinese, using the Han script (`zh_Hant`).
+}
+
+/// The translations for Chinese, using the Han script (`zh_Hant`).
+class AppLocalizationsZh extends AppLocalizations {
+  AppLocalizationsZh([String locale = 'zh']) : super(locale);
+
+  @override
+  String get appTitle => 'FoxyVPN';
+
+  @override
+  String get navOverview => '概览';
+
+  @override
+  String get navAccounts => '账户';
+
+  @override
+  String get navSettings => '设置';
+
+  @override
+  String get stateConnected => '已连接';
+
+  @override
+  String get stateConnecting => '正在连接…';
+
+  @override
+  String get stateWaiting => '等待中';
+
+  @override
+  String get waitingForAccount => '在“账户”页添加 Firefox 账户后即可连接。';
+
+  @override
+  String get waitingForEnabledAccount => '所有账户都已关闭。请在“账户”页启用一个。';
+
+  @override
+  String get stateError => '错误';
+
+  @override
+  String get stateUnknown => '未知';
+
+  @override
+  String get restartProxy => '重启代理';
+
+  @override
+  String copied(String value) {
+    return '已复制 $value';
+  }
+
+  @override
+  String get activeAccount => '当前账户';
+
+  @override
+  String get noActiveAccount => '暂无使用中的账户';
+
+  @override
+  String get quotaNotRead => '尚未获取流量信息';
+
+  @override
+  String get unlimited => '不限量';
+
+  @override
+  String usedOf(String used, String limit) {
+    return '已用 $used / $limit';
+  }
+
+  @override
+  String resets(String date) {
+    return '$date 重置';
+  }
+
+  @override
+  String switchAt(int percent) {
+    return '流量用到 $percent% 时切换账户';
+  }
+
+  @override
+  String get publicIp => '公网 IP';
+
+  @override
+  String get testConnection => '测试连接';
+
+  @override
+  String get testing => '正在测试…';
+
+  @override
+  String get testFailed => '失败';
+
+  @override
+  String milliseconds(int value) {
+    return '$value ms';
+  }
+
+  @override
+  String get justNow => '刚刚';
+
+  @override
+  String minutesAgo(int n) {
+    return '$n 分钟前';
+  }
+
+  @override
+  String hoursAgo(int n) {
+    return '$n 小时前';
+  }
+
+  @override
+  String daysAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 天前',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String atTime(String time) {
+    return '$time';
+  }
+
+  @override
+  String durationDays(int d, int h) {
+    return '$d 天 $h 小时';
+  }
+
+  @override
+  String durationHours(int h, int m) {
+    return '$h 小时 $m 分';
+  }
+
+  @override
+  String durationMinutes(int m, int s) {
+    return '$m 分 $s 秒';
+  }
+
+  @override
+  String durationSeconds(int s) {
+    return '$s 秒';
+  }
+
+  @override
+  String accountsGuide(String size) {
+    return '每个 Firefox 账户每月有 $size 流量。你可以添加多个账户：一个用完后，应用会自动切换到下一个。';
+  }
+
+  @override
+  String accountsOrderNote(int percent) {
+    return '按此列表顺序使用：每个账户用到 $percent%，最后一个用到流量耗尽。';
+  }
+
+  @override
+  String get addAccount => '添加账户';
+
+  @override
+  String lowQuotaNotice(String left, String size) {
+    return '当前账户的流量快用完了（剩余 $left）。再添加一个账户，可再获得 $size。';
+  }
+
+  @override
+  String get noAccounts => '还没有账户';
+
+  @override
+  String get noAccountsHint => '添加 Firefox 账户即可连接。';
+
+  @override
+  String get createAccountTitle => '还没有 Firefox 账户？';
+
+  @override
+  String get createAccountHint =>
+      '可在 accounts.firefox.com 免费注册，然后回到这里点击“添加账户”。';
+
+  @override
+  String get moveUp => '上移';
+
+  @override
+  String get moveDown => '下移';
+
+  @override
+  String get statusActive => '使用中';
+
+  @override
+  String get statusReady => '可用';
+
+  @override
+  String get statusNeedsSignIn => '需要登录';
+
+  @override
+  String get statusReserved => '备用';
+
+  @override
+  String get statusUnavailable => '不可用';
+
+  @override
+  String statusUnavailableUntil(String date) {
+    return '$date 前不可用';
+  }
+
+  @override
+  String get statusDisabled => '已停用';
+
+  @override
+  String get statusEnabled => '已启用';
+
+  @override
+  String get useNow => '立即使用';
+
+  @override
+  String get signInAgain => '重新登录';
+
+  @override
+  String reasonQuotaThreshold(int percent) {
+    return '此账户已用掉 $percent% 的流量，已切换到下一个账户。';
+  }
+
+  @override
+  String get reasonQuotaExhausted => '本月流量已用完；每月重置后会再次使用。';
+
+  @override
+  String get reasonSignInRequired => '请重新登录以使用此账户。';
+
+  @override
+  String get reasonSignInConfirm => 'Mozilla 要求确认登录：请点“重新登录”（只需验证码）。';
+
+  @override
+  String reasonSignInFailed(String detail) {
+    return '自动登录失败（$detail）。请重新登录。';
+  }
+
+  @override
+  String reasonSignInWait(String time) {
+    return '上次自动登录后不久就失效了；下次尝试时间为 $time。';
+  }
+
+  @override
+  String reasonSignInRetry(String detail, String time) {
+    return '自动登录未能完成（$detail）；将在 $time 重试。';
+  }
+
+  @override
+  String get reasonNotEntitled => 'Mozilla 拒绝了此账户；稍后会重试。';
+
+  @override
+  String get more => '更多';
+
+  @override
+  String get refreshQuota => '刷新流量';
+
+  @override
+  String get remove => '删除';
+
+  @override
+  String get removeTitle => '删除账户？';
+
+  @override
+  String removeBody(String name) {
+    return '$name 及其保存的登录信息将从这台电脑上删除。之后可以重新添加。';
+  }
+
+  @override
+  String get unlimitedQuota => '不限流量';
+
+  @override
+  String get signInTitle => '登录';
+
+  @override
+  String get signInIntro => '使用 Firefox 账户登录。';
+
+  @override
+  String get email => '邮箱';
+
+  @override
+  String get emailInvalid => '请输入账户邮箱';
+
+  @override
+  String get password => '密码';
+
+  @override
+  String get passwordEmpty => '请输入密码';
+
+  @override
+  String get show => '显示';
+
+  @override
+  String get hide => '隐藏';
+
+  @override
+  String get signIn => '登录';
+
+  @override
+  String get continueLabel => '继续';
+
+  @override
+  String get done => '完成';
+
+  @override
+  String get close => '关闭';
+
+  @override
+  String get cancel => '取消';
+
+  @override
+  String get tryAgain => '重试';
+
+  @override
+  String get signingIn => '正在登录…';
+
+  @override
+  String get accountReady => '账户已就绪';
+
+  @override
+  String get accountReadyHint => '已添加到账户列表末尾。';
+
+  @override
+  String get captchaLabel => '图片中的字符';
+
+  @override
+  String get codeLabel => '验证码';
+
+  @override
+  String get captchaBroken => '无法显示验证码图片。';
+
+  @override
+  String stepEmailCode(String email) {
+    return 'Mozilla 已向 $email 发送验证码，请在此输入。';
+  }
+
+  @override
+  String get stepTotp => '请输入身份验证器应用中的验证码。';
+
+  @override
+  String stepUnblockCode(String email) {
+    return 'Mozilla 检测到此次登录异常，已向 $email 发送解锁码，请在此输入。';
+  }
+
+  @override
+  String get stepCaptcha => '请输入图片中的字符。';
+
+  @override
+  String stepEmailLink(String email) {
+    return '请打开 Mozilla 发送到 $email 的确认链接，确认后将自动继续。';
+  }
+
+  @override
+  String get signInFailed => '未能添加账户。';
+
+  @override
+  String get signInCancelled => '登录已取消。';
+
+  @override
+  String get signInNoAccount => '此邮箱没有 Firefox 账户。';
+
+  @override
+  String get signInNoAccountHint =>
+      '请检查邮箱地址，或用它在 Mozilla 网站免费创建一个 Firefox 账户，在邮箱中确认后再在此添加。';
+
+  @override
+  String get createAccountButton => '创建 Firefox 账户';
+
+  @override
+  String get dotMethodEntry => 'How to create multiple accounts with one Gmail';
+
+  @override
+  String get dotMethodTitle => 'Multiple accounts with one Gmail';
+
+  @override
+  String get dotMethodIntro =>
+      'Gmail ignores dots in an address: a.b@gmail.com and ab@gmail.com are the same inbox.';
+
+  @override
+  String get dotMethodPoint =>
+      'Each dotted version counts as a NEW email address when you sign up for a Firefox account — but every verification email still arrives in that same one inbox.';
+
+  @override
+  String get dotMethodStep1 =>
+      'Create a Firefox account with a new dotted version of your address.';
+
+  @override
+  String get dotMethodStep2 =>
+      'Open the verification email in your one inbox and confirm it, or note the code it carries.';
+
+  @override
+  String get dotMethodStep3 =>
+      'Come back here and add the account. Repeat with another dotted version for more accounts.';
+
+  @override
+  String get dotMethodExample => 'Example';
+
+  @override
+  String get signInWrongPassword => '密码错误。';
+
+  @override
+  String get signInNoPassword =>
+      '此账户没有密码：它是通过 Google 或 Apple 登录创建的。请先设置密码，然后在此用该密码登录。';
+
+  @override
+  String get setPasswordButton => '设置密码';
+
+  @override
+  String get signInTooManyAttempts => '尝试次数过多。请稍候再试。';
+
+  @override
+  String get signInUnblockRejected => '解锁码未被接受。请使用 Mozilla 最新邮件中的验证码。';
+
+  @override
+  String get signInWrongCode =>
+      '验证码错误或已过期。请使用 Mozilla 最新邮件中的验证码；发送新验证码后，旧的即失效。';
+
+  @override
+  String get signInWrongTotp => '验证码错误。请输入身份验证器应用当前显示的验证码。';
+
+  @override
+  String get signInTooManyCodes => '错误的验证码过多。请重新开始登录。';
+
+  @override
+  String get signInTimedOut => '登录耗时过长。请重新开始。';
+
+  @override
+  String get signInNetwork => '无法连接 Mozilla。请检查网络后重试。';
+
+  @override
+  String get coreConnecting => '正在连接核心…';
+
+  @override
+  String get coreLost => '与核心的连接已断开，正在重试…';
+
+  @override
+  String get cantReachCore => '无法连接到核心';
+
+  @override
+  String get startingCore => '正在启动核心…';
+
+  @override
+  String get retry => '重试';
+
+  @override
+  String errNoCore(String path) {
+    return '在应用旁边找不到核心程序（$path）。';
+  }
+
+  @override
+  String errCoreExited(String detail) {
+    return '核心已停止：$detail';
+  }
+
+  @override
+  String get errNotAnswering => '核心没有响应。';
+
+  @override
+  String get errRefused => '核心拒绝了本应用的连接，它可能属于另一个正在运行的副本。';
+
+  @override
+  String get settingsTitle => '设置';
+
+  @override
+  String get sectionGeneral => '常规';
+
+  @override
+  String get language => '语言';
+
+  @override
+  String get languageSystem => '跟随系统';
+
+  @override
+  String get theme => '主题';
+
+  @override
+  String get themeSystem => '跟随系统';
+
+  @override
+  String get themeLight => '浅色';
+
+  @override
+  String get themeDark => '深色';
+
+  @override
+  String get closeBehavior => '关闭窗口时';
+
+  @override
+  String get closeAsk => '每次询问';
+
+  @override
+  String get closeTray => '最小化到托盘';
+
+  @override
+  String get closeQuit => '退出应用';
+
+  @override
+  String get sectionConnection => '连接';
+
+  @override
+  String get localProxy => '本地代理';
+
+  @override
+  String get systemProxy => '系统代理';
+
+  @override
+  String get sectionRouting => '分流';
+
+  @override
+  String get routingDirect => '本地网站直连';
+
+  @override
+  String get routingDirectHint => '所选国家的网站和 IP 不走 VPN，打开更快，也节省流量。';
+
+  @override
+  String get region => '国家';
+
+  @override
+  String get regionIr => '伊朗';
+
+  @override
+  String get regionCn => '中国';
+
+  @override
+  String get regionRu => '俄罗斯';
+
+  @override
+  String get regionAf => '阿富汗';
+
+  @override
+  String get regionTr => '土耳其';
+
+  @override
+  String get regionId => '印度尼西亚';
+
+  @override
+  String get regionBr => '巴西';
+
+  @override
+  String get regionNone => '无';
+
+  @override
+  String get saved => '已保存';
+
+  @override
+  String get dataFolder => '数据文件夹';
+
+  @override
+  String get openFolder => '打开文件夹';
+
+  @override
+  String get unofficialNote => '非官方客户端，与 Mozilla 无关。';
+
+  @override
+  String get closeTitle => '关闭窗口？';
+
+  @override
+  String get closeBody => '最小化到托盘后 VPN 保持连接；退出则会断开。';
+
+  @override
+  String get rememberChoice => '记住我的选择';
+
+  @override
+  String get minimizeToTray => '最小化到托盘';
+
+  @override
+  String get quit => '退出';
+
+  @override
+  String get trayOpen => '打开';
+
+  @override
+  String get trayQuit => '退出';
+
+  @override
+  String get trayProxyOnly => '仅代理服务';
+
+  @override
+  String get traySetSystemProxy => '设置系统代理';
+
+  @override
+  String errPortInUse(String port) {
+    return '端口 $port 被其他程序占用，应用无法连接到核心。';
+  }
+
+  @override
+  String proxyPortInUse(String port) {
+    return '端口 $port 被其他程序占用，代理无法启动。';
+  }
+
+  @override
+  String get changePort => '更改端口';
+
+  @override
+  String get portDialogTitle => '选择端口';
+
+  @override
+  String portDialogBody(String port) {
+    return '端口 $port 已被占用。下方已推荐一个空闲端口，你也可以输入其他端口。';
+  }
+
+  @override
+  String get portChangeBody => '其他应用通过此端口连接。请选择 1024 到 65535 之间的端口。';
+
+  @override
+  String get portLabel => '端口';
+
+  @override
+  String get portInvalid => '请输入 1024 到 65535 之间的端口';
+
+  @override
+  String get portBusy => '此端口也已被占用';
+
+  @override
+  String get portInUse => '其他程序正在使用此端口';
+
+  @override
+  String get save => '保存';
+
+  @override
+  String get proxyPort => '代理端口';
+
+  @override
+  String get appPort => '应用端口';
+
+  @override
+  String get welcomeTitle => '欢迎';
+
+  @override
+  String get welcomeBody => '请选择语言和所在国家。本国网站将直连访问，不走 VPN，速度更快，也节省流量。';
+
+  @override
+  String get start => '开始';
+
+  @override
+  String routingSuggestTitle(String country) {
+    return '$country网站直连？';
+  }
+
+  @override
+  String routingSuggestBody(String country) {
+    return '$country的网站和 IP 将直连访问，不走 VPN。可在“分流”中更改。';
+  }
+
+  @override
+  String get yes => '是';
+
+  @override
+  String get notNow => '暂不';
+
+  @override
+  String get navServers => '服务器';
+
+  @override
+  String get navLogs => '日志';
+
+  @override
+  String get realDelay => '真实延迟';
+
+  @override
+  String noticePort(String port) {
+    return 'Mozilla 代理不支持端口 $port，只有 80、443、8080 和 8443 端口可以走 VPN。';
+  }
+
+  @override
+  String get noticeCommand =>
+      '有应用使用了 UDP（游戏、语音和视频通话等）。Mozilla 代理仅支持 TCP，因此无法通过。';
+
+  @override
+  String noticeTimes(int count, String time) {
+    return '$count 次，最近一次 $time';
+  }
+
+  @override
+  String get dismiss => '忽略';
+
+  @override
+  String get modeRecommended => '推荐';
+
+  @override
+  String get modeFastest => '最快';
+
+  @override
+  String get modeRecommendedHint => '由 Mozilla 为你选择节点。';
+
+  @override
+  String get modeFastestHint => '每次连接时自动选择延迟最低的节点。';
+
+  @override
+  String get testDelay => '测试真实延迟';
+
+  @override
+  String get testingDelay => '正在测试…可能需要一分钟';
+
+  @override
+  String get search => '搜索';
+
+  @override
+  String get noAnswer => '无响应';
+
+  @override
+  String testedAgo(String ago) {
+    return '$ago测试';
+  }
+
+  @override
+  String delaySummary(int answered, int total) {
+    return '$answered/$total 个节点有响应';
+  }
+
+  @override
+  String get noServers => '暂无服务器。核心连接到 Mozilla 后即会显示。';
+
+  @override
+  String get levelAll => '全部';
+
+  @override
+  String get filter => '筛选';
+
+  @override
+  String get follow => '自动滚动';
+
+  @override
+  String get clear => '清空';
+
+  @override
+  String get copyAll => '复制';
+
+  @override
+  String get logsCopied => '日志已复制';
+
+  @override
+  String get noLogs => '暂无日志。';
+
+  @override
+  String get sectionAccounts => '自动切换账户';
+
+  @override
+  String get switchThreshold => '切换阈值';
+
+  @override
+  String get switchThresholdHint => '流量用到此比例时，自动切换到下一个账户。';
+
+  @override
+  String get sectionDns => 'DNS';
+
+  @override
+  String get dnsPreset => 'DNS 服务器';
+
+  @override
+  String get dnsSystem => '系统';
+
+  @override
+  String get dnsAuto => '自动（Cloudflare、Google、Quad9）';
+
+  @override
+  String get dnsCustom => '自定义';
+
+  @override
+  String get dnsCustomHint => '每行一个：https://…/dns-query、tls://… 或 IP 地址。';
+
+  @override
+  String get dnsFallback => '回退到系统 DNS';
+
+  @override
+  String get testDns => '测试 DNS';
+
+  @override
+  String get transport => '协议';
+
+  @override
+  String get transportH3 => 'HTTP/3 (QUIC)';
+
+  @override
+  String get transportH2 => 'HTTP/2 (TCP)';
+
+  @override
+  String get directRules => '直连';
+
+  @override
+  String get directRulesHint =>
+      '此列表中的网站和地址不经过 VPN，直接通过你自己的网络打开。所选国家的规则已在此处：可以添加、修改或删除。选择其他国家会替换为该国的规则。';
+
+  @override
+  String get restoreRegionRules => '恢复该国家的默认规则';
+
+  @override
+  String get blockRules => '拦截';
+
+  @override
+  String get blockRulesHint =>
+      '此列表中的网站和地址完全无法打开，无论直连还是通过 VPN：适用于广告或你永远不想访问的网站。';
+
+  @override
+  String get rulesTitle => '规则';
+
+  @override
+  String get ruleSyntaxTitle => '如何编写规则';
+
+  @override
+  String get resolveDomains => 'IP 规则也应用于域名';
+
+  @override
+  String get routingLists => 'Geo 文件';
+
+  @override
+  String get listSource => '列表来源';
+
+  @override
+  String get listSourceCustom => '手动设置';
+
+  @override
+  String listsUpdatedAgo(String ago) {
+    return '更新于 $ago';
+  }
+
+  @override
+  String get updateLists => '更新 Geo 文件';
+
+  @override
+  String get listsUpdated => 'Geo 文件已更新。';
+
+  @override
+  String get testDestination => '测试分流';
+
+  @override
+  String get destinationHint => '域名、IP 或网址';
+
+  @override
+  String get check => '检查';
+
+  @override
+  String get routeDirect => '直连';
+
+  @override
+  String get routeProxy => '走 VPN';
+
+  @override
+  String get routeBlock => '已拦截';
+
+  @override
+  String ruleMatched(String rule) {
+    return '规则：$rule';
+  }
+
+  @override
+  String get portRefusedNote => 'Mozilla 代理不支持此端口。';
+
+  @override
+  String get sectionAdvanced => '高级';
+
+  @override
+  String get listenAddress => '允许连接的设备';
+
+  @override
+  String get listenLocal => '127.0.0.1 · 仅本设备';
+
+  @override
+  String get listenAll => '0.0.0.0 · 所有网络（LAN）';
+
+  @override
+  String get proxyUsername => '代理用户名';
+
+  @override
+  String get proxyPassword => '代理密码';
+
+  @override
+  String get proxyLoginHint => '应用连接代理时需填写这些信息。两项都留空则无需验证。';
+
+  @override
+  String get loginBothOrNone => '请同时填写两项，或都留空。';
+
+  @override
+  String get proxyLogin => '代理认证';
+
+  @override
+  String get idleSleep => '空闲后休眠';
+
+  @override
+  String get sleepNever => '从不';
+
+  @override
+  String sleepMinutes(int count) {
+    return '$count 分钟';
+  }
+
+  @override
+  String get sleepHour => '1 小时';
+
+  @override
+  String get showPublicIp => '显示公网 IP';
+
+  @override
+  String get speedInNotification => '在通知中显示速度';
+
+  @override
+  String get liveTraffic => '实时流量';
+
+  @override
+  String get totalTraffic => '总流量';
+
+  @override
+  String get verboseLogs => '详细日志';
+
+  @override
+  String get webDashboard => '网页控制面板';
+
+  @override
+  String get webDashboardOpen => '打开';
+
+  @override
+  String get webDashboardHint => '高级设置和更多工具';
+
+  @override
+  String numberInvalid(int min, int max) {
+    return '请输入 $min 到 $max 之间的数字';
+  }
+
+  @override
+  String get notifySwitchedTitle => '已切换账户';
+
+  @override
+  String notifySwitchedBody(String name) {
+    return '现在使用 $name。';
+  }
+
+  @override
+  String get notifySignInTitle => '需要登录';
+
+  @override
+  String get notifySignInBody => '有账户需要在“账户”页面重新登录。';
+
+  @override
+  String get navAbout => '关于';
+
+  @override
+  String get appVersionLabel => '应用版本';
+
+  @override
+  String get coreVersionLabel => '核心版本';
+
+  @override
+  String get checkUpdates => '检查更新';
+
+  @override
+  String get checkingUpdates => '正在检查…';
+
+  @override
+  String get upToDate => '已是最新版本。';
+
+  @override
+  String updateAvailable(String version) {
+    return '新版本 $version 已发布。';
+  }
+
+  @override
+  String get download => '下载';
+
+  @override
+  String updateCheckFailed(String error) {
+    return '无法检查更新：$error';
+  }
+
+  @override
+  String get updateNow => '更新';
+
+  @override
+  String updateDownloading(String version) {
+    return '正在下载版本 $version…';
+  }
+
+  @override
+  String updateReady(String version) {
+    return '版本 $version 已可安装。';
+  }
+
+  @override
+  String updateInstalling(String version) {
+    return '正在安装版本 $version，应用将关闭并重新打开。';
+  }
+
+  @override
+  String updateFailed(String version) {
+    return '无法更新到版本 $version。';
+  }
+
+  @override
+  String updateDone(String version) {
+    return '已更新到版本 $version。';
+  }
+
+  @override
+  String updateRolledBack(String version) {
+    return '更新到版本 $version 未能完成，应用已恢复到之前的版本。';
+  }
+
+  @override
+  String get autoUpdate => '自动更新';
+
+  @override
+  String get autoUpdateHint => '新版本会在后台下载，并在下次打开应用时安装。';
+
+  @override
+  String get repoNotSet => '尚未设置 GitHub 仓库。';
+
+  @override
+  String get sourceCode => '源代码';
+
+  @override
+  String get tapToConnect => '点击连接';
+
+  @override
+  String get tapToDisconnect => '点击断开';
+
+  @override
+  String get startOnBoot => '开机启动';
+
+  @override
+  String get connectOnStartup => '开机自动连接';
+
+  @override
+  String get proxyServiceActive => '代理服务运行中';
+
+  @override
+  String get navHome => '首页';
+
+  @override
+  String get groupApp => '应用';
+
+  @override
+  String get stateOff => '已断开';
+
+  @override
+  String get tapToConnectPhone => '点击连接';
+
+  @override
+  String get tapToDisconnectPhone => '点击断开';
+
+  @override
+  String lanAddress(String address) {
+    return '局域网 $address';
+  }
+
+  @override
+  String get recommendedLocation => '推荐节点';
+
+  @override
+  String dataLeftOf(String limit) {
+    return '共 $limit';
+  }
+
+  @override
+  String get homeLocation => '节点';
+
+  @override
+  String get connectedTo => '已连接到';
+
+  @override
+  String get vpnNotAllowed => 'VPN 需要你的授权。请再次点击按钮并允许。';
+
+  @override
+  String get dataUsedTitle => '已用流量';
+
+  @override
+  String get bypassApps => '分应用代理';
+
+  @override
+  String get connectRetrying => '无法连接。请检查网络。';
+
+  @override
+  String get failUnreachable => 'Mozilla 服务器在此网络上被屏蔽。请换一个网络连接试试。';
+
+  @override
+  String get failRefused => 'Mozilla 服务器拒绝了连接。请几分钟后再试。';
+
+  @override
+  String get failLocationRefused => '这个国家不对你的账户开放。请选择其他国家。';
+
+  @override
+  String get useRecommendedLocation => '使用推荐节点';
+
+  @override
+  String exitMismatch(String exit, String chosen) {
+    return '你选择了$chosen，但你的 IP 在$exit。';
+  }
+
+  @override
+  String get failSignIn => '此账户的登录已过期。请在“账户”页重新登录。';
+
+  @override
+  String get failQuota => '本月流量已用完。请添加另一个账户。';
+
+  @override
+  String get failNotEntitled => 'Mozilla 不允许此账户使用 VPN。请添加另一个账户。';
+
+  @override
+  String get failRegion => 'Mozilla 不在你所在的国家提供服务。';
+
+  @override
+  String get failServer => 'Mozilla 服务暂时出现问题。应用会自动重试。';
+
+  @override
+  String get failNoAccount => '没有可用的账户。请打开“账户”页。';
+
+  @override
+  String get failTestSite => '已连接服务器，但网站打不开。请换一个国家试试。';
+
+  @override
+  String get failOther => '无法连接。请重试。';
+
+  @override
+  String get failNoInternet => '无网络连接。请检查 Wi-Fi 或移动数据。';
+
+  @override
+  String get waitingForNetwork => '正在等待网络连接…';
+
+  @override
+  String proxyStartFailed(String port) {
+    return '代理无法在端口 $port 上启动。请选择其他端口。';
+  }
+
+  @override
+  String get connectionSettings => '连接设置';
+
+  @override
+  String get appModeExclude => '绕行所选应用';
+
+  @override
+  String get appModeInclude => '仅代理所选应用';
+
+  @override
+  String get appModeExcludeHint => '所选应用直连，不走 VPN，例如拒绝境外 IP 的银行应用。';
+
+  @override
+  String get appModeIncludeHint => '仅所选应用走 VPN，其他应用直连。';
+
+  @override
+  String fromRegionList(String region) {
+    return '推荐（$region列表）';
+  }
+
+  @override
+  String get modeProxy => '代理';
+
+  @override
+  String get connectionMode => '连接模式';
+
+  @override
+  String get modeProxyHint => '仅对已设置代理的应用生效。';
+
+  @override
+  String get modeSystemProxyHint => 'Windows 和大多数应用都走代理。';
+
+  @override
+  String get modeSystemProxyHintOther => '浏览器和大多数应用都走代理。';
+
+  @override
+  String get suggestedApps => '推荐应用';
+
+  @override
+  String suggestedAdded(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '已选中 $count 个推荐应用',
+      zero: '推荐应用已全部选中',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get autoSection => '自动';
+
+  @override
+  String get locationsSection => '节点';
+
+  @override
+  String get dnsSummaryOk => '加密 DNS 工作正常';
+
+  @override
+  String dnsSummaryFailed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个域名解析失败',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dnsVia(String server) {
+    return '经由 $server';
+  }
+
+  @override
+  String dnsSummaryDiffers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '当前网络的 DNS 对 $count 个域名返回了过滤地址，本应用不会采用这些结果。',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dnsAnswer => '结果：';
+
+  @override
+  String get dnsNetworkAnswer => '网络 DNS：';
+
+  @override
+  String get dnsFiltered => '被过滤';
+
+  @override
+  String get rulesSyntaxTitle => '每行一条规则';
+
+  @override
+  String get ruleDomain => '该网站及其子域名';
+
+  @override
+  String get ruleFull => '仅匹配此域名';
+
+  @override
+  String get ruleKeyword => '包含此关键词的域名';
+
+  @override
+  String get ruleGeosite => 'Geo 文件中指定标签的网站';
+
+  @override
+  String get ruleGeoip => 'Geo 文件中指定国家的 IP';
+
+  @override
+  String get ruleIp => '单个 IP 或网段';
+
+  @override
+  String get modeVpn => 'VPN';
+
+  @override
+  String get modeProxyOnly => '仅代理';
+
+  @override
+  String get noNetwork => '无网络连接。请打开 Wi-Fi 或移动数据。';
+
+  @override
+  String get blockAds => '拦截广告';
+
+  @override
+  String systemProxyTakenBy(String address) {
+    return '另一个程序将系统代理改为 $address，流量不再经过 VPN。';
+  }
+
+  @override
+  String get systemProxyTakenOff => '另一个程序关闭了系统代理，流量不再经过 VPN。';
+
+  @override
+  String get setSystemProxyAgain => '重新设置';
+
+  @override
+  String get modeTun => 'TUN';
+
+  @override
+  String modeTunHint(String os) {
+    return '$os 的所有流量都走 VPN。';
+  }
+
+  @override
+  String get osWindows => 'Windows';
+
+  @override
+  String get osLinux => 'Linux';
+
+  @override
+  String get osMacos => 'macOS';
+
+  @override
+  String get tunInstallWaiting => '正在等待安装 TUN 服务的许可…';
+
+  @override
+  String get tunInstallCancelled => 'TUN 模式需要一次管理员权限。未获得权限，模式未更改。';
+
+  @override
+  String tunInstallFailed(String error) {
+    return '无法安装 TUN 服务：$error';
+  }
+
+  @override
+  String get tunStarting => '正在开启 TUN 模式…';
+
+  @override
+  String get tunFailed => 'TUN 模式未能开启，正在重试…';
+
+  @override
+  String get tunLost => 'TUN 模式意外停止，正在重试…';
+
+  @override
+  String get tunNotRunning => 'TUN 服务未在运行，正在重试…';
+
+  @override
+  String get tunMissing => 'TUN 服务未安装。';
+
+  @override
+  String get tunOutdated => 'TUN 服务比此应用旧。请重新安装以使用 TUN 模式。';
+
+  @override
+  String get tunAppOutdated => 'TUN 服务比此应用新。请更新应用以使用 TUN 模式。';
+
+  @override
+  String get tunBusy => '另一个 Firefox VPN 副本正在使用 TUN 模式。';
+
+  @override
+  String get tunInstall => '安装';
+
+  @override
+  String get tunInstallAgain => '重新安装';
+
+  @override
+  String get trayTunMode => 'TUN 模式（所有应用）';
+
+  @override
+  String get removeTunService => '移除 TUN 服务';
+
+  @override
+  String get removeTunServiceHint => '移除 TUN 模式使用的系统服务。再次选择 TUN 时会重新安装。';
+
+  @override
+  String get tunServiceRemoved => '已移除 TUN 服务。';
+
+  @override
+  String get tunInstallPrompt => 'Firefox VPN 想要安装 TUN 模式的服务。';
+
+  @override
+  String get tunRemovePrompt => 'Firefox VPN 想要移除 TUN 模式的服务。';
+
+  @override
+  String tunRemoveFailed(String error) {
+    return '无法移除 TUN 服务：$error';
+  }
+
+  @override
+  String get sectionTun => 'TUN 设置';
+
+  @override
+  String get tunPrograms => '绕过 VPN 的程序';
+
+  @override
+  String get tunProgramsHint => '它们直连，不经过 Mozilla。仅适用于不用 VPN 也能正常工作的程序。';
+
+  @override
+  String get tunProgramsEmpty => '还没有程序。';
+
+  @override
+  String get addProgram => '添加程序';
+
+  @override
+  String get programFiles => '程序';
+
+  @override
+  String get tunProgramAll => '全部流量';
+
+  @override
+  String get tunProgramAllHint => '整个程序直连。';
+
+  @override
+  String get tunProgramUdp => '仅 UDP';
+
+  @override
+  String get tunProgramUdpHint => '仅其 UDP 直连；其余流量走 VPN。';
+
+  @override
+  String get udpNoticeSetting => 'UDP 被拦截时提示';
+
+  @override
+  String udpNoticeBody(String program) {
+    return '$program 试图拨打电话或在线游戏，但在 TUN 模式下这类流量（UDP）无法经过 VPN。';
+  }
+
+  @override
+  String get udpNoticeAction => '让它的 UDP 直连';
+
+  @override
+  String get dontShowAgain => '不再显示';
+
+  @override
+  String udpDirectAdded(String program) {
+    return '$program：其 UDP 现在直连。';
+  }
+
+  @override
+  String get addRunningProgram => '从正在运行的程序中选择';
+
+  @override
+  String get addProgramFile => '选择文件…';
+
+  @override
+  String get addProgramName => '输入名称…';
+
+  @override
+  String get programNameHint =>
+      '程序的文件名，例如 steam.exe；* 代表任意文字（steam* 即 Steam 的所有程序）。';
+
+  @override
+  String get runningProgramsEmpty => '没有其他正在运行的程序。';
+
+  @override
+  String get uiDesign => 'Design';
+
+  @override
+  String get homeAnimations => 'Home animations';
+
+  @override
+  String get homeAnimationsSubtitle => 'Uses more CPU';
+
+  @override
+  String get designFoxy => 'Foxy';
+
+  @override
+  String get designClassic => 'Classic';
+
+  @override
+  String get designPixel => 'Pixel';
+
+  @override
+  String get designPortal => 'Portal';
+
+  @override
+  String get designOld => 'Old';
+
+  @override
+  String get zedTapCoreConnect => 'Tap the core to connect';
+
+  @override
+  String get zedTapCoreCancel => 'Tap the core to cancel';
+
+  @override
+  String get zedTrafficProtected => 'All traffic is protected';
+
+  @override
+  String get zedVpnOn => 'VPN is ON';
+
+  @override
+  String get zedVpnOff => 'VPN is OFF';
+
+  @override
+  String get zedConnectedFor => 'Connected for';
+
+  @override
+  String get zedPing => 'Ping';
+
+  @override
+  String get zedPingMeasuring => 'measuring…';
+
+  @override
+  String get zedPingUnavailable => 'unavailable';
+
+  @override
+  String get zedConnectionDetails => 'Connection details';
+
+  @override
+  String get zedTapToChooseLocation => 'Tap to choose a location';
+
+  @override
+  String get zedRecommendedTapChoose => 'Recommended — tap to choose';
+
+  @override
+  String get zedAddFirstAccount => 'Tap to add your first account';
+
+  @override
+  String zedAccountsActive(int active, int total) {
+    return '$active/$total active';
+  }
+
+  @override
+  String zedAccountsOfConnected(int connected, int total) {
+    return '$connected of $total connected';
+  }
+
+  @override
+  String zedAccountsSummary(int enabled, int connected) {
+    return '$enabled enabled · $connected connected';
+  }
+
+  @override
+  String get zedAccountOff => 'off';
+
+  @override
+  String get zedQuotaExhausted => 'quota exhausted';
+
+  @override
+  String get zedIdle => 'idle';
+
+  @override
+  String get zedSpeed => 'Speed';
+
+  @override
+  String get zedSpeedLive => 'Live';
+
+  @override
+  String get zedDownload => 'Download';
+
+  @override
+  String get zedUpload => 'Upload';
+
+  @override
+  String get batchImport => 'Batch import';
+
+  @override
+  String get batchImportHint =>
+      'One account per line: email:password. The separators email----password, email,password and email password work too.';
+
+  @override
+  String get batchImportEmpty => 'Paste at least one account first.';
+
+  @override
+  String get batchLineInvalid => 'Not an account line';
+
+  @override
+  String get batchAdded => 'Added';
+
+  @override
+  String get batchNeedsManual => 'Needs manual sign-in';
+
+  @override
+  String get batchLineSkipped => 'Skipped';
+
+  @override
+  String get batchSkip => 'Skip';
+
+  @override
+  String get batchImportAction => 'Import';
+
+  @override
+  String batchProgress(int current, int total) {
+    return 'Adding $current of $total…';
+  }
+
+  @override
+  String batchSkipped(int skipped) {
+    return '$skipped skipped';
+  }
+
+  @override
+  String batchSummary(int added, int failed) {
+    return '$added added, $failed failed';
+  }
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -3070,4 +4644,43 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String batchSummary(int added, int failed) {
     return '$added added, $failed failed';
   }
+
+  String get showSystemApps => '顯示系統應用程式';
+
+  String get tabLog => '記錄';
+
+  String get tabConnections => '連線';
+
+  String get connectionsEmpty => '尚無連線。';
+
+  String connectionsOpen(int count) {
+    return '$count 個開啟';
+  }
+
+  String get connTime => '時間';
+
+  String get connRoute => '規則';
+
+  String get connDestination => '目標';
+
+  String get connInbound => '入站';
+
+  String get connProtocol => '協定';
+
+  String get connColumns => '欄';
+
+  String get connTraffic => '流量';
+
+  String get connDuration => '時長';
+
+  String get connRouteVpn => '代理';
+
+  String get connRouteDirect => '直連';
+
+  String get connRouteBlocked => '已封鎖';
+
+  String get connRoutePort => '連接埠被拒';
+
+  String get connRouteFailed => '失敗';
+}
 }

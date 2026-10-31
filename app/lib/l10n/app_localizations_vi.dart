@@ -1590,4 +1590,43 @@ class AppLocalizationsVi extends AppLocalizations {
   String batchSummary(int added, int failed) {
     return '$added added, $failed failed';
   }
+
+  String get showSystemApps => 'Hiện ứng dụng hệ thống';
+
+  String get tabLog => 'Nhật ký';
+
+  String get tabConnections => 'Kết nối';
+
+  String get connectionsEmpty => 'Chưa có kết nối nào.';
+
+  String connectionsOpen(int count) {
+    return '$count đang mở';
+  }
+
+  String get connTime => 'Thời gian';
+
+  String get connRoute => 'Quy tắc';
+
+  String get connDestination => 'Đích';
+
+  String get connInbound => 'Đầu vào';
+
+  String get connProtocol => 'Giao thức';
+
+  String get connColumns => 'Cột';
+
+  String get connTraffic => 'Lưu lượng';
+
+  String get connDuration => 'Thời lượng';
+
+  String get connRouteVpn => 'Proxy';
+
+  String get connRouteDirect => 'Trực tiếp';
+
+  String get connRouteBlocked => 'Bị chặn';
+
+  String get connRoutePort => 'Cổng bị từ chối';
+
+  String get connRouteFailed => 'Thất bại';
+}
 }

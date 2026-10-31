@@ -1593,4 +1593,43 @@ class AppLocalizationsPt extends AppLocalizations {
   String batchSummary(int added, int failed) {
     return '$added added, $failed failed';
   }
+
+  String get showSystemApps => 'Mostrar apps do sistema';
+
+  String get tabLog => 'Log';
+
+  String get tabConnections => 'Conexões';
+
+  String get connectionsEmpty => 'Ainda não há conexões.';
+
+  String connectionsOpen(int count) {
+    return '$count abertas';
+  }
+
+  String get connTime => 'Hora';
+
+  String get connRoute => 'Regra';
+
+  String get connDestination => 'Destino';
+
+  String get connInbound => 'Entrada';
+
+  String get connProtocol => 'Protocolo';
+
+  String get connColumns => 'Colunas';
+
+  String get connTraffic => 'Tráfego';
+
+  String get connDuration => 'Duração';
+
+  String get connRouteVpn => 'Proxy';
+
+  String get connRouteDirect => 'Direto';
+
+  String get connRouteBlocked => 'Bloqueado';
+
+  String get connRoutePort => 'Porta recusada';
+
+  String get connRouteFailed => 'Falhou';
+}
 }

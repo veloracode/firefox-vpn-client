@@ -1588,4 +1588,43 @@ class AppLocalizationsId extends AppLocalizations {
   String batchSummary(int added, int failed) {
     return '$added added, $failed failed';
   }
+
+  String get showSystemApps => 'Tampilkan aplikasi sistem';
+
+  String get tabLog => 'Log';
+
+  String get tabConnections => 'Koneksi';
+
+  String get connectionsEmpty => 'Belum ada koneksi.';
+
+  String connectionsOpen(int count) {
+    return '$count terbuka';
+  }
+
+  String get connTime => 'Waktu';
+
+  String get connRoute => 'Aturan';
+
+  String get connDestination => 'Tujuan';
+
+  String get connInbound => 'Masuk';
+
+  String get connProtocol => 'Protokol';
+
+  String get connColumns => 'Kolom';
+
+  String get connTraffic => 'Lalu lintas';
+
+  String get connDuration => 'Durasi';
+
+  String get connRouteVpn => 'Proxy';
+
+  String get connRouteDirect => 'Langsung';
+
+  String get connRouteBlocked => 'Diblokir';
+
+  String get connRoutePort => 'Port ditolak';
+
+  String get connRouteFailed => 'Gagal';
+}
 }

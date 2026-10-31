@@ -1599,4 +1599,43 @@ class AppLocalizationsFr extends AppLocalizations {
   String batchSummary(int added, int failed) {
     return '$added added, $failed failed';
   }
+
+  String get showSystemApps => 'Afficher les applis système';
+
+  String get tabLog => 'Journal';
+
+  String get tabConnections => 'Connexions';
+
+  String get connectionsEmpty => 'Aucune connexion pour l\'instant.';
+
+  String connectionsOpen(int count) {
+    return '$count ouvertes';
+  }
+
+  String get connTime => 'Heure';
+
+  String get connRoute => 'Règle';
+
+  String get connDestination => 'Destination';
+
+  String get connInbound => 'Entrée';
+
+  String get connProtocol => 'Protocole';
+
+  String get connColumns => 'Colonnes';
+
+  String get connTraffic => 'Trafic';
+
+  String get connDuration => 'Durée';
+
+  String get connRouteVpn => 'Proxy';
+
+  String get connRouteDirect => 'Direct';
+
+  String get connRouteBlocked => 'Bloqué';
+
+  String get connRoutePort => 'Port refusé';
+
+  String get connRouteFailed => 'Échec';
+}
 }

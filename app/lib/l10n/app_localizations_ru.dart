@@ -1595,4 +1595,43 @@ class AppLocalizationsRu extends AppLocalizations {
   String batchSummary(int added, int failed) {
     return '$added added, $failed failed';
   }
+
+  String get showSystemApps => 'Показывать системные приложения';
+
+  String get tabLog => 'Лог';
+
+  String get tabConnections => 'Подключения';
+
+  String get connectionsEmpty => 'Подключений пока нет.';
+
+  String connectionsOpen(int count) {
+    return 'Открыто: $count';
+  }
+
+  String get connTime => 'Время';
+
+  String get connRoute => 'Правило';
+
+  String get connDestination => 'Назначение';
+
+  String get connInbound => 'Вход';
+
+  String get connProtocol => 'Протокол';
+
+  String get connColumns => 'Столбцы';
+
+  String get connTraffic => 'Трафик';
+
+  String get connDuration => 'Длительность';
+
+  String get connRouteVpn => 'Прокси';
+
+  String get connRouteDirect => 'Напрямую';
+
+  String get connRouteBlocked => 'Заблокировано';
+
+  String get connRoutePort => 'Порт отклонён';
+
+  String get connRouteFailed => 'Ошибка';
+}
 }

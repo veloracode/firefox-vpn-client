@@ -1591,4 +1591,43 @@ class AppLocalizationsTr extends AppLocalizations {
   String batchSummary(int added, int failed) {
     return '$added added, $failed failed';
   }
+
+  String get showSystemApps => 'Sistem uygulamalarını göster';
+
+  String get tabLog => 'Günlük';
+
+  String get tabConnections => 'Bağlantılar';
+
+  String get connectionsEmpty => 'Henüz bağlantı yok.';
+
+  String connectionsOpen(int count) {
+    return '$count açık';
+  }
+
+  String get connTime => 'Zaman';
+
+  String get connRoute => 'Kural';
+
+  String get connDestination => 'Hedef';
+
+  String get connInbound => 'Giriş';
+
+  String get connProtocol => 'Protokol';
+
+  String get connColumns => 'Sütunlar';
+
+  String get connTraffic => 'Trafik';
+
+  String get connDuration => 'Süre';
+
+  String get connRouteVpn => 'Proxy';
+
+  String get connRouteDirect => 'Doğrudan';
+
+  String get connRouteBlocked => 'Engellendi';
+
+  String get connRoutePort => 'Port reddedildi';
+
+  String get connRouteFailed => 'Başarısız';
+}
 }

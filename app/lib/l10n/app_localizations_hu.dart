@@ -1600,4 +1600,43 @@ class AppLocalizationsHu extends AppLocalizations {
   String batchSummary(int added, int failed) {
     return '$added added, $failed failed';
   }
+
+  String get showSystemApps => 'Rendszeralkalmazások megjelenítése';
+
+  String get tabLog => 'Napló';
+
+  String get tabConnections => 'Kapcsolatok';
+
+  String get connectionsEmpty => 'Még nincs kapcsolat.';
+
+  String connectionsOpen(int count) {
+    return '$count nyitott';
+  }
+
+  String get connTime => 'Idő';
+
+  String get connRoute => 'Szabály';
+
+  String get connDestination => 'Cél';
+
+  String get connInbound => 'Bejövő';
+
+  String get connProtocol => 'Protokoll';
+
+  String get connColumns => 'Oszlopok';
+
+  String get connTraffic => 'Forgalom';
+
+  String get connDuration => 'Időtartam';
+
+  String get connRouteVpn => 'Proxy';
+
+  String get connRouteDirect => 'Közvetlen';
+
+  String get connRouteBlocked => 'Letiltva';
+
+  String get connRoutePort => 'Port elutasítva';
+
+  String get connRouteFailed => 'Sikertelen';
+}
 }

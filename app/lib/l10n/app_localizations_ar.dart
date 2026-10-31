@@ -1603,4 +1603,43 @@ class AppLocalizationsAr extends AppLocalizations {
   String batchSummary(int added, int failed) {
     return '$added added, $failed failed';
   }
+
+  String get showSystemApps => 'عرض تطبيقات النظام';
+
+  String get tabLog => 'السجل';
+
+  String get tabConnections => 'الاتصالات';
+
+  String get connectionsEmpty => 'لا توجد اتصالات بعد.';
+
+  String connectionsOpen(int count) {
+    return 'مفتوح: $count';
+  }
+
+  String get connTime => 'الوقت';
+
+  String get connRoute => 'القاعدة';
+
+  String get connDestination => 'الوجهة';
+
+  String get connInbound => 'الوارد';
+
+  String get connProtocol => 'البروتوكول';
+
+  String get connColumns => 'الأعمدة';
+
+  String get connTraffic => 'حركة البيانات';
+
+  String get connDuration => 'المدة';
+
+  String get connRouteVpn => 'بروكسي';
+
+  String get connRouteDirect => 'مباشر';
+
+  String get connRouteBlocked => 'محظور';
+
+  String get connRoutePort => 'منفذ مرفوض';
+
+  String get connRouteFailed => 'فشل';
+}
 }
