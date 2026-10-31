@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/veloracode/firefox-vpn-client/core/internal/version"
+	"github.com/armanlife/firefox-vpn-client/core/internal/version"
 )
 
 // projectURL is where people find the app this service belongs to.
