@@ -57,11 +57,6 @@ class AppSettings extends ChangeNotifier {
   String updateVersion = '';
   String updateUrl = '';
 
-  /// Downloads a newer version in the background and installs it the next
-  /// time the app starts (the Windows app, which updates itself); on unless
-  /// the user turned it off.
-  bool autoUpdate = true;
-
   /// Starts the app in the tray when the user signs in to Windows;
   /// off unless the user turned it on.
   bool autostart = false;
@@ -210,7 +205,6 @@ class AppSettings extends ChangeNotifier {
         s.autoConnect =
             j['auto_connect_default_off_v246'] == true &&
             j['auto_connect'] == true;
-        s.autoUpdate = j['auto_update'] != false;
         s.udpNotice = j['udp_notice'] != false;
         if (j['hidden_connection_columns'] case final List<Object?> v) {
           s.hiddenConnectionColumns = {...v.whereType<String>()};
@@ -240,14 +234,12 @@ class AppSettings extends ChangeNotifier {
     String? updateUrl,
     bool? autostart,
     bool? autoConnect,
-    bool? autoUpdate,
     bool? udpNotice,
     Set<String>? hiddenConnectionColumns,
   }) {
     this.hiddenConnectionColumns =
         hiddenConnectionColumns ?? this.hiddenConnectionColumns;
     this.udpNotice = udpNotice ?? this.udpNotice;
-    this.autoUpdate = autoUpdate ?? this.autoUpdate;
     this.autostart = autostart ?? this.autostart;
     this.autoConnect = autoConnect ?? this.autoConnect;
     this.showPublicIp = showPublicIp ?? this.showPublicIp;
@@ -303,7 +295,6 @@ class AppSettings extends ChangeNotifier {
           'autostart': autostart,
           'auto_connect': autoConnect,
           'auto_connect_default_off_v246': true,
-          'auto_update': autoUpdate,
           'udp_notice': udpNotice,
           'hidden_connection_columns': hiddenConnectionColumns.toList(),
         }),
