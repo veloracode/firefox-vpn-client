@@ -18,7 +18,7 @@ Your router becomes a **proxy** (SOCKS5 and HTTP, one port) with a **web panel**
 
 | You need | |
 |---|---|
-| Processor | `x86_64` or `aarch64` (others are not supported) |
+| Processor | `x86_64`, `aarch64`, or 32-bit ARM from Cortex-A5 up (others are not supported) |
 | RAM | 128 MB or more |
 | Free storage | 20 MB |
 
@@ -28,13 +28,15 @@ Check the processor:
 grep DISTRIB_ARCH /etc/openwrt_release
 ```
 
-`x86_64` → use **amd64** · `aarch64_…` → use **arm64**
+`x86_64` → use **amd64** · `aarch64_…` → use **arm64** · `arm_cortex-a…` → use **armv7**
+
+On **armv7**, encryption runs without hardware help, so the speed may be low. A router whose processor has no floating point unit cannot run it: the core says so when it starts.
 
 Tested on a Xiaomi Redmi Router AX6S: 12 MB of RAM idle, 20 MB with traffic.
 
 ## 1. Get the core
 
-**Way A: on the router** (for amd64, write `amd64` instead of `arm64`):
+**Way A: on the router** (for another processor, write `amd64` or `armv7` instead of `arm64`):
 
 ```sh
 mkdir -p /root/firefox-vpn && cd /root/firefox-vpn
@@ -48,7 +50,7 @@ chmod +x firefox-vpn-core
 
 **Way B: from a computer**
 
-1. Download [arm64](https://github.com/veloracode/firefox-vpn-client/releases/latest/download/firefox-vpn-core-linux-arm64.tar.gz) or [amd64](https://github.com/veloracode/firefox-vpn-client/releases/latest/download/firefox-vpn-core-linux-amd64.tar.gz) and unpack it.
+1. Download [arm64](https://github.com/veloracode/firefox-vpn-client/releases/latest/download/firefox-vpn-core-linux-arm64.tar.gz), [amd64](https://github.com/veloracode/firefox-vpn-client/releases/latest/download/firefox-vpn-core-linux-amd64.tar.gz), or [armv7](https://github.com/veloracode/firefox-vpn-client/releases/latest/download/firefox-vpn-core-linux-armv7.tar.gz) and unpack it.
 2. Open [Bitvise SSH Client](https://www.bitvise.com/ssh-client-download) or [WinSCP](https://winscp.net/): router address, port 22, user `root`.
 3. Put `firefox-vpn-core` in `/root/firefox-vpn/` (make the folder).
 4. On the router: `chmod +x /root/firefox-vpn/firefox-vpn-core`
@@ -123,7 +125,12 @@ The proxy turns on by itself. Use the panel only on your own network (no HTTPS).
 - **Browser or system proxy:** HTTP proxy, also for HTTPS.
 - **Device with no place for a password** (Android Wi-Fi, TV): remove the proxy login in the panel (**Settings → Local proxy → Login**).
 
-Only TCP to the ports 80, 443, 8080, and 8443 goes through (no calls or games over UDP).
+What goes through:
+
+- **TCP:** ports 80, 443, 8080, and 8443.
+- **UDP (SOCKS5 only):** ports 80, 443, 3478, 8080, 8443, and 49152-65534.
+
+Calls and games on other ports do not work.
 
 ## 6. The whole network, with PassWall2
 
@@ -135,7 +142,7 @@ With [PassWall2](https://github.com/Openwrt-Passwall/openwrt-passwall2) on the r
 4. **DNS → Remote DNS Protocol: DoH** (`https://1.1.1.1/dns-query`).
 5. Make your routing rules in PassWall2 (for example, your country's sites direct).
 
-UDP still does not go through Mozilla. Menu names differ a little between versions.
+UDP goes through only on the ports in step 5. Menu names differ a little between versions.
 
 ## Update and remove
 

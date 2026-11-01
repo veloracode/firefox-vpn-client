@@ -86,11 +86,12 @@ banner() {
 }
 
 # processor_name: the processor by the name its files carry (amd64,
-# arm64), else the kernel's.
+# arm64, armv7), else the kernel's.
 processor_name() {
   case "$(uname -m)" in
     x86_64 | amd64) echo amd64 ;;
     aarch64 | arm64) echo arm64 ;;
+    armv7l | armv8l) echo armv7 ;;
     *) uname -m ;;
   esac
 }
@@ -117,11 +118,14 @@ die() { printf '\n  %s%s error:%s %s\n\n' "$RED$BOLD" "$CROSS" "$OFF" "$*" >&2; 
 section() { printf '\n  %s%s%s\n' "$BOLD" "$*" "$OFF"; }
 field() { printf '    %s%-10s%s %s%s%s\n' "$DIM" "$1" "$OFF" "${3:-}" "$2" "$OFF"; }
 
+# fetch <url> <file>. GitHub's names have several addresses; one that does
+# not answer (a filtered network) held the download about two minutes
+# before the next was tried, so each gets a few seconds.
 fetch() {
   if command -v curl >/dev/null 2>&1; then
-    curl -fsSL --retry 3 -o "$2" "$1"
+    curl -fsSL --connect-timeout 15 --retry 3 -o "$2" "$1"
   elif command -v wget >/dev/null 2>&1; then
-    wget -q -O "$2" "$1"
+    wget -q --connect-timeout=15 -O "$2" "$1"
   else
     die "curl or wget is required"
   fi
@@ -157,6 +161,7 @@ arch() {
   case "$(uname -m)" in
     x86_64 | amd64) echo amd64 ;;
     aarch64 | arm64) echo arm64 ;;
+    armv7l | armv8l) echo armv7 ;;
     *) die "no build for $(uname -m)" ;;
   esac
 }
@@ -451,6 +456,7 @@ linux_system_parts() {
 
 install_linux_app() {
   local file
+  [ "$(arch)" != armv7 ] || die "the app has no 32-bit ARM build; install the service: curl -fsSL $RAW | bash -s -- server"
   file="Firefox-VPN-Linux-$(arch).tar.gz"
   download "$file"
   tar -xzf "$tmp/$file" -C "$tmp"
