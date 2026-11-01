@@ -320,6 +320,7 @@ func DestroySession(ctx context.Context, sessionToken string) error {
 }
 
 func fxaOAuthToken(ctx context.Context, sessionToken string) (*TokenResponse, error) {
+	refreshFirefoxVersionBeforeTokenExchange(ctx)
 	hawkID, hawkKey, err := deriveHawkCredentials(sessionToken, "sessionToken")
 	if err != nil {
 		return nil, fmt.Errorf("deriving hawk credentials: %w", err)
@@ -370,6 +371,7 @@ func fxaOAuthToken(ctx context.Context, sessionToken string) (*TokenResponse, er
 }
 
 func fxaRefreshToken(ctx context.Context, refreshToken string) (*TokenResponse, error) {
+	refreshFirefoxVersionBeforeTokenExchange(ctx)
 	body := map[string]interface{}{
 		"client_id":     firefoxClientID,
 		"grant_type":    "refresh_token",
