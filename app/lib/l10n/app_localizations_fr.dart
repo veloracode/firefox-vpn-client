@@ -159,8 +159,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get addAccount => 'Ajouter un compte';
 
   @override
-  String lowQuotaNotice(String left, String size) {
-    return 'Les données du compte actuel sont presque épuisées ($left restants). Ajoutez un autre compte pour obtenir $size de plus.';
+  String lowQuotaNotice(String size) {
+    return 'Les données de ce compte sont presque épuisées. Ajoutez un autre compte pour obtenir $size de plus.';
   }
 
   @override
@@ -169,6 +169,10 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get noAccountsHint =>
       'Ajoutez un Firefox Account pour vous connecter.';
+
+  @override
+  String get delayTestFailed =>
+      'Impossible de mesurer le délai des serveurs. Vérifiez votre connexion.';
 
   @override
   String get createAccountTitle => 'Pas de Firefox Account ?';
@@ -308,6 +312,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get close => 'Fermer';
 
   @override
+  String get noBrowserTitle => 'Pas de navigateur sur cet appareil';
+
+  @override
+  String get noBrowserText =>
+      'Ouvrez cette adresse sur votre téléphone ou votre ordinateur :';
+
+  @override
   String get cancel => 'Annuler';
 
   @override
@@ -369,35 +380,6 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get createAccountButton => 'Créer un Firefox Account';
-
-  @override
-  String get dotMethodEntry => 'How to create multiple accounts with one Gmail';
-
-  @override
-  String get dotMethodTitle => 'Multiple accounts with one Gmail';
-
-  @override
-  String get dotMethodIntro =>
-      'Gmail ignores dots in an address: a.b@gmail.com and ab@gmail.com are the same inbox.';
-
-  @override
-  String get dotMethodPoint =>
-      'Each dotted version counts as a NEW email address when you sign up for a Firefox account — but every verification email still arrives in that same one inbox.';
-
-  @override
-  String get dotMethodStep1 =>
-      'Create a Firefox account with a new dotted version of your address.';
-
-  @override
-  String get dotMethodStep2 =>
-      'Open the verification email in your one inbox and confirm it, or note the code it carries.';
-
-  @override
-  String get dotMethodStep3 =>
-      'Come back here and add the account. Repeat with another dotted version for more accounts.';
-
-  @override
-  String get dotMethodExample => 'Example';
 
   @override
   String get signInWrongPassword => 'Mot de passe incorrect.';
@@ -679,7 +661,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get noticeCommand =>
-      'Une application a tenté d\'utiliser l\'UDP (jeux, appels audio et vidéo). Le proxy de Mozilla ne prend en charge que le TCP : cette connexion ne peut pas passer.';
+      'Ce type de connexion n\'est pas pris en charge par le VPN.';
 
   @override
   String noticeTimes(int count, String time) {
@@ -870,6 +852,69 @@ class AppLocalizationsFr extends AppLocalizations {
   String get sectionAdvanced => 'Avancé';
 
   @override
+  String get tlsFragment => 'Fragmentation TLS';
+
+  @override
+  String get tlsFragmentOff => 'Désactivé';
+
+  @override
+  String get tlsFragmentFirstByte => 'Premier octet';
+
+  @override
+  String get tlsFragmentSni => 'Nom du serveur (SNI)';
+
+  @override
+  String get tlsFragmentFirstByteHint =>
+      'Coupe l\'en-tête TLS au premier octet (0x16)';
+
+  @override
+  String get tlsFragmentSniHint =>
+      'Répartit le nom du serveur (SNI) sur plusieurs paquets TCP';
+
+  @override
+  String get tlsFragmentOffHint => 'Connexion TLS normale';
+
+  @override
+  String get sectionBypass => 'Si Mozilla est bloqué';
+
+  @override
+  String get apiRelay => 'Serveur relais';
+
+  @override
+  String get apiRelayHint =>
+      'Votre propre Cloudflare Worker, ou relay.php sur votre hébergement.\nUtilisé seulement quand Mozilla ne répond pas directement : la connexion, les comptes et la liste des serveurs passent par lui, pas le trafic du VPN.';
+
+  @override
+  String get upstreamProxy => 'Proxy amont';
+
+  @override
+  String get upstreamProxyOn => 'Proxy amont activé';
+
+  @override
+  String get upstreamProxyAddress => 'Adresse SOCKS5';
+
+  @override
+  String get upstreamProxyPort => 'Port';
+
+  @override
+  String get upstreamProxyHint =>
+      'La connexion à Mozilla passe par ce proxy, pour les réseaux qui bloquent ou ralentissent Mozilla.\nSi le proxy tourne sur cet appareil, laissez-le hors du VPN.';
+
+  @override
+  String get upstreamProxyInvalid =>
+      'Saisissez l\'adresse du proxy, par exemple 127.0.0.1.';
+
+  @override
+  String get upstreamProxyInvalidPort => 'Saisissez un port de 1 à 65535.';
+
+  @override
+  String get upstreamProxyOwn =>
+      'C\'est le proxy de cette application. Saisissez-en un autre.';
+
+  @override
+  String get apiRelayInvalid => 'Doit être une adresse https://.';
+
+  @override
   String get listenAddress => 'Accès au proxy';
 
   @override
@@ -1017,13 +1062,6 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get autoUpdate => 'Mettre à jour automatiquement';
-
-  @override
-  String get autoUpdateHint =>
-      'Les nouvelles versions se téléchargent en arrière-plan et s\'installent à la prochaine ouverture de l\'application.';
-
-  @override
   String get repoNotSet => 'Le dépôt GitHub n\'est pas encore défini.';
 
   @override
@@ -1051,6 +1089,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get groupApp => 'Application';
 
   @override
+  String get groupNetwork => 'Réseau';
+
+  @override
   String get stateOff => 'Déconnecté';
 
   @override
@@ -1058,6 +1099,12 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get tapToDisconnectPhone => 'Touchez pour vous déconnecter';
+
+  @override
+  String get tapToConnectTv => 'Appuyez sur OK pour vous connecter';
+
+  @override
+  String get tapToDisconnectTv => 'Appuyez sur OK pour vous déconnecter';
 
   @override
   String lanAddress(String address) {
@@ -1094,7 +1141,15 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get failUnreachable =>
-      'Les serveurs de Mozilla sont bloqués sur ce réseau. Essayez une autre connexion internet.';
+      'Impossible de joindre les serveurs de Mozilla. Essayez une autre connexion Internet.';
+
+  @override
+  String get failUpstreamProxy =>
+      'Impossible de joindre Mozilla via le proxy amont. Vérifiez qu\'il fonctionne.';
+
+  @override
+  String get failInsideVpn =>
+      'Cette connexion passe déjà par un VPN. Désactivez-le.';
 
   @override
   String get failRefused =>
@@ -1197,6 +1252,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get suggestedApps => 'Applications suggérées';
+
+  @override
+  String get showSystemApps => 'Afficher les applis système';
 
   @override
   String suggestedAdded(int count) {
@@ -1428,19 +1486,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String udpNoticeBody(String program) {
-    return '$program a tenté de passer un appel ou de jouer en ligne, mais en mode TUN ce trafic (UDP) ne peut pas passer par le VPN.';
+    return 'Le trafic UDP de $program ne passe pas par le VPN.';
   }
-
-  @override
-  String get udpNoticeAction => 'Envoyer son UDP directement';
 
   @override
   String get dontShowAgain => 'Ne plus afficher';
-
-  @override
-  String udpDirectAdded(String program) {
-    return '$program : son UDP se connecte désormais directement.';
-  }
 
   @override
   String get addRunningProgram => 'Parmi les programmes en cours';
@@ -1457,6 +1507,88 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get runningProgramsEmpty => 'Aucun autre programme n\'est en cours.';
+
+  @override
+  String get tabLog => 'Journal';
+
+  @override
+  String get tabConnections => 'Connexions';
+
+  @override
+  String get connectionsEmpty => 'Aucune connexion pour l\'instant.';
+
+  @override
+  String connectionsOpen(int count) {
+    return '$count ouvertes';
+  }
+
+  @override
+  String get connTime => 'Heure';
+
+  @override
+  String get connRoute => 'Règle';
+
+  @override
+  String get connDestination => 'Destination';
+
+  @override
+  String get connInbound => 'Entrée';
+
+  @override
+  String get connProtocol => 'Protocole';
+
+  @override
+  String get connColumns => 'Colonnes';
+
+  @override
+  String get connTraffic => 'Trafic';
+
+  @override
+  String get connDuration => 'Durée';
+
+  @override
+  String get connRouteVpn => 'Proxy';
+
+  @override
+  String get connRouteDirect => 'Direct';
+
+  @override
+  String get connRouteBlocked => 'Bloqué';
+
+  @override
+  String get connRoutePort => 'Port refusé';
+
+  @override
+  String get connRouteFailed => 'Échec';
+
+  @override
+  String get dotMethodEntry => 'How to create multiple accounts with one Gmail';
+
+  @override
+  String get dotMethodTitle => 'Multiple accounts with one Gmail';
+
+  @override
+  String get dotMethodIntro =>
+      'Gmail ignores dots in an address: a.b@gmail.com and ab@gmail.com are the same inbox.';
+
+  @override
+  String get dotMethodPoint =>
+      'Each dotted version counts as a NEW email address when you sign up for a Firefox account — but every verification email still arrives in that same one inbox.';
+
+  @override
+  String get dotMethodStep1 =>
+      'Create a Firefox account with a new dotted version of your address.';
+
+  @override
+  String get dotMethodStep2 =>
+      'Open the verification email in your one inbox and confirm it, or note the code it carries.';
+
+  @override
+  String get dotMethodStep3 =>
+      'Come back here and add the account. Repeat with another dotted version for more accounts.';
+
+  @override
+  String get dotMethodExample => 'Example';
 
   @override
   String get uiDesign => 'Design';
@@ -1599,43 +1731,4 @@ class AppLocalizationsFr extends AppLocalizations {
   String batchSummary(int added, int failed) {
     return '$added added, $failed failed';
   }
-
-  String get showSystemApps => 'Afficher les applis système';
-
-  String get tabLog => 'Journal';
-
-  String get tabConnections => 'Connexions';
-
-  String get connectionsEmpty => 'Aucune connexion pour l\'instant.';
-
-  String connectionsOpen(int count) {
-    return '$count ouvertes';
-  }
-
-  String get connTime => 'Heure';
-
-  String get connRoute => 'Règle';
-
-  String get connDestination => 'Destination';
-
-  String get connInbound => 'Entrée';
-
-  String get connProtocol => 'Protocole';
-
-  String get connColumns => 'Colonnes';
-
-  String get connTraffic => 'Trafic';
-
-  String get connDuration => 'Durée';
-
-  String get connRouteVpn => 'Proxy';
-
-  String get connRouteDirect => 'Direct';
-
-  String get connRouteBlocked => 'Bloqué';
-
-  String get connRoutePort => 'Port refusé';
-
-  String get connRouteFailed => 'Échec';
-}
 }

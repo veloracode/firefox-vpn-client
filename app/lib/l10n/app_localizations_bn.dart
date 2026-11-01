@@ -158,8 +158,8 @@ class AppLocalizationsBn extends AppLocalizations {
   String get addAccount => 'অ্যাকাউন্ট যোগ করুন';
 
   @override
-  String lowQuotaNotice(String left, String size) {
-    return 'বর্তমান অ্যাকাউন্টের ডেটা প্রায় শেষ ($left বাকি)। আরেকটি অ্যাকাউন্ট যোগ করলে আরও $size পাবেন।';
+  String lowQuotaNotice(String size) {
+    return 'এই অ্যাকাউন্টের ডেটা প্রায় শেষ। আরেকটি অ্যাকাউন্ট যোগ করলে আরও $size পাবেন।';
   }
 
   @override
@@ -167,6 +167,10 @@ class AppLocalizationsBn extends AppLocalizations {
 
   @override
   String get noAccountsHint => 'সংযোগ করতে একটি Firefox Account যোগ করুন।';
+
+  @override
+  String get delayTestFailed =>
+      'সার্ভারগুলোর বিলম্ব মাপা যায়নি। ইন্টারনেট পরীক্ষা করুন।';
 
   @override
   String get createAccountTitle => 'Firefox Account নেই?';
@@ -306,6 +310,12 @@ class AppLocalizationsBn extends AppLocalizations {
   String get close => 'বন্ধ';
 
   @override
+  String get noBrowserTitle => 'এই ডিভাইসে কোনো ব্রাউজার নেই';
+
+  @override
+  String get noBrowserText => 'এই ঠিকানাটি আপনার ফোন বা কম্পিউটারে খুলুন:';
+
+  @override
   String get cancel => 'বাতিল';
 
   @override
@@ -365,35 +375,6 @@ class AppLocalizationsBn extends AppLocalizations {
 
   @override
   String get createAccountButton => 'Firefox Account তৈরি করুন';
-
-  @override
-  String get dotMethodEntry => 'How to create multiple accounts with one Gmail';
-
-  @override
-  String get dotMethodTitle => 'Multiple accounts with one Gmail';
-
-  @override
-  String get dotMethodIntro =>
-      'Gmail ignores dots in an address: a.b@gmail.com and ab@gmail.com are the same inbox.';
-
-  @override
-  String get dotMethodPoint =>
-      'Each dotted version counts as a NEW email address when you sign up for a Firefox account — but every verification email still arrives in that same one inbox.';
-
-  @override
-  String get dotMethodStep1 =>
-      'Create a Firefox account with a new dotted version of your address.';
-
-  @override
-  String get dotMethodStep2 =>
-      'Open the verification email in your one inbox and confirm it, or note the code it carries.';
-
-  @override
-  String get dotMethodStep3 =>
-      'Come back here and add the account. Repeat with another dotted version for more accounts.';
-
-  @override
-  String get dotMethodExample => 'Example';
 
   @override
   String get signInWrongPassword => 'পাসওয়ার্ড ভুল।';
@@ -674,8 +655,7 @@ class AppLocalizationsBn extends AppLocalizations {
   }
 
   @override
-  String get noticeCommand =>
-      'একটি অ্যাপ UDP ব্যবহার করতে চেয়েছে (গেম, ভয়েস ও ভিডিও কল)। Mozilla-র প্রক্সি শুধু TCP সমর্থন করে, তাই এই ট্রাফিক যেতে পারে না।';
+  String get noticeCommand => 'এই ধরনের সংযোগ VPN-এ সমর্থিত নয়।';
 
   @override
   String noticeTimes(int count, String time) {
@@ -865,6 +845,67 @@ class AppLocalizationsBn extends AppLocalizations {
   String get sectionAdvanced => 'উন্নত';
 
   @override
+  String get tlsFragment => 'TLS ফ্র্যাগমেন্টেশন';
+
+  @override
+  String get tlsFragmentOff => 'বন্ধ';
+
+  @override
+  String get tlsFragmentFirstByte => 'প্রথম বাইট';
+
+  @override
+  String get tlsFragmentSni => 'সার্ভারের নাম (SNI)';
+
+  @override
+  String get tlsFragmentFirstByteHint => 'প্রথম বাইটে TLS হেডার ভাগ করে (0x16)';
+
+  @override
+  String get tlsFragmentSniHint =>
+      'সার্ভারের নাম (SNI) কয়েকটি TCP প্যাকেটে ভাগ করে';
+
+  @override
+  String get tlsFragmentOffHint => 'সাধারণ TLS সংযোগ';
+
+  @override
+  String get sectionBypass => 'Mozilla অবরুদ্ধ থাকলে';
+
+  @override
+  String get apiRelay => 'রিলে সার্ভার';
+
+  @override
+  String get apiRelayHint =>
+      'আপনার নিজের Cloudflare Worker, অথবা আপনার হোস্টে relay.php।\nশুধু Mozilla সরাসরি উত্তর না দিলে ব্যবহৃত হয়: সাইন-ইন, অ্যাকাউন্ট ও সার্ভার তালিকা এর মধ্য দিয়ে যায়, VPN ট্রাফিক নয়।';
+
+  @override
+  String get upstreamProxy => 'আপস্ট্রিম প্রক্সি';
+
+  @override
+  String get upstreamProxyOn => 'আপস্ট্রিম প্রক্সি চালু আছে';
+
+  @override
+  String get upstreamProxyAddress => 'SOCKS5 প্রক্সির ঠিকানা';
+
+  @override
+  String get upstreamProxyPort => 'পোর্ট';
+
+  @override
+  String get upstreamProxyHint =>
+      'Mozilla-র সংযোগ এই প্রক্সির মধ্য দিয়ে যায়; যেসব নেটওয়ার্ক Mozilla অবরুদ্ধ বা ধীর করে তাদের জন্য।\nপ্রক্সি এই ডিভাইসে চললে সেটিকে VPN-এর বাইরে রাখুন।';
+
+  @override
+  String get upstreamProxyInvalid => 'প্রক্সির ঠিকানা লিখুন, যেমন 127.0.0.1।';
+
+  @override
+  String get upstreamProxyInvalidPort =>
+      '1 থেকে 65535-এর মধ্যে একটি পোর্ট লিখুন।';
+
+  @override
+  String get upstreamProxyOwn => 'এটি এই অ্যাপেরই প্রক্সি। অন্য একটি লিখুন।';
+
+  @override
+  String get apiRelayInvalid => 'একটি https:// ঠিকানা হতে হবে।';
+
+  @override
   String get listenAddress => 'প্রক্সি অ্যাক্সেস';
 
   @override
@@ -1012,13 +1053,6 @@ class AppLocalizationsBn extends AppLocalizations {
   }
 
   @override
-  String get autoUpdate => 'স্বয়ংক্রিয়ভাবে আপডেট করুন';
-
-  @override
-  String get autoUpdateHint =>
-      'নতুন সংস্করণ ব্যাকগ্রাউন্ডে ডাউনলোড হয় এবং পরের বার অ্যাপ খুললে ইনস্টল হয়।';
-
-  @override
   String get repoNotSet => 'GitHub রিপোজিটরি এখনও সেট করা হয়নি।';
 
   @override
@@ -1046,6 +1080,9 @@ class AppLocalizationsBn extends AppLocalizations {
   String get groupApp => 'অ্যাপ';
 
   @override
+  String get groupNetwork => 'নেটওয়ার্ক';
+
+  @override
   String get stateOff => 'সংযোগ বিচ্ছিন্ন';
 
   @override
@@ -1053,6 +1090,12 @@ class AppLocalizationsBn extends AppLocalizations {
 
   @override
   String get tapToDisconnectPhone => 'সংযোগ বিচ্ছিন্ন করতে ট্যাপ করুন';
+
+  @override
+  String get tapToConnectTv => 'সংযোগ করতে OK চাপুন';
+
+  @override
+  String get tapToDisconnectTv => 'সংযোগ বিচ্ছিন্ন করতে OK চাপুন';
 
   @override
   String lanAddress(String address) {
@@ -1088,7 +1131,15 @@ class AppLocalizationsBn extends AppLocalizations {
 
   @override
   String get failUnreachable =>
-      'এই ইন্টারনেটে Mozilla-র সার্ভার ব্লক করা আছে। অন্য ইন্টারনেট সংযোগ চেষ্টা করুন।';
+      'Mozilla-র সার্ভারে পৌঁছানো যায়নি। অন্য ইন্টারনেট সংযোগ ব্যবহার করে দেখুন।';
+
+  @override
+  String get failUpstreamProxy =>
+      'আপস্ট্রিম প্রক্সির মাধ্যমে Mozilla-য় পৌঁছানো যায়নি। প্রক্সিটি চালু আছে কি না দেখুন।';
+
+  @override
+  String get failInsideVpn =>
+      'এই ইন্টারনেট আগে থেকেই একটি VPN দিয়ে যায়। সেটি বন্ধ করুন।';
 
   @override
   String get failRefused =>
@@ -1189,6 +1240,9 @@ class AppLocalizationsBn extends AppLocalizations {
 
   @override
   String get suggestedApps => 'প্রস্তাবিত অ্যাপ';
+
+  @override
+  String get showSystemApps => 'সিস্টেম অ্যাপ দেখান';
 
   @override
   String suggestedAdded(int count) {
@@ -1416,19 +1470,11 @@ class AppLocalizationsBn extends AppLocalizations {
 
   @override
   String udpNoticeBody(String program) {
-    return '$program কল করতে বা অনলাইনে খেলতে চেয়েছিল, কিন্তু TUN মোডে এই ট্রাফিক (UDP) VPN দিয়ে যেতে পারে না।';
+    return '$program-এর UDP ট্রাফিক VPN দিয়ে যায় না।';
   }
-
-  @override
-  String get udpNoticeAction => 'এর UDP সরাসরি পাঠান';
 
   @override
   String get dontShowAgain => 'আর দেখাবেন না';
-
-  @override
-  String udpDirectAdded(String program) {
-    return '$program: এর UDP এখন সরাসরি সংযোগ করে।';
-  }
 
   @override
   String get addRunningProgram => 'চলমান প্রোগ্রাম থেকে';
@@ -1445,6 +1491,88 @@ class AppLocalizationsBn extends AppLocalizations {
 
   @override
   String get runningProgramsEmpty => 'আর কোনো প্রোগ্রাম চলছে না।';
+
+  @override
+  String get tabLog => 'লগ';
+
+  @override
+  String get tabConnections => 'সংযোগ';
+
+  @override
+  String get connectionsEmpty => 'এখনও কোনো সংযোগ নেই।';
+
+  @override
+  String connectionsOpen(int count) {
+    return '$countটি খোলা';
+  }
+
+  @override
+  String get connTime => 'সময়';
+
+  @override
+  String get connRoute => 'নিয়ম';
+
+  @override
+  String get connDestination => 'গন্তব্য';
+
+  @override
+  String get connInbound => 'ইনবাউন্ড';
+
+  @override
+  String get connProtocol => 'প্রোটোকল';
+
+  @override
+  String get connColumns => 'কলাম';
+
+  @override
+  String get connTraffic => 'ট্রাফিক';
+
+  @override
+  String get connDuration => 'সময়কাল';
+
+  @override
+  String get connRouteVpn => 'প্রক্সি';
+
+  @override
+  String get connRouteDirect => 'সরাসরি';
+
+  @override
+  String get connRouteBlocked => 'অবরুদ্ধ';
+
+  @override
+  String get connRoutePort => 'পোর্ট প্রত্যাখ্যাত';
+
+  @override
+  String get connRouteFailed => 'ব্যর্থ';
+
+  @override
+  String get dotMethodEntry => 'How to create multiple accounts with one Gmail';
+
+  @override
+  String get dotMethodTitle => 'Multiple accounts with one Gmail';
+
+  @override
+  String get dotMethodIntro =>
+      'Gmail ignores dots in an address: a.b@gmail.com and ab@gmail.com are the same inbox.';
+
+  @override
+  String get dotMethodPoint =>
+      'Each dotted version counts as a NEW email address when you sign up for a Firefox account — but every verification email still arrives in that same one inbox.';
+
+  @override
+  String get dotMethodStep1 =>
+      'Create a Firefox account with a new dotted version of your address.';
+
+  @override
+  String get dotMethodStep2 =>
+      'Open the verification email in your one inbox and confirm it, or note the code it carries.';
+
+  @override
+  String get dotMethodStep3 =>
+      'Come back here and add the account. Repeat with another dotted version for more accounts.';
+
+  @override
+  String get dotMethodExample => 'Example';
 
   @override
   String get uiDesign => 'Design';
@@ -1587,43 +1715,4 @@ class AppLocalizationsBn extends AppLocalizations {
   String batchSummary(int added, int failed) {
     return '$added added, $failed failed';
   }
-
-  String get showSystemApps => 'সিস্টেম অ্যাপ দেখান';
-
-  String get tabLog => 'লগ';
-
-  String get tabConnections => 'সংযোগ';
-
-  String get connectionsEmpty => 'এখনও কোনো সংযোগ নেই।';
-
-  String connectionsOpen(int count) {
-    return '$countটি খোলা';
-  }
-
-  String get connTime => 'সময়';
-
-  String get connRoute => 'নিয়ম';
-
-  String get connDestination => 'গন্তব্য';
-
-  String get connInbound => 'ইনবাউন্ড';
-
-  String get connProtocol => 'প্রোটোকল';
-
-  String get connColumns => 'কলাম';
-
-  String get connTraffic => 'ট্রাফিক';
-
-  String get connDuration => 'সময়কাল';
-
-  String get connRouteVpn => 'প্রক্সি';
-
-  String get connRouteDirect => 'সরাসরি';
-
-  String get connRouteBlocked => 'অবরুদ্ধ';
-
-  String get connRoutePort => 'পোর্ট প্রত্যাখ্যাত';
-
-  String get connRouteFailed => 'ব্যর্থ';
-}
 }

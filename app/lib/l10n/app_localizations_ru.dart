@@ -160,8 +160,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get addAccount => 'Добавить аккаунт';
 
   @override
-  String lowQuotaNotice(String left, String size) {
-    return 'Трафик текущего аккаунта заканчивается (осталось $left). Добавьте ещё один аккаунт — это ещё $size.';
+  String lowQuotaNotice(String size) {
+    return 'Трафик этого аккаунта заканчивается. Добавьте ещё один аккаунт — это ещё $size.';
   }
 
   @override
@@ -169,6 +169,10 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get noAccountsHint => 'Добавьте аккаунт Firefox, чтобы подключиться.';
+
+  @override
+  String get delayTestFailed =>
+      'Не удалось измерить задержку серверов. Проверьте интернет.';
 
   @override
   String get createAccountTitle => 'Нет Firefox Account?';
@@ -308,6 +312,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get close => 'Закрыть';
 
   @override
+  String get noBrowserTitle => 'На этом устройстве нет браузера';
+
+  @override
+  String get noBrowserText => 'Откройте этот адрес на телефоне или компьютере:';
+
+  @override
   String get cancel => 'Отмена';
 
   @override
@@ -367,35 +377,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get createAccountButton => 'Создать Firefox Account';
-
-  @override
-  String get dotMethodEntry => 'How to create multiple accounts with one Gmail';
-
-  @override
-  String get dotMethodTitle => 'Multiple accounts with one Gmail';
-
-  @override
-  String get dotMethodIntro =>
-      'Gmail ignores dots in an address: a.b@gmail.com and ab@gmail.com are the same inbox.';
-
-  @override
-  String get dotMethodPoint =>
-      'Each dotted version counts as a NEW email address when you sign up for a Firefox account — but every verification email still arrives in that same one inbox.';
-
-  @override
-  String get dotMethodStep1 =>
-      'Create a Firefox account with a new dotted version of your address.';
-
-  @override
-  String get dotMethodStep2 =>
-      'Open the verification email in your one inbox and confirm it, or note the code it carries.';
-
-  @override
-  String get dotMethodStep3 =>
-      'Come back here and add the account. Repeat with another dotted version for more accounts.';
-
-  @override
-  String get dotMethodExample => 'Example';
 
   @override
   String get signInWrongPassword => 'Неверный пароль.';
@@ -676,8 +657,7 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get noticeCommand =>
-      'Приложение запросило UDP (игры, голосовые и видеозвонки). Прокси Mozilla передаёт только TCP, поэтому такой трафик не проходит.';
+  String get noticeCommand => 'Этот тип подключения не поддерживается VPN.';
 
   @override
   String noticeTimes(int count, String time) {
@@ -867,6 +847,69 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sectionAdvanced => 'Дополнительно';
 
   @override
+  String get tlsFragment => 'Фрагментация TLS';
+
+  @override
+  String get tlsFragmentOff => 'Выключено';
+
+  @override
+  String get tlsFragmentFirstByte => 'Первый байт';
+
+  @override
+  String get tlsFragmentSni => 'Имя сервера (SNI)';
+
+  @override
+  String get tlsFragmentFirstByteHint =>
+      'Разделяет заголовок TLS на первом байте (0x16)';
+
+  @override
+  String get tlsFragmentSniHint =>
+      'Разбивает имя сервера (SNI) на несколько TCP-пакетов';
+
+  @override
+  String get tlsFragmentOffHint => 'Обычное подключение TLS';
+
+  @override
+  String get sectionBypass => 'Если Mozilla заблокирована';
+
+  @override
+  String get apiRelay => 'Сервер-ретранслятор';
+
+  @override
+  String get apiRelayHint =>
+      'Ваш собственный Cloudflare Worker или relay.php на вашем хостинге.\nИспользуется, только когда Mozilla не отвечает напрямую: через него идут вход, аккаунты и список серверов, а не трафик VPN.';
+
+  @override
+  String get upstreamProxy => 'Вышестоящий прокси';
+
+  @override
+  String get upstreamProxyOn => 'Вышестоящий прокси включён';
+
+  @override
+  String get upstreamProxyAddress => 'Адрес прокси SOCKS5';
+
+  @override
+  String get upstreamProxyPort => 'Порт';
+
+  @override
+  String get upstreamProxyHint =>
+      'Подключение к Mozilla идёт через этот прокси: для сетей, которые блокируют или замедляют Mozilla.\nЕсли прокси работает на этом устройстве, исключите его из VPN.';
+
+  @override
+  String get upstreamProxyInvalid =>
+      'Введите адрес прокси, например 127.0.0.1.';
+
+  @override
+  String get upstreamProxyInvalidPort => 'Введите порт от 1 до 65535.';
+
+  @override
+  String get upstreamProxyOwn =>
+      'Это прокси самого приложения. Введите другой.';
+
+  @override
+  String get apiRelayInvalid => 'Должен быть адрес https://.';
+
+  @override
   String get listenAddress => 'Доступ к прокси';
 
   @override
@@ -1014,13 +1057,6 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get autoUpdate => 'Обновлять автоматически';
-
-  @override
-  String get autoUpdateHint =>
-      'Новые версии загружаются в фоне и устанавливаются при следующем запуске приложения.';
-
-  @override
   String get repoNotSet => 'Репозиторий GitHub ещё не указан.';
 
   @override
@@ -1048,6 +1084,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get groupApp => 'Приложение';
 
   @override
+  String get groupNetwork => 'Сеть';
+
+  @override
   String get stateOff => 'Отключено';
 
   @override
@@ -1055,6 +1094,12 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get tapToDisconnectPhone => 'Нажмите, чтобы отключиться';
+
+  @override
+  String get tapToConnectTv => 'Нажмите OK, чтобы подключиться';
+
+  @override
+  String get tapToDisconnectTv => 'Нажмите OK, чтобы отключиться';
 
   @override
   String lanAddress(String address) {
@@ -1090,7 +1135,15 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get failUnreachable =>
-      'Серверы Mozilla заблокированы в этой сети. Попробуйте другое подключение к интернету.';
+      'Не удалось связаться с серверами Mozilla. Попробуйте другое подключение к интернету.';
+
+  @override
+  String get failUpstreamProxy =>
+      'Не удалось связаться с Mozilla через вышестоящий прокси. Проверьте, что он работает.';
+
+  @override
+  String get failInsideVpn =>
+      'Этот интернет уже идёт через VPN. Отключите его.';
 
   @override
   String get failRefused =>
@@ -1192,6 +1245,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get suggestedApps => 'Рекомендуемые приложения';
+
+  @override
+  String get showSystemApps => 'Показывать системные приложения';
 
   @override
   String suggestedAdded(int count) {
@@ -1424,19 +1480,11 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String udpNoticeBody(String program) {
-    return 'Программа $program пыталась позвонить или поиграть онлайн, но в режиме TUN этот трафик (UDP) не может идти через VPN.';
+    return 'UDP-трафик программы $program не идёт через VPN.';
   }
-
-  @override
-  String get udpNoticeAction => 'Пустить её UDP напрямую';
 
   @override
   String get dontShowAgain => 'Больше не показывать';
-
-  @override
-  String udpDirectAdded(String program) {
-    return '$program: UDP теперь идёт напрямую.';
-  }
 
   @override
   String get addRunningProgram => 'Из запущенных программ';
@@ -1453,6 +1501,88 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get runningProgramsEmpty => 'Других запущенных программ нет.';
+
+  @override
+  String get tabLog => 'Лог';
+
+  @override
+  String get tabConnections => 'Подключения';
+
+  @override
+  String get connectionsEmpty => 'Подключений пока нет.';
+
+  @override
+  String connectionsOpen(int count) {
+    return 'Открыто: $count';
+  }
+
+  @override
+  String get connTime => 'Время';
+
+  @override
+  String get connRoute => 'Правило';
+
+  @override
+  String get connDestination => 'Назначение';
+
+  @override
+  String get connInbound => 'Вход';
+
+  @override
+  String get connProtocol => 'Протокол';
+
+  @override
+  String get connColumns => 'Столбцы';
+
+  @override
+  String get connTraffic => 'Трафик';
+
+  @override
+  String get connDuration => 'Длительность';
+
+  @override
+  String get connRouteVpn => 'Прокси';
+
+  @override
+  String get connRouteDirect => 'Напрямую';
+
+  @override
+  String get connRouteBlocked => 'Заблокировано';
+
+  @override
+  String get connRoutePort => 'Порт отклонён';
+
+  @override
+  String get connRouteFailed => 'Ошибка';
+
+  @override
+  String get dotMethodEntry => 'How to create multiple accounts with one Gmail';
+
+  @override
+  String get dotMethodTitle => 'Multiple accounts with one Gmail';
+
+  @override
+  String get dotMethodIntro =>
+      'Gmail ignores dots in an address: a.b@gmail.com and ab@gmail.com are the same inbox.';
+
+  @override
+  String get dotMethodPoint =>
+      'Each dotted version counts as a NEW email address when you sign up for a Firefox account — but every verification email still arrives in that same one inbox.';
+
+  @override
+  String get dotMethodStep1 =>
+      'Create a Firefox account with a new dotted version of your address.';
+
+  @override
+  String get dotMethodStep2 =>
+      'Open the verification email in your one inbox and confirm it, or note the code it carries.';
+
+  @override
+  String get dotMethodStep3 =>
+      'Come back here and add the account. Repeat with another dotted version for more accounts.';
+
+  @override
+  String get dotMethodExample => 'Example';
 
   @override
   String get uiDesign => 'Design';
@@ -1595,43 +1725,4 @@ class AppLocalizationsRu extends AppLocalizations {
   String batchSummary(int added, int failed) {
     return '$added added, $failed failed';
   }
-
-  String get showSystemApps => 'Показывать системные приложения';
-
-  String get tabLog => 'Лог';
-
-  String get tabConnections => 'Подключения';
-
-  String get connectionsEmpty => 'Подключений пока нет.';
-
-  String connectionsOpen(int count) {
-    return 'Открыто: $count';
-  }
-
-  String get connTime => 'Время';
-
-  String get connRoute => 'Правило';
-
-  String get connDestination => 'Назначение';
-
-  String get connInbound => 'Вход';
-
-  String get connProtocol => 'Протокол';
-
-  String get connColumns => 'Столбцы';
-
-  String get connTraffic => 'Трафик';
-
-  String get connDuration => 'Длительность';
-
-  String get connRouteVpn => 'Прокси';
-
-  String get connRouteDirect => 'Напрямую';
-
-  String get connRouteBlocked => 'Заблокировано';
-
-  String get connRoutePort => 'Порт отклонён';
-
-  String get connRouteFailed => 'Ошибка';
-}
 }

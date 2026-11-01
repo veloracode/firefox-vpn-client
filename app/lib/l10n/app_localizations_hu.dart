@@ -158,8 +158,8 @@ class AppLocalizationsHu extends AppLocalizations {
   String get addAccount => 'Fiók hozzáadása';
 
   @override
-  String lowQuotaNotice(String left, String size) {
-    return 'Az aktuális fiók adatkerete hamarosan elfogy (maradt $left). Adjon hozzá egy másik fiókot, és $size adatkerettel több lesz.';
+  String lowQuotaNotice(String size) {
+    return 'Ennek a fióknak az adatkerete hamarosan elfogy. Adjon hozzá egy másik fiókot, és $size adatkerettel több lesz.';
   }
 
   @override
@@ -168,6 +168,10 @@ class AppLocalizationsHu extends AppLocalizations {
   @override
   String get noAccountsHint =>
       'A csatlakozáshoz adjon hozzá egy Firefox Accountot.';
+
+  @override
+  String get delayTestFailed =>
+      'Nem sikerült megmérni a szerverek késleltetését. Ellenőrizze az internetet.';
 
   @override
   String get createAccountTitle => 'Nincs Firefox Accountja?';
@@ -307,6 +311,13 @@ class AppLocalizationsHu extends AppLocalizations {
   String get close => 'Bezárás';
 
   @override
+  String get noBrowserTitle => 'Ezen az eszközön nincs böngésző';
+
+  @override
+  String get noBrowserText =>
+      'Nyissa meg ezt a címet a telefonján vagy a számítógépén:';
+
+  @override
   String get cancel => 'Mégse';
 
   @override
@@ -367,35 +378,6 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get createAccountButton => 'Firefox Account létrehozása';
-
-  @override
-  String get dotMethodEntry => 'How to create multiple accounts with one Gmail';
-
-  @override
-  String get dotMethodTitle => 'Multiple accounts with one Gmail';
-
-  @override
-  String get dotMethodIntro =>
-      'Gmail ignores dots in an address: a.b@gmail.com and ab@gmail.com are the same inbox.';
-
-  @override
-  String get dotMethodPoint =>
-      'Each dotted version counts as a NEW email address when you sign up for a Firefox account — but every verification email still arrives in that same one inbox.';
-
-  @override
-  String get dotMethodStep1 =>
-      'Create a Firefox account with a new dotted version of your address.';
-
-  @override
-  String get dotMethodStep2 =>
-      'Open the verification email in your one inbox and confirm it, or note the code it carries.';
-
-  @override
-  String get dotMethodStep3 =>
-      'Come back here and add the account. Repeat with another dotted version for more accounts.';
-
-  @override
-  String get dotMethodExample => 'Example';
 
   @override
   String get signInWrongPassword => 'Hibás jelszó.';
@@ -678,8 +660,7 @@ class AppLocalizationsHu extends AppLocalizations {
   }
 
   @override
-  String get noticeCommand =>
-      'Egy alkalmazás UDP-t kért (játékok, hang- és videohívások). A Mozilla proxyja csak TCP-forgalmat továbbít, így ez nem jut át.';
+  String get noticeCommand => 'Ezt a kapcsolattípust a VPN nem támogatja.';
 
   @override
   String noticeTimes(int count, String time) {
@@ -870,6 +851,70 @@ class AppLocalizationsHu extends AppLocalizations {
   String get sectionAdvanced => 'Speciális';
 
   @override
+  String get tlsFragment => 'TLS-fragmentálás';
+
+  @override
+  String get tlsFragmentOff => 'Kikapcsolva';
+
+  @override
+  String get tlsFragmentFirstByte => 'Első bájt';
+
+  @override
+  String get tlsFragmentSni => 'Kiszolgálónév (SNI)';
+
+  @override
+  String get tlsFragmentFirstByteHint =>
+      'Az első bájtnál osztja ketté a TLS-fejlécet (0x16)';
+
+  @override
+  String get tlsFragmentSniHint =>
+      'Több TCP-csomagra osztja a kiszolgálónevet (SNI)';
+
+  @override
+  String get tlsFragmentOffHint => 'Normál TLS-kapcsolat';
+
+  @override
+  String get sectionBypass => 'Ha a Mozilla le van tiltva';
+
+  @override
+  String get apiRelay => 'Közvetítő szerver';
+
+  @override
+  String get apiRelayHint =>
+      'Saját Cloudflare Worker, vagy relay.php a saját tárhelyén.\nCsak akkor használatos, ha a Mozilla közvetlenül nem válaszol: a bejelentkezés, a fiókok és a szerverlista megy rajta keresztül, a VPN-forgalom nem.';
+
+  @override
+  String get upstreamProxy => 'Felsőbb szintű proxy';
+
+  @override
+  String get upstreamProxyOn => 'A felsőbb szintű proxy be van kapcsolva';
+
+  @override
+  String get upstreamProxyAddress => 'SOCKS5-proxy címe';
+
+  @override
+  String get upstreamProxyPort => 'Port';
+
+  @override
+  String get upstreamProxyHint =>
+      'A Mozillához vezető kapcsolat ezen a proxyn megy át, azokhoz a hálózatokhoz, amelyek letiltják vagy lassítják a Mozillát.\nHa a proxy ezen az eszközön fut, hagyja ki a VPN-ből.';
+
+  @override
+  String get upstreamProxyInvalid =>
+      'Adja meg a proxy címét, például 127.0.0.1.';
+
+  @override
+  String get upstreamProxyInvalidPort =>
+      'Adjon meg egy portot 1 és 65535 között.';
+
+  @override
+  String get upstreamProxyOwn =>
+      'Ez az alkalmazás saját proxyja. Adjon meg egy másikat.';
+
+  @override
+  String get apiRelayInvalid => 'https:// címnek kell lennie.';
+
+  @override
   String get listenAddress => 'Proxyhozzáférés';
 
   @override
@@ -1018,13 +1063,6 @@ class AppLocalizationsHu extends AppLocalizations {
   }
 
   @override
-  String get autoUpdate => 'Automatikus frissítés';
-
-  @override
-  String get autoUpdateHint =>
-      'Az új verziók a háttérben töltődnek le, és az alkalmazás következő megnyitásakor települnek.';
-
-  @override
   String get repoNotSet => 'A GitHub-tároló még nincs beállítva.';
 
   @override
@@ -1052,6 +1090,9 @@ class AppLocalizationsHu extends AppLocalizations {
   String get groupApp => 'Alkalmazás';
 
   @override
+  String get groupNetwork => 'Hálózat';
+
+  @override
   String get stateOff => 'Nincs csatlakozva';
 
   @override
@@ -1059,6 +1100,13 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get tapToDisconnectPhone => 'Koppintson a kapcsolat bontásához';
+
+  @override
+  String get tapToConnectTv => 'Nyomja meg az OK gombot a csatlakozáshoz';
+
+  @override
+  String get tapToDisconnectTv =>
+      'Nyomja meg az OK gombot a kapcsolat bontásához';
 
   @override
   String lanAddress(String address) {
@@ -1095,7 +1143,15 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get failUnreachable =>
-      'A Mozilla szerverei blokkolva vannak ezen az interneten. Próbáljon másik internetkapcsolatot.';
+      'Nem sikerült elérni a Mozilla szervereit. Próbáljon másik internetkapcsolatot.';
+
+  @override
+  String get failUpstreamProxy =>
+      'Nem sikerült elérni a Mozillát a felsőbb szintű proxyn keresztül. Ellenőrizze, hogy fut-e.';
+
+  @override
+  String get failInsideVpn =>
+      'Ez az internet már egy VPN-en keresztül megy. Kapcsolja ki.';
 
   @override
   String get failRefused =>
@@ -1198,6 +1254,9 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get suggestedApps => 'Javasolt alkalmazások';
+
+  @override
+  String get showSystemApps => 'Rendszeralkalmazások megjelenítése';
 
   @override
   String suggestedAdded(int count) {
@@ -1429,19 +1488,11 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String udpNoticeBody(String program) {
-    return 'A(z) $program hívást próbált indítani vagy online játszani, de TUN módban ez a forgalom (UDP) nem mehet át a VPN-en.';
+    return 'A(z) $program UDP-forgalma nem megy át a VPN-en.';
   }
-
-  @override
-  String get udpNoticeAction => 'Az UDP-je menjen közvetlenül';
 
   @override
   String get dontShowAgain => 'Ne mutassa többé';
-
-  @override
-  String udpDirectAdded(String program) {
-    return '$program: az UDP-je mostantól közvetlenül csatlakozik.';
-  }
 
   @override
   String get addRunningProgram => 'A futó programok közül';
@@ -1458,6 +1509,88 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get runningProgramsEmpty => 'Más program nem fut.';
+
+  @override
+  String get tabLog => 'Napló';
+
+  @override
+  String get tabConnections => 'Kapcsolatok';
+
+  @override
+  String get connectionsEmpty => 'Még nincs kapcsolat.';
+
+  @override
+  String connectionsOpen(int count) {
+    return '$count nyitott';
+  }
+
+  @override
+  String get connTime => 'Idő';
+
+  @override
+  String get connRoute => 'Szabály';
+
+  @override
+  String get connDestination => 'Cél';
+
+  @override
+  String get connInbound => 'Bejövő';
+
+  @override
+  String get connProtocol => 'Protokoll';
+
+  @override
+  String get connColumns => 'Oszlopok';
+
+  @override
+  String get connTraffic => 'Forgalom';
+
+  @override
+  String get connDuration => 'Időtartam';
+
+  @override
+  String get connRouteVpn => 'Proxy';
+
+  @override
+  String get connRouteDirect => 'Közvetlen';
+
+  @override
+  String get connRouteBlocked => 'Letiltva';
+
+  @override
+  String get connRoutePort => 'Port elutasítva';
+
+  @override
+  String get connRouteFailed => 'Sikertelen';
+
+  @override
+  String get dotMethodEntry => 'How to create multiple accounts with one Gmail';
+
+  @override
+  String get dotMethodTitle => 'Multiple accounts with one Gmail';
+
+  @override
+  String get dotMethodIntro =>
+      'Gmail ignores dots in an address: a.b@gmail.com and ab@gmail.com are the same inbox.';
+
+  @override
+  String get dotMethodPoint =>
+      'Each dotted version counts as a NEW email address when you sign up for a Firefox account — but every verification email still arrives in that same one inbox.';
+
+  @override
+  String get dotMethodStep1 =>
+      'Create a Firefox account with a new dotted version of your address.';
+
+  @override
+  String get dotMethodStep2 =>
+      'Open the verification email in your one inbox and confirm it, or note the code it carries.';
+
+  @override
+  String get dotMethodStep3 =>
+      'Come back here and add the account. Repeat with another dotted version for more accounts.';
+
+  @override
+  String get dotMethodExample => 'Example';
 
   @override
   String get uiDesign => 'Design';
@@ -1600,43 +1733,4 @@ class AppLocalizationsHu extends AppLocalizations {
   String batchSummary(int added, int failed) {
     return '$added added, $failed failed';
   }
-
-  String get showSystemApps => 'Rendszeralkalmazások megjelenítése';
-
-  String get tabLog => 'Napló';
-
-  String get tabConnections => 'Kapcsolatok';
-
-  String get connectionsEmpty => 'Még nincs kapcsolat.';
-
-  String connectionsOpen(int count) {
-    return '$count nyitott';
-  }
-
-  String get connTime => 'Idő';
-
-  String get connRoute => 'Szabály';
-
-  String get connDestination => 'Cél';
-
-  String get connInbound => 'Bejövő';
-
-  String get connProtocol => 'Protokoll';
-
-  String get connColumns => 'Oszlopok';
-
-  String get connTraffic => 'Forgalom';
-
-  String get connDuration => 'Időtartam';
-
-  String get connRouteVpn => 'Proxy';
-
-  String get connRouteDirect => 'Közvetlen';
-
-  String get connRouteBlocked => 'Letiltva';
-
-  String get connRoutePort => 'Port elutasítva';
-
-  String get connRouteFailed => 'Sikertelen';
-}
 }

@@ -159,8 +159,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addAccount => 'Add account';
 
   @override
-  String lowQuotaNotice(String left, String size) {
-    return 'The current account is running out of data ($left left). Add another account to get $size more.';
+  String lowQuotaNotice(String size) {
+    return 'This account is running out of data. Add another account to get $size more.';
   }
 
   @override
@@ -168,6 +168,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noAccountsHint => 'Add a Firefox Account to connect.';
+
+  @override
+  String get delayTestFailed =>
+      'Couldn\'t measure the servers\' delay. Check your internet.';
 
   @override
   String get createAccountTitle => 'Don\'t have a Firefox Account?';
@@ -306,6 +310,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get close => 'Close';
 
   @override
+  String get noBrowserTitle => 'No browser on this device';
+
+  @override
+  String get noBrowserText => 'Open this address on your phone or computer:';
+
+  @override
   String get cancel => 'Cancel';
 
   @override
@@ -365,35 +375,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get createAccountButton => 'Create a Firefox Account';
-
-  @override
-  String get dotMethodEntry => 'How to create multiple accounts with one Gmail';
-
-  @override
-  String get dotMethodTitle => 'Multiple accounts with one Gmail';
-
-  @override
-  String get dotMethodIntro =>
-      'Gmail ignores dots in an address: a.b@gmail.com and ab@gmail.com are the same inbox.';
-
-  @override
-  String get dotMethodPoint =>
-      'Each dotted version counts as a NEW email address when you sign up for a Firefox account — but every verification email still arrives in that same one inbox.';
-
-  @override
-  String get dotMethodStep1 =>
-      'Create a Firefox account with a new dotted version of your address.';
-
-  @override
-  String get dotMethodStep2 =>
-      'Open the verification email in your one inbox and confirm it, or note the code it carries.';
-
-  @override
-  String get dotMethodStep3 =>
-      'Come back here and add the account. Repeat with another dotted version for more accounts.';
-
-  @override
-  String get dotMethodExample => 'Example';
 
   @override
   String get signInWrongPassword => 'Incorrect password.';
@@ -675,7 +656,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noticeCommand =>
-      'An app asked for UDP (games, voice and video calls). Mozilla\'s proxy carries TCP only, so it cannot go through.';
+      'This type of connection isn\'t supported by the VPN.';
 
   @override
   String noticeTimes(int count, String time) {
@@ -866,6 +847,69 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sectionAdvanced => 'Advanced';
 
   @override
+  String get tlsFragment => 'TLS fragmentation';
+
+  @override
+  String get tlsFragmentOff => 'Off';
+
+  @override
+  String get tlsFragmentFirstByte => 'First byte';
+
+  @override
+  String get tlsFragmentSni => 'Server name (SNI)';
+
+  @override
+  String get tlsFragmentFirstByteHint =>
+      'Splits the TLS header at the first byte (0x16)';
+
+  @override
+  String get tlsFragmentSniHint =>
+      'Splits the server name (SNI) across TCP packets';
+
+  @override
+  String get tlsFragmentOffHint => 'Normal TLS connection';
+
+  @override
+  String get sectionBypass => 'If Mozilla is blocked';
+
+  @override
+  String get apiRelay => 'Relay server';
+
+  @override
+  String get apiRelayHint =>
+      'Your own Cloudflare Worker, or relay.php on your own host.\nUsed only when Mozilla doesn\'t answer directly: the sign-in, accounts, and server list go through it, not the VPN traffic.';
+
+  @override
+  String get upstreamProxy => 'Upstream proxy';
+
+  @override
+  String get upstreamProxyOn => 'Upstream proxy is on';
+
+  @override
+  String get upstreamProxyAddress => 'SOCKS5 proxy address';
+
+  @override
+  String get upstreamProxyPort => 'Port';
+
+  @override
+  String get upstreamProxyHint =>
+      'The connection to Mozilla goes through this proxy, for networks that block or slow Mozilla.\nIf the proxy runs on this device, leave it out of the VPN.';
+
+  @override
+  String get upstreamProxyInvalid =>
+      'Enter the proxy\'s address, such as 127.0.0.1.';
+
+  @override
+  String get upstreamProxyInvalidPort => 'Enter a port from 1 to 65535.';
+
+  @override
+  String get upstreamProxyOwn =>
+      'That\'s this app\'s own proxy. Enter another one.';
+
+  @override
+  String get apiRelayInvalid => 'Must be an https:// address.';
+
+  @override
   String get listenAddress => 'Listen on';
 
   @override
@@ -1013,13 +1057,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get autoUpdate => 'Update automatically';
-
-  @override
-  String get autoUpdateHint =>
-      'New versions download in the background and install the next time the app opens.';
-
-  @override
   String get repoNotSet => 'The GitHub repository is not set yet.';
 
   @override
@@ -1047,6 +1084,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get groupApp => 'App';
 
   @override
+  String get groupNetwork => 'Network';
+
+  @override
   String get stateOff => 'Disconnected';
 
   @override
@@ -1054,6 +1094,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tapToDisconnectPhone => 'Tap to disconnect';
+
+  @override
+  String get tapToConnectTv => 'Press OK to connect';
+
+  @override
+  String get tapToDisconnectTv => 'Press OK to disconnect';
 
   @override
   String lanAddress(String address) {
@@ -1089,7 +1135,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get failUnreachable =>
-      'Mozilla\'s servers are blocked on this internet. Try another internet connection.';
+      'Couldn\'t reach Mozilla\'s servers. Try another internet connection.';
+
+  @override
+  String get failUpstreamProxy =>
+      'Couldn\'t reach Mozilla through your upstream proxy. Check that it\'s running.';
+
+  @override
+  String get failInsideVpn =>
+      'This internet already goes through a VPN. Turn it off.';
 
   @override
   String get failRefused =>
@@ -1189,6 +1243,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get suggestedApps => 'Suggested apps';
+
+  @override
+  String get showSystemApps => 'Show system apps';
 
   @override
   String suggestedAdded(int count) {
@@ -1419,19 +1476,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String udpNoticeBody(String program) {
-    return '$program tried to make a call or play online, but in TUN mode that traffic (UDP) can\'t go through the VPN.';
+    return '$program\'s UDP traffic can\'t go through the VPN.';
   }
-
-  @override
-  String get udpNoticeAction => 'Send its UDP directly';
 
   @override
   String get dontShowAgain => 'Don\'t show again';
-
-  @override
-  String udpDirectAdded(String program) {
-    return '$program: its UDP now connects directly.';
-  }
 
   @override
   String get addRunningProgram => 'From running programs';
@@ -1448,6 +1497,88 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get runningProgramsEmpty => 'No other programs are running.';
+
+  @override
+  String get tabLog => 'Log';
+
+  @override
+  String get tabConnections => 'Connections';
+
+  @override
+  String get connectionsEmpty => 'No connections yet.';
+
+  @override
+  String connectionsOpen(int count) {
+    return '$count open';
+  }
+
+  @override
+  String get connTime => 'Time';
+
+  @override
+  String get connRoute => 'Rule';
+
+  @override
+  String get connDestination => 'Destination';
+
+  @override
+  String get connInbound => 'Inbound';
+
+  @override
+  String get connProtocol => 'Protocol';
+
+  @override
+  String get connColumns => 'Columns';
+
+  @override
+  String get connTraffic => 'Traffic';
+
+  @override
+  String get connDuration => 'Duration';
+
+  @override
+  String get connRouteVpn => 'Proxy';
+
+  @override
+  String get connRouteDirect => 'Direct';
+
+  @override
+  String get connRouteBlocked => 'Blocked';
+
+  @override
+  String get connRoutePort => 'Port refused';
+
+  @override
+  String get connRouteFailed => 'Failed';
+
+  @override
+  String get dotMethodEntry => 'How to create multiple accounts with one Gmail';
+
+  @override
+  String get dotMethodTitle => 'Multiple accounts with one Gmail';
+
+  @override
+  String get dotMethodIntro =>
+      'Gmail ignores dots in an address: a.b@gmail.com and ab@gmail.com are the same inbox.';
+
+  @override
+  String get dotMethodPoint =>
+      'Each dotted version counts as a NEW email address when you sign up for a Firefox account — but every verification email still arrives in that same one inbox.';
+
+  @override
+  String get dotMethodStep1 =>
+      'Create a Firefox account with a new dotted version of your address.';
+
+  @override
+  String get dotMethodStep2 =>
+      'Open the verification email in your one inbox and confirm it, or note the code it carries.';
+
+  @override
+  String get dotMethodStep3 =>
+      'Come back here and add the account. Repeat with another dotted version for more accounts.';
+
+  @override
+  String get dotMethodExample => 'Example';
 
   @override
   String get uiDesign => 'Design';
@@ -1590,43 +1721,4 @@ class AppLocalizationsEn extends AppLocalizations {
   String batchSummary(int added, int failed) {
     return '$added added, $failed failed';
   }
-
-  String get showSystemApps => 'Show system apps';
-
-  String get tabLog => 'Log';
-
-  String get tabConnections => 'Connections';
-
-  String get connectionsEmpty => 'No connections yet.';
-
-  String connectionsOpen(int count) {
-    return '$count open';
-  }
-
-  String get connTime => 'Time';
-
-  String get connRoute => 'Rule';
-
-  String get connDestination => 'Destination';
-
-  String get connInbound => 'Inbound';
-
-  String get connProtocol => 'Protocol';
-
-  String get connColumns => 'Columns';
-
-  String get connTraffic => 'Traffic';
-
-  String get connDuration => 'Duration';
-
-  String get connRouteVpn => 'Proxy';
-
-  String get connRouteDirect => 'Direct';
-
-  String get connRouteBlocked => 'Blocked';
-
-  String get connRoutePort => 'Port refused';
-
-  String get connRouteFailed => 'Failed';
-}
 }

@@ -161,8 +161,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get addAccount => 'إضافة حساب';
 
   @override
-  String lowQuotaNotice(String left, String size) {
-    return 'رصيد الحساب الحالي على وشك النفاد (تبقّى $left). أضف حسابًا آخر لتحصل على $size إضافية.';
+  String lowQuotaNotice(String size) {
+    return 'رصيد هذا الحساب على وشك النفاد. أضف حسابًا آخر لتحصل على $size إضافية.';
   }
 
   @override
@@ -170,6 +170,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get noAccountsHint => 'أضف Firefox Account للاتصال.';
+
+  @override
+  String get delayTestFailed => 'تعذّر قياس تأخير الخوادم. تحقّق من الإنترنت.';
 
   @override
   String get createAccountTitle => 'ليس لديك Firefox Account؟';
@@ -308,6 +311,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get close => 'إغلاق';
 
   @override
+  String get noBrowserTitle => 'لا يوجد متصفح على هذا الجهاز';
+
+  @override
+  String get noBrowserText => 'افتح هذا العنوان على هاتفك أو حاسوبك:';
+
+  @override
   String get cancel => 'إلغاء';
 
   @override
@@ -368,35 +377,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get createAccountButton => 'إنشاء Firefox Account';
-
-  @override
-  String get dotMethodEntry => 'How to create multiple accounts with one Gmail';
-
-  @override
-  String get dotMethodTitle => 'Multiple accounts with one Gmail';
-
-  @override
-  String get dotMethodIntro =>
-      'Gmail ignores dots in an address: a.b@gmail.com and ab@gmail.com are the same inbox.';
-
-  @override
-  String get dotMethodPoint =>
-      'Each dotted version counts as a NEW email address when you sign up for a Firefox account — but every verification email still arrives in that same one inbox.';
-
-  @override
-  String get dotMethodStep1 =>
-      'Create a Firefox account with a new dotted version of your address.';
-
-  @override
-  String get dotMethodStep2 =>
-      'Open the verification email in your one inbox and confirm it, or note the code it carries.';
-
-  @override
-  String get dotMethodStep3 =>
-      'Come back here and add the account. Repeat with another dotted version for more accounts.';
-
-  @override
-  String get dotMethodExample => 'Example';
 
   @override
   String get signInWrongPassword => 'كلمة المرور غير صحيحة.';
@@ -677,8 +657,7 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get noticeCommand =>
-      'طلب أحد التطبيقات اتصال UDP (الألعاب والمكالمات الصوتية والمرئية). بروكسي Mozilla لا ينقل إلا TCP، لذا لا يمكن تمريره.';
+  String get noticeCommand => 'هذا النوع من الاتصال غير مدعوم في VPN.';
 
   @override
   String noticeTimes(int count, String time) {
@@ -867,6 +846,67 @@ class AppLocalizationsAr extends AppLocalizations {
   String get sectionAdvanced => 'متقدم';
 
   @override
+  String get tlsFragment => 'تجزئة TLS';
+
+  @override
+  String get tlsFragmentOff => 'معطّل';
+
+  @override
+  String get tlsFragmentFirstByte => 'البايت الأول';
+
+  @override
+  String get tlsFragmentSni => 'اسم الخادم (SNI)';
+
+  @override
+  String get tlsFragmentFirstByteHint =>
+      'يفصل ترويسة TLS عند البايت الأول (0x16)';
+
+  @override
+  String get tlsFragmentSniHint => 'يقسّم اسم الخادم (SNI) على عدة حزم TCP';
+
+  @override
+  String get tlsFragmentOffHint => 'اتصال TLS عادي';
+
+  @override
+  String get sectionBypass => 'إذا كانت Mozilla محجوبة';
+
+  @override
+  String get apiRelay => 'خادم الترحيل';
+
+  @override
+  String get apiRelayHint =>
+      'Cloudflare Worker الخاص بك، أو relay.php على استضافتك.\nيُستخدم فقط عندما لا تجيب Mozilla مباشرة: يمر عبره تسجيل الدخول والحسابات وقائمة الخوادم، لا حركة VPN.';
+
+  @override
+  String get upstreamProxy => 'بروكسي المنبع';
+
+  @override
+  String get upstreamProxyOn => 'بروكسي المنبع قيد التشغيل';
+
+  @override
+  String get upstreamProxyAddress => 'عنوان بروكسي SOCKS5';
+
+  @override
+  String get upstreamProxyPort => 'المنفذ';
+
+  @override
+  String get upstreamProxyHint =>
+      'يمر الاتصال بـ Mozilla عبر هذا البروكسي، للشبكات التي تحجب Mozilla أو تبطئها.\nإذا كان البروكسي يعمل على هذا الجهاز، فاستثنِه من VPN.';
+
+  @override
+  String get upstreamProxyInvalid => 'أدخل عنوان البروكسي، مثل 127.0.0.1.';
+
+  @override
+  String get upstreamProxyInvalidPort => 'أدخل منفذًا من 1 إلى 65535.';
+
+  @override
+  String get upstreamProxyOwn =>
+      'هذا هو بروكسي هذا التطبيق نفسه. أدخل بروكسيًا آخر.';
+
+  @override
+  String get apiRelayInvalid => 'يجب أن يكون عنوان https://.';
+
+  @override
   String get listenAddress => 'الوصول إلى البروكسي';
 
   @override
@@ -1022,13 +1062,6 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get autoUpdate => 'التحديث تلقائيًا';
-
-  @override
-  String get autoUpdateHint =>
-      'تُنزَّل الإصدارات الجديدة في الخلفية وتُثبَّت عند فتح التطبيق في المرة التالية.';
-
-  @override
   String get repoNotSet => 'لم يُحدَّد مستودع GitHub بعد.';
 
   @override
@@ -1056,6 +1089,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get groupApp => 'التطبيق';
 
   @override
+  String get groupNetwork => 'الشبكة';
+
+  @override
   String get stateOff => 'غير متصل';
 
   @override
@@ -1063,6 +1099,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get tapToDisconnectPhone => 'اضغط لقطع الاتصال';
+
+  @override
+  String get tapToConnectTv => 'اضغط OK للاتصال';
+
+  @override
+  String get tapToDisconnectTv => 'اضغط OK لقطع الاتصال';
 
   @override
   String lanAddress(String address) {
@@ -1097,7 +1139,14 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get failUnreachable =>
-      'خوادم Mozilla محجوبة على هذا الإنترنت. جرّب اتصال إنترنت آخر.';
+      'تعذّر الوصول إلى خوادم Mozilla. جرّب اتصال إنترنت آخر.';
+
+  @override
+  String get failUpstreamProxy =>
+      'تعذّر الوصول إلى Mozilla عبر بروكسي المنبع. تأكد من أنه يعمل.';
+
+  @override
+  String get failInsideVpn => 'هذا الإنترنت يمر بالفعل عبر VPN. أوقفه.';
 
   @override
   String get failRefused =>
@@ -1196,6 +1245,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get suggestedApps => 'التطبيقات المقترحة';
+
+  @override
+  String get showSystemApps => 'عرض تطبيقات النظام';
 
   @override
   String suggestedAdded(int count) {
@@ -1432,19 +1484,11 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String udpNoticeBody(String program) {
-    return 'حاول البرنامج $program إجراء مكالمة أو اللعب عبر الإنترنت، لكن في وضع TUN لا تمر هذه الحركة (UDP) عبر VPN.';
+    return 'حركة UDP للبرنامج $program لا تمر عبر VPN.';
   }
-
-  @override
-  String get udpNoticeAction => 'إرسال حركة UDP الخاصة به مباشرةً';
 
   @override
   String get dontShowAgain => 'عدم الإظهار مجددًا';
-
-  @override
-  String udpDirectAdded(String program) {
-    return 'حركة UDP لبرنامج $program تتصل الآن مباشرةً.';
-  }
 
   @override
   String get addRunningProgram => 'من البرامج قيد التشغيل';
@@ -1461,6 +1505,88 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get runningProgramsEmpty => 'لا توجد برامج أخرى قيد التشغيل.';
+
+  @override
+  String get tabLog => 'السجل';
+
+  @override
+  String get tabConnections => 'الاتصالات';
+
+  @override
+  String get connectionsEmpty => 'لا توجد اتصالات بعد.';
+
+  @override
+  String connectionsOpen(int count) {
+    return 'مفتوح: $count';
+  }
+
+  @override
+  String get connTime => 'الوقت';
+
+  @override
+  String get connRoute => 'القاعدة';
+
+  @override
+  String get connDestination => 'الوجهة';
+
+  @override
+  String get connInbound => 'الوارد';
+
+  @override
+  String get connProtocol => 'البروتوكول';
+
+  @override
+  String get connColumns => 'الأعمدة';
+
+  @override
+  String get connTraffic => 'حركة البيانات';
+
+  @override
+  String get connDuration => 'المدة';
+
+  @override
+  String get connRouteVpn => 'بروكسي';
+
+  @override
+  String get connRouteDirect => 'مباشر';
+
+  @override
+  String get connRouteBlocked => 'محظور';
+
+  @override
+  String get connRoutePort => 'منفذ مرفوض';
+
+  @override
+  String get connRouteFailed => 'فشل';
+
+  @override
+  String get dotMethodEntry => 'How to create multiple accounts with one Gmail';
+
+  @override
+  String get dotMethodTitle => 'Multiple accounts with one Gmail';
+
+  @override
+  String get dotMethodIntro =>
+      'Gmail ignores dots in an address: a.b@gmail.com and ab@gmail.com are the same inbox.';
+
+  @override
+  String get dotMethodPoint =>
+      'Each dotted version counts as a NEW email address when you sign up for a Firefox account — but every verification email still arrives in that same one inbox.';
+
+  @override
+  String get dotMethodStep1 =>
+      'Create a Firefox account with a new dotted version of your address.';
+
+  @override
+  String get dotMethodStep2 =>
+      'Open the verification email in your one inbox and confirm it, or note the code it carries.';
+
+  @override
+  String get dotMethodStep3 =>
+      'Come back here and add the account. Repeat with another dotted version for more accounts.';
+
+  @override
+  String get dotMethodExample => 'Example';
 
   @override
   String get uiDesign => 'Design';
@@ -1603,43 +1729,4 @@ class AppLocalizationsAr extends AppLocalizations {
   String batchSummary(int added, int failed) {
     return '$added added, $failed failed';
   }
-
-  String get showSystemApps => 'عرض تطبيقات النظام';
-
-  String get tabLog => 'السجل';
-
-  String get tabConnections => 'الاتصالات';
-
-  String get connectionsEmpty => 'لا توجد اتصالات بعد.';
-
-  String connectionsOpen(int count) {
-    return 'مفتوح: $count';
-  }
-
-  String get connTime => 'الوقت';
-
-  String get connRoute => 'القاعدة';
-
-  String get connDestination => 'الوجهة';
-
-  String get connInbound => 'الوارد';
-
-  String get connProtocol => 'البروتوكول';
-
-  String get connColumns => 'الأعمدة';
-
-  String get connTraffic => 'حركة البيانات';
-
-  String get connDuration => 'المدة';
-
-  String get connRouteVpn => 'بروكسي';
-
-  String get connRouteDirect => 'مباشر';
-
-  String get connRouteBlocked => 'محظور';
-
-  String get connRoutePort => 'منفذ مرفوض';
-
-  String get connRouteFailed => 'فشل';
-}
 }
