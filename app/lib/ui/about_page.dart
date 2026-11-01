@@ -130,7 +130,9 @@ class _AboutPageState extends State<AboutPage> {
                     ),
                   ),
                   OutlinedButton.icon(
-                    onPressed: github.isEmpty ? null : () => openUrl(github),
+                    onPressed: github.isEmpty
+                        ? null
+                        : () => openLink(context, github),
                     icon: const Icon(Icons.open_in_new_rounded, size: 18),
                     label: const Text('GitHub'),
                   ),
@@ -236,7 +238,7 @@ class _UpdateAction extends StatelessWidget {
             : button(
                 l.download,
                 Icons.download_rounded,
-                () => openDownload(release),
+                () => openDownload(context, release),
               );
       }
       final mine = update.version == release.version;

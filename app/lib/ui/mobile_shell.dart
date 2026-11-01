@@ -96,6 +96,14 @@ class _MobileShellState extends State<MobileShell> {
         section: SettingsSection.connection,
       ),
     );
+    void openUpstreamProxy() => _push(
+      l.upstreamProxy,
+      () => SettingsPage(
+        core: core,
+        settings: settings,
+        section: SettingsSection.upstreamProxy,
+      ),
+    );
     final home = switch (settings.uiDesign) {
       UiDesign.pixel => ZedPixelHome(
         core: core,
@@ -128,6 +136,7 @@ class _MobileShellState extends State<MobileShell> {
         onOpenServers: openServers,
         onOpenAccounts: openAccounts,
         onOpenConnection: openConnection,
+        onOpenUpstreamProxy: openUpstreamProxy,
         phone: true,
       ),
     };
@@ -218,33 +227,8 @@ class _SettingsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
-    final theme = Theme.of(context);
-    Widget group(String title, List<Widget> tiles) => Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(8, 20, 8, 8),
-          child: Text(
-            title,
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: theme.colorScheme.primary,
-            ),
-          ),
-        ),
-        Card(
-          margin: EdgeInsets.zero,
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            children: [
-              for (var i = 0; i < tiles.length; i++) ...[
-                if (i > 0) const Divider(height: 1, indent: 56),
-                tiles[i],
-              ],
-            ],
-          ),
-        ),
-      ],
-    );
+    Widget group(String title, List<Widget> tiles) =>
+        SettingsGroup(title: title, tiles: tiles);
     Widget tile(IconData icon, String title, VoidCallback onTap) => ListTile(
       leading: Icon(icon),
       title: Text(title),
@@ -264,32 +248,45 @@ class _SettingsList extends StatelessWidget {
       padding: pagePadding(context),
       children: [
         PageTitle(l.settingsTitle),
-        // Language and theme first; then which account, which country, and
-        // which sites go through the VPN; then the rest.
-        group(l.settingsTitle, [
+        // Language and theme first, what someone looks for before anything
+        // else, with which country and account; then how the traffic goes,
+        // what helps when Mozilla is blocked, and the app itself.
+        group(l.sectionGeneral, [
           section(
             SettingsSection.general,
             Icons.tune_rounded,
             l.sectionGeneral,
           ),
-          tile(Icons.people_outline_rounded, l.navAccounts, onOpenAccounts),
           tile(Icons.public_rounded, l.navServers, onOpenServers),
-          section(
-            SettingsSection.routing,
-            Icons.alt_route_rounded,
-            l.sectionRouting,
-          ),
-          section(SettingsSection.dns, Icons.dns_rounded, l.sectionDns),
+          tile(Icons.people_outline_rounded, l.navAccounts, onOpenAccounts),
+        ]),
+        group(l.groupNetwork, [
           section(
             SettingsSection.connection,
             Icons.vpn_lock_outlined,
             l.sectionConnection,
           ),
           section(
-            SettingsSection.accounts,
-            Icons.swap_horiz_rounded,
-            l.sectionAccounts,
+            SettingsSection.routing,
+            Icons.alt_route_rounded,
+            l.sectionRouting,
           ),
+          section(SettingsSection.dns, Icons.dns_rounded, l.sectionDns),
+        ]),
+        group(l.sectionBypass, [
+          section(SettingsSection.relay, Icons.cloud_outlined, l.apiRelay),
+          section(
+            SettingsSection.fragment,
+            Icons.content_cut_rounded,
+            l.tlsFragment,
+          ),
+          section(
+            SettingsSection.upstreamProxy,
+            Icons.lan_outlined,
+            l.upstreamProxy,
+          ),
+        ]),
+        group(l.groupApp, [
           // The app's port and the web dashboard: computers only (a narrow
           // window shows this layout too).
           if (!Platform.isAndroid)
@@ -298,8 +295,6 @@ class _SettingsList extends StatelessWidget {
               Icons.build_outlined,
               l.sectionAdvanced,
             ),
-        ]),
-        group(l.groupApp, [
           tile(
             Icons.receipt_long_outlined,
             l.navLogs,

@@ -1,15 +1,15 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../core/android_core.dart';
 import '../core/core_api.dart';
 import '../core/core_controller.dart';
 import '../core/models.dart';
 import '../l10n/app_localizations.dart';
-import '../platform.dart';
-import 'account_help.dart';
 import 'format.dart';
 import 'widgets.dart';
 
@@ -218,9 +218,16 @@ class _SignInDialogState extends State<_SignInDialog> {
     // An account without a password (Google or Apple sign-in) cannot sign
     // in again as it is: the button opens Mozilla's page to set one.
     final noPassword = failed && s?.errorCode == SignInError.noPassword;
+    // A TV's keyboard covers the lower half of the screen without making
+    // room: the dialog sits at the top, its fields above the keyboard.
+    final tv = Platform.isAndroid && AndroidCore.isTv;
     return AlertDialog(
       // A phone's keyboard leaves little room: the content scrolls.
       scrollable: true,
+      alignment: tv ? Alignment.topCenter : null,
+      insetPadding: tv
+          ? const EdgeInsets.fromLTRB(40, 12, 40, 12)
+          : const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
       title: Text(
         s == null
             ? l.addAccount
@@ -244,7 +251,7 @@ class _SignInDialogState extends State<_SignInDialog> {
           ),
           if (noPassword)
             FilledButton.icon(
-              onPressed: () => openUrl(firefoxAccountSetPasswordUrl),
+              onPressed: () => openLink(context, firefoxAccountSetPasswordUrl),
               icon: const Icon(Icons.open_in_new_rounded, size: 18),
               label: Text(l.setPasswordButton),
             )
@@ -327,8 +334,6 @@ class _SignInDialogState extends State<_SignInDialog> {
               validator: (v) => (v ?? '').isEmpty ? l.passwordEmpty : null,
               onFieldSubmitted: (_) => _start(),
             ),
-            const SizedBox(height: 8),
-            const AccountHelpLinks(),
             if (_error != null) ...[
               const SizedBox(height: 12),
               _ErrorBox(_error!),
@@ -344,6 +349,15 @@ class _SignInDialogState extends State<_SignInDialog> {
               Text(
                 l.signInNoAccountHint,
                 style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: OutlinedButton.icon(
+                  onPressed: () => openLink(context, firefoxAccountSignUpUrl),
+                  icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                  label: Text(l.createAccountButton),
+                ),
               ),
             ],
           ],
