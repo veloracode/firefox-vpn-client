@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/armanlife/firefox-vpn-client/core/internal/accounts"
 	"github.com/armanlife/firefox-vpn-client/core/internal/config"
 	"github.com/armanlife/firefox-vpn-client/core/internal/fxa"
 	"github.com/armanlife/firefox-vpn-client/core/internal/logx"
@@ -210,6 +211,35 @@ func TestDashboardSettingsValidateAndApply(t *testing.T) {
 	saved, _, err := config.Load(d.paths.Config)
 	if err != nil || saved.Accounts.SwitchThresholdPercent != 80 {
 		t.Fatalf("expected the threshold to be saved, got %v %v", saved.Accounts, err)
+	}
+}
+
+// An account whose quota reset has passed stops showing as used up by itself,
+// with no request to read it again.
+func TestAPassedResetShowsWithoutARefresh(t *testing.T) {
+	d := newTestDaemon(t)
+	id := addTestAccount(t, d, "a")
+	acc, err := d.store.Get(id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	past := time.Now().Add(-time.Hour)
+	acc.Status, acc.Reason, acc.ReasonCode, acc.RetryAt = accounts.StatusReserved, "monthly quota exhausted", accounts.ReasonQuotaExhausted, past
+	acc.Usage = &accounts.Usage{LimitBytes: 50 << 30, ResetAt: past}
+	if err := d.store.Save(acc); err != nil {
+		t.Fatal(err)
+	}
+
+	c := newDashboardClient(t, d)
+	type accountsBody struct {
+		Accounts []AccountView `json:"accounts"`
+	}
+	got := decodeBody[accountsBody](t, c.do(http.MethodGet, "/api/accounts", nil)).Accounts[0]
+	if got.Status != string(accounts.StatusReady) || got.Reason != "" || got.ReasonCode != "" || !got.RetryAt.IsZero() {
+		t.Fatalf("the account %+v", got)
+	}
+	if got.UsedPercent != 0 || !got.Usage.ResetAt.IsZero() {
+		t.Fatalf("used %v%%, usage %+v", got.UsedPercent, got.Usage)
 	}
 }
 
@@ -497,6 +527,18 @@ func TestConnectionTestMeasuresTunnelRequest(t *testing.T) {
 	site := proxy.RunConnectionTest(tunnelToServer{addr: broken.Listener.Addr().String()}, "http://test.invalid/", 0, 5*time.Second)
 	if site.OK || site.ErrorCode != proxy.FailureTestSite {
 		t.Fatalf("expected the test site's failure, got %+v", site)
+	}
+}
+
+// A new delay replaces the times of the last test, and only those.
+func TestWithDelayKeepsTheRestOfTheTest(t *testing.T) {
+	last := proxy.ConnectionTestResult{At: time.Unix(1, 0), OK: true, ResponseMS: 4000, TotalMS: 5000, ExitIPv4: "192.0.2.1", ExitCountry: "NL"}
+	got := withDelay(last, proxy.ConnectionTestResult{At: time.Unix(2, 0), OK: true, ResponseMS: 150, TotalMS: 400})
+	if got.ResponseMS != 150 || got.TotalMS != 400 || !got.At.Equal(time.Unix(2, 0)) {
+		t.Fatalf("times not replaced: %+v", got)
+	}
+	if got.ExitIPv4 != "192.0.2.1" || got.ExitCountry != "NL" || !got.OK {
+		t.Fatalf("the rest changed: %+v", got)
 	}
 }
 
