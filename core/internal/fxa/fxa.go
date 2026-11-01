@@ -421,6 +421,66 @@ func VerifySession(ctx context.Context, sessionToken, code string) error {
 	return fxaVerifySession(ctx, sessionToken, NormalizeCode(code))
 }
 
+// RecoveryEmailStatus is FxA's answer to GET /recovery_email/status:
+// the account's email and whether the session behind the token counts
+// as verified. It is the check Mozilla's own clients poll while they
+// wait for an email-link confirmation to land (their pollEmailStatus),
+// and the only way to learn that a link click verified the session —
+// the login response is a snapshot and never updates.
+type EmailStatus struct {
+	Email           string `json:"email"`
+	Verified        bool   `json:"verified"`
+	SessionVerified bool   `json:"sessionVerified"`
+}
+
+// SessionUsable reports whether FxA now treats the session as
+// verified, in whichever of the two fields it says so.
+func (s *EmailStatus) SessionUsable() bool {
+	return s.Verified || s.SessionVerified
+}
+
+func fxaRecoveryEmailStatus(ctx context.Context, sessionToken string) (*EmailStatus, error) {
+	hawkID, hawkKey, err := deriveHawkCredentials(sessionToken, "sessionToken")
+	if err != nil {
+		return nil, fmt.Errorf("deriving hawk credentials: %w", err)
+	}
+
+	statusURL := fxaAuthServer + "/recovery_email/status"
+	resp, err := fxaDo(ctx, func() (*http.Request, error) {
+		authHeader, err := hawkHeader("GET", statusURL, hawkID, hawkKey, "")
+		if err != nil {
+			return nil, fmt.Errorf("generating hawk header: %w", err)
+		}
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, statusURL, nil)
+		if err != nil {
+			return nil, fmt.Errorf("creating status request: %w", err)
+		}
+		req.Header.Set("Authorization", authHeader)
+		controlplane.ApplyFirefoxHeaders(req)
+		return req, nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("recovery email status request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	data, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return nil, newFxaAPIError(resp.StatusCode, data)
+	}
+	var status EmailStatus
+	if err := json.Unmarshal(data, &status); err != nil {
+		return nil, fmt.Errorf("parsing recovery email status: %w", err)
+	}
+	return &status, nil
+}
+
+// RecoveryEmailStatus fetches the session's current verification
+// state; see the type for what it means.
+func RecoveryEmailStatus(ctx context.Context, sessionToken string) (*EmailStatus, error) {
+	return fxaRecoveryEmailStatus(ctx, sessionToken)
+}
+
 func OAuthToken(ctx context.Context, sessionToken string) (*TokenResponse, error) {
 	return fxaOAuthToken(ctx, sessionToken)
 }
