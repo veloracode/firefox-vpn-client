@@ -11,10 +11,16 @@
         android:name="android.permission.QUERY_ALL_PACKAGES"
         xmlns:tools="http://schemas.android.com/tools"
         tools:ignore="QueryAllPackagesPermission" />
+    <!-- Android TV: the same app, in the TV's apps row (the banner,
+         LEANBACK_LAUNCHER below). Neither a touch screen nor a TV is
+         required, so it installs on phones and TVs alike. -->
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <application
         android:label="@string/app_name"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
+        android:banner="@drawable/banner"
         android:allowBackup="true"
         android:fullBackupContent="@xml/backup_rules"
         android:dataExtractionRules="@xml/data_extraction_rules">
@@ -38,6 +44,7 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER"/>
             </intent-filter>
         </activity>
         <!-- The VPN: runs the Go core and carries the phone's traffic. -->
@@ -95,10 +102,15 @@
 
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
-        <!-- The apps with an icon, which the routing page lists first. -->
+        <!-- The apps with an icon, on a phone or a TV, which the routing
+             page lists first. -->
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
         </intent>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>

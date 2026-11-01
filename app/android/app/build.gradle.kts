@@ -31,6 +31,13 @@ android {
         }
     }
 
+    // hev-socks5-tunnel, which the VPN runs (Tun2Socks.kt).
+    externalNativeBuild {
+        ndkBuild {
+            path = file("../hev-socks5-tunnel/Android.mk")
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -50,6 +57,15 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        externalNativeBuild {
+            ndkBuild {
+                targets += "hev-socks5-tunnel"
+                // REV_ID: its version, which it would ask Git for.
+                arguments += listOf("REV_ID=2.19.3", "APP_SUPPORT_FLEXIBLE_PAGE_SIZES=true")
+                // The class its native methods bind to.
+                cFlags += listOf("-O3", "-DPKGNAME=com/arman/firefoxvpn", "-DCLSNAME=Tun2Socks")
+            }
+        }
     }
 
     signingConfigs {
@@ -71,6 +87,13 @@ android {
             signingConfig = signingConfigs.getByName(if (releaseKey.isEmpty) "debug" else "release")
         }
     }
+}
+
+// Flutter's plugin points CMake at an empty project, to make the Android plugin
+// download the NDK, unless it sees a CMake build or `flutter build` found the NDK
+// installed (so `gradlew` and Android Studio get it); two native builds are refused.
+androidComponents {
+    finalizeDsl { it.externalNativeBuild.cmake.path = null }
 }
 
 kotlin {

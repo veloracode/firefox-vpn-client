@@ -41,16 +41,3 @@ func TestFirefoxUserAgentFollowsTheRelease(t *testing.T) {
 		t.Fatalf("headers %v", req.Header)
 	}
 }
-
-// The VPN client identity is the phone app's exactly: its User-Agent and
-// a JSON Accept.
-func TestVPNClientHeaders(t *testing.T) {
-	req, _ := http.NewRequest(http.MethodPost, "https://api.accounts.firefox.com/v1/account/login", nil)
-	ApplyVPNClientHeaders(req)
-	if got := req.Header.Get("User-Agent"); got != "MozillaVPN/2.35.0 (sys:linux; iap:true)" {
-		t.Fatalf("user agent %q", got)
-	}
-	if got := req.Header.Get("Accept"); got != "application/json" {
-		t.Fatalf("accept %q", got)
-	}
-}

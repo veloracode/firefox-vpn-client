@@ -134,7 +134,12 @@ class AndroidCore {
   static Future<void> loadMode() async {
     mode.value = await _channel.invokeMethod<String>('connectionMode') ?? 'vpn';
     showSpeed.value = await _channel.invokeMethod<bool>('showSpeed') ?? false;
+    isTv = await _channel.invokeMethod<bool>('isTv') ?? false;
   }
+
+  /// Whether this is a TV, worked with a remote: the home page then says
+  /// "press" rather than "tap". Read at start ([loadMode]).
+  static bool isTv = false;
 
   /// Whether the notification shows the speed (CoreService.kt reads it).
   static final showSpeed = ValueNotifier<bool>(false);

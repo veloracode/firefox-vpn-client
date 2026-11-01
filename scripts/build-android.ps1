@@ -32,10 +32,12 @@ if (-not $env:GOTOOLCHAIN) {
     if ([version]$have -lt [version]$need) { $env:GOTOOLCHAIN = "go$need+auto" }
 }
 
+$ldflags = "-s -w -X github.com/armanlife/firefox-vpn-client/core/internal/version.Current=$version"
+
 Push-Location "$root\core"
 try {
     gomobile bind -target=android -androidapi 24 -trimpath `
-        -ldflags "-s -w -X github.com/armanlife/firefox-vpn-client/core/internal/version.Current=$version" `
+        -ldflags $ldflags `
         -o ..\app\android\app\libs\core.aar ./mobile
     if ($LASTEXITCODE -ne 0) { throw 'gomobile bind failed' }
 } finally { Pop-Location }

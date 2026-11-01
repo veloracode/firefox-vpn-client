@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 
 import '../app_info.dart';
 import '../app_settings.dart';
-import '../platform.dart';
 import 'android_core.dart';
 import 'core_api.dart';
 import 'core_controller.dart';
@@ -62,10 +61,6 @@ String releaseFileUrl(String releaseUrl, String name) {
 String apkUrl(String releaseUrl, String abi) =>
     releaseFileUrl(releaseUrl, apkName(abi));
 
-/// Opens the release's download (see [downloadUrl]).
-Future<void> openDownload(Release release) async =>
-    openUrl(await downloadUrl(release));
-
 /// The local proxy for GitHub requests, on networks that block GitHub: the
 /// VPN's own while it runs without a proxy login; null otherwise.
 String? updateProxy(CoreStatus? status) {
@@ -86,8 +81,9 @@ String? updateProxy(CoreStatus? status) {
 /// core: core/internal/update): Update downloads it through the VPN while it
 /// runs, and the app closes and opens again as the new version. With
 /// automatic updates (on unless turned off), a version found downloads in
-/// the background and installs the next time the app starts. On Android, or
-/// when the core cannot install it, the notice opens the download.
+/// the background and installs the next time the app starts. When the core
+/// cannot install it, and on Android, whose core does not update, the notice
+/// opens the download.
 abstract final class Updates {
   /// How long a successful look holds.
   static const every = Duration(days: 5);
@@ -188,8 +184,7 @@ abstract final class Updates {
       // Not right after an update that failed (the old version started
       // again): the next start tries again, so a lasting failure is no loop.
       final justFailed = update.last != null && !update.last!.ok;
-      if (settings.autoUpdate &&
-          update.ready &&
+      if (update.ready &&
           !justFailed &&
           newerVersion(update.version, appVersion)) {
         installingAtStart.value = true;
@@ -205,7 +200,7 @@ abstract final class Updates {
     if (wanted != null && update.version == wanted) {
       if (update.ready) {
         _wanted = null;
-        unawaited(_install(wanted, _restartArgs()));
+        unawaited(_installReady(update));
         return;
       }
       if (update.failed) _wanted = null;
@@ -221,7 +216,7 @@ abstract final class Updates {
     if (core == null || settings == null || release == null || update == null) {
       return;
     }
-    if (!settings.autoUpdate || !newerVersion(release.version, appVersion)) {
+    if (!newerVersion(release.version, appVersion)) {
       return;
     }
     if (update.downloading || update.installing) return;
@@ -244,7 +239,7 @@ abstract final class Updates {
     if (current != null &&
         current.ready &&
         current.version == release.version) {
-      await _install(release.version, _restartArgs());
+      await _installReady(current);
       return;
     }
     _wanted = release.version;
@@ -255,6 +250,11 @@ abstract final class Updates {
       failure.value = '$e';
     }
   }
+
+  /// Installs the downloaded [update] by the core, the app closing and
+  /// opening again.
+  static Future<bool> _installReady(UpdateState update) =>
+      _install(update.version, _restartArgs());
 
   /// The arguments of the next start after an install now: in the tray if
   /// the window is there, and with this copy's own data folder.

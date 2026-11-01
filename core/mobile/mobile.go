@@ -8,11 +8,11 @@
 package mobile
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -21,6 +21,7 @@ import (
 	"github.com/armanlife/firefox-vpn-client/core/internal/config"
 	"github.com/armanlife/firefox-vpn-client/core/internal/logx"
 	"github.com/armanlife/firefox-vpn-client/core/internal/netstate"
+	"github.com/armanlife/firefox-vpn-client/core/internal/securefile"
 	"github.com/armanlife/firefox-vpn-client/core/internal/service"
 	"github.com/armanlife/firefox-vpn-client/core/internal/tun"
 )
@@ -29,7 +30,8 @@ var (
 	mu      sync.Mutex
 	running *service.Daemon
 	done    chan struct{}
-	tunnel  *tun.Tunnel
+	// tunConfigFile is hev-socks5-tunnel's configuration (TunConfig).
+	tunConfigFile string
 	// stopErr and stoppedAt are why and when the daemon last stopped by
 	// itself (Run returned without Stop).
 	stopErr   error
@@ -41,8 +43,26 @@ var (
 // at once (its port taken) would otherwise loop.
 const restartPause = 5 * time.Second
 
-// tunMTU is the VPN interface's MTU; the app sets the same.
-const tunMTU = 1500
+// What hev-socks5-tunnel waits for (tun2socksConfig), in milliseconds.
+const (
+	// tunConnectTimeout bounds a connection through the proxy, which may first
+	// wake and connect to Mozilla.
+	tunConnectTimeout = 30_000
+	// tunIdleTimeout closes a TCP connection that carried nothing for a day: an
+	// app's long quiet connection (a messenger's) stays, as the proxy has no
+	// limit of its own (config.IdleTimeout). hev's default is 5 minutes.
+	tunIdleTimeout = 24 * 60 * 60 * 1000
+	// tunUDPIdleTimeout closes a UDP flow without packets for this long, as the
+	// proxy does (udpFlowIdle).
+	tunUDPIdleTimeout = 2 * 60 * 1000
+)
+
+// tunMaxSessions is how many connections and UDP flows hev-socks5-tunnel keeps.
+// Beyond it the one idle longest ends, before the core's TUN listener reaches its
+// limit (service.tunMaxConnections) and refuses the new one: a flow refused by
+// the VPN's rule takes a place until tunUDPIdleTimeout, and an app sending to
+// many peers would otherwise fill them.
+const tunMaxSessions = 3000
 
 // Start runs the daemon with its data in dataDir (created when missing),
 // with the proxy on or off (SetOn). It returns once the daemon is started;
@@ -64,6 +84,11 @@ func Start(dataDir string, on bool) error {
 	// on the API port before this run has bound it; Run writes a new one
 	// once it has.
 	_ = os.Remove(paths.LocalToken)
+	tunConfigFile = filepath.Join(paths.Dir, "tun2socks.yml")
+	_ = os.Remove(tunConfigFile)
+	// What the app's in-app updates of 1.0.6 downloaded: nothing removes it
+	// now that the app no longer installs updates.
+	_ = os.RemoveAll(filepath.Join(paths.Dir, "update"))
 	if err := useAndroidRoots(paths.Dir); err != nil {
 		return err
 	}
@@ -246,55 +271,77 @@ func Running() bool {
 	return running != nil
 }
 
-// StartTun takes over the VPN's TUN device fd (Android's VpnService): the
-// phone's TCP connections go through the proxy, DNS is answered with fake
-// addresses that stand for names, and other UDP is refused. The fd is
-// closed by StopTun, or here when the stack does not start (the VPN then
-// ends instead of holding the phone's traffic). The app must exclude itself
+// TunConfig makes the VPN's way into the core, for a device of the given MTU:
+// it opens the core's TUN listener, which the proxy's rules for the VPN apply
+// to, and writes the configuration of hev-socks5-tunnel, the C library that
+// turns the VPN's packets into SOCKS5 connections. It returns the file's path;
+// the app runs the library with it (Tun2Socks.kt). The app must exclude itself
 // from the VPN, so the core's own connections do not loop back into it.
-func StartTun(fd int32) (err error) {
-	defer func() {
-		if err != nil {
-			_ = os.NewFile(uintptr(fd), "tun").Close()
-		}
-	}()
+func TunConfig(mtu int32) (string, error) {
 	mu.Lock()
 	defer mu.Unlock()
 	d := running
 	if d == nil {
-		return errors.New("the core does not run")
+		return "", errors.New("the core does not run")
 	}
-	if tunnel != nil {
-		tunnel.Stop()
-		tunnel = nil
-	}
-	dial := func(ctx context.Context, target string) (net.Conn, error) {
-		// Read each time: the port or the login may have changed.
-		addr, user, password := d.ProxyEndpoint()
-		if addr == "" {
-			return nil, errors.New("the proxy is not listening")
-		}
-		dialer, err := tun.SOCKS5Dialer(addr, user, password)
-		if err != nil {
-			return nil, err
-		}
-		return dialer(ctx, target)
-	}
-	t, err := tun.Start(int(fd), tunMTU, dial, d.TunnelAllows, tun.NewFakeDNS())
+	addr, user, password, err := d.OpenTunListener()
 	if err != nil {
-		return err
+		return "", err
 	}
-	tunnel = t
-	return nil
+	config, err := tun2socksConfig(mtu, addr, user, password)
+	if err != nil {
+		return "", err
+	}
+	if err := securefile.WritePrivate(tunConfigFile, []byte(config)); err != nil {
+		return "", err
+	}
+	return tunConfigFile, nil
 }
 
-// StopTun ends the VPN's stack and closes its device.
+// StopTun closes what TunConfig made; the app has stopped the library.
 func StopTun() {
 	mu.Lock()
-	t := tunnel
-	tunnel = nil
+	d, file := running, tunConfigFile
 	mu.Unlock()
-	if t != nil {
-		t.Stop()
+	if d != nil {
+		d.CloseTunListener()
 	}
+	if file != "" {
+		_ = os.Remove(file)
+	}
+}
+
+// tun2socksConfig is the library's configuration. DNS sent to the VPN's server
+// (CoreService.kt) is answered by the library with fake addresses, from the
+// range the core knows as such (tun.IsFake), and a connection to one reaches
+// the proxy with the name it stands for. pipeline: it sends the SOCKS5 handshake
+// in one go; otherwise the kernel holds each of its first two messages for 200
+// ms (MSG_MORE), which every new connection would wait for.
+func tun2socksConfig(mtu int32, listener, user, password string) (string, error) {
+	host, port, err := net.SplitHostPort(listener)
+	if err != nil {
+		return "", err
+	}
+	network, netmask := tun.FakeNet()
+	return fmt.Sprintf(`tunnel:
+  mtu: %d
+socks5:
+  address: '%s'
+  port: %s
+  udp: udp
+  pipeline: true
+  username: '%s'
+  password: '%s'
+mapdns:
+  address: 172.19.0.2
+  port: 53
+  network: %s
+  netmask: %s
+  cache-size: 10000
+misc:
+  connect-timeout: %d
+  tcp-read-write-timeout: %d
+  udp-read-write-timeout: %d
+  max-session-count: %d
+`, mtu, host, port, user, password, network, netmask, tunConnectTimeout, tunIdleTimeout, tunUDPIdleTimeout, tunMaxSessions), nil
 }

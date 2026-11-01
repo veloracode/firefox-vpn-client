@@ -1,6 +1,7 @@
 package com.arman.firefoxvpn
 
 import android.Manifest
+import android.app.ActivityManager
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.pm.ActivityInfo
@@ -34,6 +35,24 @@ class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         holdPhoneUpright(resources.configuration)
         super.onCreate(savedInstanceState)
+        removeOtherCards()
+    }
+
+    /**
+     * One card in the recent apps. A card stays there after Back, and with no
+     * task affinity (the manifest's, against task hijacking) Android keeps it
+     * beside a new task opened with another intent: from the notification,
+     * the tile, the widget, or the installer's Open.
+     */
+    private fun removeOtherCards() {
+        for (task in getSystemService(ActivityManager::class.java).appTasks) {
+            try {
+                @Suppress("DEPRECATION") // taskId came only with Android 10.
+                if (task.taskInfo.persistentId != taskId) task.finishAndRemoveTask()
+            } catch (e: IllegalArgumentException) {
+                // That task went by itself meanwhile.
+            }
+        }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -44,16 +63,21 @@ class MainActivity : FlutterActivity() {
     /**
      * A phone stays upright (its layout is made for it); a tablet, whose
      * shorter side is 600 dp or more, turns freely. Asked again when the
-     * screen changes, so a foldable follows its folding.
+     * screen changes, so a foldable follows its folding. A TV (960 x 540 dp,
+     * so "short" too) cannot turn: it keeps its own orientation.
      */
     private fun holdPhoneUpright(config: Configuration) {
-        val wanted = if (config.smallestScreenWidthDp < 600) {
+        val wanted = if (config.smallestScreenWidthDp < 600 && !isTv(config)) {
             ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         } else {
             ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         }
         if (requestedOrientation != wanted) requestedOrientation = wanted
     }
+
+    /** Whether this is a TV (Android TV, Google TV), worked with a remote. */
+    private fun isTv(config: Configuration) =
+        config.uiMode and Configuration.UI_MODE_TYPE_MASK == Configuration.UI_MODE_TYPE_TELEVISION
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -137,10 +161,20 @@ class MainActivity : FlutterActivity() {
                 }
                 // The phone's main processor type (arm64-v8a, armeabi-v7a, ...).
                 "abi" -> result.success(Build.SUPPORTED_ABIS.firstOrNull() ?: "")
+                "isTv" -> result.success(isTv(resources.configuration))
                 "openUrl" -> {
                     val url = call.argument<String>("url") ?: ""
+                    val view = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                     try {
-                        startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                        // A TV without a browser does not throw: its stub
+                        // "browser" only shows Android's "no app" message.
+                        val handlers = packageManager.queryIntentActivities(view, 0)
+                            .filter { it.activityInfo.packageName != "com.android.tv.frameworkpackagestubs" }
+                        if (handlers.isEmpty()) {
+                            result.success(false)
+                            return@setMethodCallHandler
+                        }
+                        startActivity(view)
                         result.success(true)
                     } catch (e: ActivityNotFoundException) {
                         result.success(false)
@@ -168,13 +202,14 @@ class MainActivity : FlutterActivity() {
 
     /**
      * The installed apps but this one: package, name, and whether it has a
-     * launcher icon (the others are mostly the system's). Packages without
-     * code (overlays, resources) use no network and are left out.
+     * launcher icon, on a phone's home screen or a TV's (the others are
+     * mostly the system's). Packages without code (overlays, resources) use
+     * no network and are left out.
      */
     private fun installedApps(): List<Map<String, Any>> {
         val pm = packageManager
-        val launcher = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-        val withIcon = pm.queryIntentActivities(launcher, 0)
+        val withIcon = listOf(Intent.CATEGORY_LAUNCHER, Intent.CATEGORY_LEANBACK_LAUNCHER)
+            .flatMap { pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(it), 0) }
             .map { it.activityInfo.packageName }
             .toSet()
         @Suppress("DEPRECATION")

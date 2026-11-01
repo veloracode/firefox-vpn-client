@@ -45,7 +45,7 @@ func RegisterDevice(ctx context.Context, refreshToken, id, name string) (*Device
 		}
 		req.Header.Set("Content-Type", "application/json")
 		req.Header.Set("Authorization", "Bearer "+refreshToken)
-		controlplane.ApplyVPNClientHeaders(req)
+		controlplane.ApplyFirefoxHeaders(req)
 		return req, nil
 	})
 	if err != nil {

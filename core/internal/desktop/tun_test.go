@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/armanlife/firefox-vpn-client/core/internal/config"
+	"github.com/armanlife/firefox-vpn-client/core/internal/proxy"
 	"github.com/armanlife/firefox-vpn-client/core/internal/service"
 	"github.com/armanlife/firefox-vpn-client/core/internal/tunapi"
 	"github.com/armanlife/firefox-vpn-client/core/internal/version"
@@ -31,6 +32,7 @@ func (h *fakeHost) TunPrograms() []config.TunProgram {
 	defer h.mu.Unlock()
 	return slices.Clone(h.programs)
 }
+func (h *fakeHost) VPNUDPPorts() []proxy.PortRange { return []proxy.PortRange{{From: 3478, To: 3478}} }
 func (h *fakeHost) setPrograms(p ...config.TunProgram) {
 	h.mu.Lock()
 	h.programs = p
@@ -179,10 +181,12 @@ func session(t *testing.T, c *tunapi.Conn, closed chan<- struct{}) {
 	c.Send(tunapi.Message{Type: tunapi.TypeRouted})
 	m, err := c.Receive()
 	if err == nil && m.Type == tunapi.TypeClose {
-		c.Send(tunapi.Message{Type: tunapi.TypeClosed})
+		// Closed before the answer, as the service does: the core takes the
+		// answer to mean the TUN is gone.
 		if closed != nil {
 			close(closed)
 		}
+		c.Send(tunapi.Message{Type: tunapi.TypeClosed})
 	}
 }
 
