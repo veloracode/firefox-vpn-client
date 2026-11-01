@@ -266,7 +266,22 @@ class AppSettings extends ChangeNotifier {
     _save();
   }
 
-  Future<void> _save() async {
+  /// Serializes [_save] calls: settings updates can arrive back to back,
+  /// and two overlapping writeAsString calls on the same file could
+  /// interleave and truncate it. Each save queues behind the previous one.
+  Future<void> _saveChain = Future<void>.value();
+
+  Future<void> _save() {
+    // onError keeps one failed write from poisoning the chain: later
+    // saves must still run.
+    _saveChain = _saveChain.then(
+      (_) => _writeSettings(),
+      onError: (_) => _writeSettings(),
+    );
+    return _saveChain;
+  }
+
+  Future<void> _writeSettings() async {
     final f = file;
     if (f == null) return;
     try {
