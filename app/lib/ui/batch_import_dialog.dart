@@ -20,15 +20,23 @@ class BatchEntry {
 }
 
 /// Splits one line into its email and password, on the first separator
-/// that leaves an address (an `@`, no spaces) before it and a password
-/// after it: `----`, `:`, `,`, or whitespace.
+/// that leaves a bare address (an `@`, no spaces and no other separator)
+/// before it and a password after it: `----`, `:`, `,`, `;`, `|` or
+/// whitespace. Requiring a bare address keeps "email,password:with:colons"
+/// and "email:pass,word" parsing on their first separator only.
 (String, String)? _splitLine(String line) {
-  for (final sep in ['----', ':', ',']) {
+  for (final sep in ['----', ':', ',', ';', '|']) {
     final i = line.indexOf(sep);
     if (i <= 0) continue;
     final email = line.substring(0, i).trim();
     final password = line.substring(i + sep.length).trim();
-    if (email.contains('@') && !email.contains(' ') && password.isNotEmpty) {
+    if (email.contains('@') &&
+        !email.contains(' ') &&
+        !email.contains(':') &&
+        !email.contains(',') &&
+        !email.contains(';') &&
+        !email.contains('|') &&
+        password.isNotEmpty) {
       return (email, password);
     }
   }
