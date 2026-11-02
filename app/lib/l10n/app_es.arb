@@ -248,6 +248,8 @@
   "tlsFragmentSni": "Nombre del servidor (SNI)",
   "tlsFragmentFirstByteHint": "Divide el encabezado TLS en el primer byte (0x16)",
   "tlsFragmentSniHint": "Divide el nombre del servidor (SNI) en varios paquetes TCP",
+  "tlsFragmentRecord": "Registro TLS",
+  "tlsFragmentRecordHint": "Divide el nombre del servidor (SNI) en dos registros TLS",
   "tlsFragmentOffHint": "Conexión TLS normal",
   "sectionBypass": "Si Mozilla está bloqueado",
   "apiRelay": "Servidor de retransmisión",
@@ -397,6 +399,7 @@
   "tunOutdated": "El servicio TUN es más antiguo que esta app. Vuelva a instalarlo para usar el modo TUN.",
   "tunAppOutdated": "El servicio TUN es más reciente que esta app. Actualice la app para usar el modo TUN.",
   "tunBusy": "Otra copia de Firefox VPN está usando el modo TUN.",
+  "tunNoDriver": "El controlador TUN del sistema no está disponible. Reinicia el ordenador e inténtalo de nuevo.",
   "tunInstall": "Instalar",
   "tunInstallAgain": "Volver a instalar",
   "trayTunMode": "Modo TUN (todas las apps)",
@@ -479,44 +482,5 @@
   "zedSpeed": "Speed",
   "zedSpeedLive": "Live",
   "zedDownload": "Download",
-  "zedUpload": "Upload",
-  "batchImport": "Batch import",
-  "batchImportHint": "One account per line: email:password. The separators email----password, email,password and email password work too.",
-  "batchImportEmpty": "Paste at least one account first.",
-  "batchLineInvalid": "Not an account line",
-  "batchAdded": "Added",
-  "batchNeedsManual": "Needs manual sign-in",
-  "batchLineSkipped": "Skipped",
-  "batchSkip": "Skip",
-  "batchImportAction": "Import",
-  "batchProgress": "Adding {current} of {total}…",
-  "@batchProgress": {
-    "placeholders": {
-      "current": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      }
-    }
-  },
-  "batchSkipped": "{skipped} skipped",
-  "@batchSkipped": {
-    "placeholders": {
-      "skipped": {
-        "type": "int"
-      }
-    }
-  },
-  "batchSummary": "{added} added, {failed} failed",
-  "@batchSummary": {
-    "placeholders": {
-      "added": {
-        "type": "int"
-      },
-      "failed": {
-        "type": "int"
-      }
-    }
-  }
+  "zedUpload": "Upload"
 }

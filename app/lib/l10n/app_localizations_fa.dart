@@ -860,6 +860,12 @@ class AppLocalizationsFa extends AppLocalizations {
   String get tlsFragmentSniHint => 'تقسیم نام سرور (SNI) بین چند بسته TCP';
 
   @override
+  String get tlsFragmentRecord => 'دو تکه کردن TLS';
+
+  @override
+  String get tlsFragmentRecordHint => 'ارسال نام سرور (SNI) در دو تکه TLS';
+
+  @override
   String get tlsFragmentOffHint => 'اتصال عادی TLS';
 
   @override
@@ -1397,6 +1403,10 @@ class AppLocalizationsFa extends AppLocalizations {
   String get tunBusy => 'حالت TUN را نسخه دیگری از Firefox VPN استفاده می‌کند.';
 
   @override
+  String get tunNoDriver =>
+      'درایور TUN سیستم در دسترس نیست. سیستم را ری‌استارت کنید و دوباره امتحان کنید.';
+
+  @override
   String get tunInstall => 'نصب';
 
   @override
@@ -1668,46 +1678,4 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get zedUpload => 'آپلود';
 
-  @override
-  String get batchImport => 'افزودن گروهی';
-
-  @override
-  String get batchImportHint =>
-      'هر خط یک حساب: ایمیل:رمز. جداکننده‌های ایمیل----رمز، ایمیل,رمز و ایمیل رمز هم کار می‌کنند.';
-
-  @override
-  String get batchImportEmpty => 'دست‌کم یک حساب وارد کنید.';
-
-  @override
-  String get batchLineInvalid => 'خط حساب نیست';
-
-  @override
-  String get batchAdded => 'اضافه شد';
-
-  @override
-  String get batchNeedsManual => 'نیاز به ورود دستی';
-
-  @override
-  String get batchLineSkipped => 'رد شد';
-
-  @override
-  String get batchSkip => 'رد کردن';
-
-  @override
-  String get batchImportAction => 'افزودن';
-
-  @override
-  String batchProgress(int current, int total) {
-    return 'در حال افزودن $current از $total…';
-  }
-
-  @override
-  String batchSkipped(int skipped) {
-    return '$skipped رد شد';
-  }
-
-  @override
-  String batchSummary(int added, int failed) {
-    return '$added اضافه شد، $failed ناموفق';
-  }
 }

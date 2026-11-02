@@ -248,6 +248,8 @@
   "tlsFragmentSni": "اسم الخادم (SNI)",
   "tlsFragmentFirstByteHint": "يفصل ترويسة TLS عند البايت الأول (0x16)",
   "tlsFragmentSniHint": "يقسّم اسم الخادم (SNI) على عدة حزم TCP",
+  "tlsFragmentRecord": "سجل TLS",
+  "tlsFragmentRecordHint": "يقسّم اسم الخادم (SNI) على سجلَّي TLS",
   "tlsFragmentOffHint": "اتصال TLS عادي",
   "sectionBypass": "إذا كانت Mozilla محجوبة",
   "apiRelay": "خادم الترحيل",
@@ -397,6 +399,7 @@
   "tunOutdated": "خدمة TUN أقدم من هذا التطبيق. ثبّتها مرة أخرى لاستخدام وضع TUN.",
   "tunAppOutdated": "خدمة TUN أحدث من هذا التطبيق. حدّث التطبيق لاستخدام وضع TUN.",
   "tunBusy": "نسخة أخرى من Firefox VPN تستخدم وضع TUN.",
+  "tunNoDriver": "برنامج تشغيل TUN في النظام غير متوفر. أعد تشغيل الكمبيوتر وحاول مرة أخرى.",
   "tunInstall": "تثبيت",
   "tunInstallAgain": "إعادة التثبيت",
   "trayTunMode": "وضع TUN (جميع التطبيقات)",
@@ -479,44 +482,5 @@
   "zedSpeed": "Speed",
   "zedSpeedLive": "Live",
   "zedDownload": "Download",
-  "zedUpload": "Upload",
-  "batchImport": "Batch import",
-  "batchImportHint": "One account per line: email:password. The separators email----password, email,password and email password work too.",
-  "batchImportEmpty": "Paste at least one account first.",
-  "batchLineInvalid": "Not an account line",
-  "batchAdded": "Added",
-  "batchNeedsManual": "Needs manual sign-in",
-  "batchLineSkipped": "Skipped",
-  "batchSkip": "Skip",
-  "batchImportAction": "Import",
-  "batchProgress": "Adding {current} of {total}…",
-  "@batchProgress": {
-    "placeholders": {
-      "current": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      }
-    }
-  },
-  "batchSkipped": "{skipped} skipped",
-  "@batchSkipped": {
-    "placeholders": {
-      "skipped": {
-        "type": "int"
-      }
-    }
-  },
-  "batchSummary": "{added} added, {failed} failed",
-  "@batchSummary": {
-    "placeholders": {
-      "added": {
-        "type": "int"
-      },
-      "failed": {
-        "type": "int"
-      }
-    }
-  }
+  "zedUpload": "Upload"
 }

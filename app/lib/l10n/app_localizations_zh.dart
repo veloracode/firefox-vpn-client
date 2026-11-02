@@ -841,6 +841,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get tlsFragmentSniHint => '将服务器名称 (SNI) 拆分到多个 TCP 数据包';
 
   @override
+  String get tlsFragmentRecord => 'TLS 记录';
+
+  @override
+  String get tlsFragmentRecordHint => '将服务器名称 (SNI) 拆分到两条 TLS 记录';
+
+  @override
   String get tlsFragmentOffHint => '普通 TLS 连接';
 
   @override
@@ -1352,6 +1358,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get tunBusy => '另一个 Firefox VPN 副本正在使用 TUN 模式。';
 
   @override
+  String get tunNoDriver => '系统的 TUN 驱动不可用。请重启电脑后重试。';
+
+  @override
   String get tunInstall => '安装';
 
   @override
@@ -1618,48 +1627,6 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get zedUpload => 'Upload';
 
-  @override
-  String get batchImport => 'Batch import';
-
-  @override
-  String get batchImportHint =>
-      'One account per line: email:password. The separators email----password, email,password and email password work too.';
-
-  @override
-  String get batchImportEmpty => 'Paste at least one account first.';
-
-  @override
-  String get batchLineInvalid => 'Not an account line';
-
-  @override
-  String get batchAdded => 'Added';
-
-  @override
-  String get batchNeedsManual => 'Needs manual sign-in';
-
-  @override
-  String get batchLineSkipped => 'Skipped';
-
-  @override
-  String get batchSkip => 'Skip';
-
-  @override
-  String get batchImportAction => 'Import';
-
-  @override
-  String batchProgress(int current, int total) {
-    return 'Adding $current of $total…';
-  }
-
-  @override
-  String batchSkipped(int skipped) {
-    return '$skipped skipped';
-  }
-
-  @override
-  String batchSummary(int added, int failed) {
-    return '$added added, $failed failed';
-  }
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -2496,6 +2463,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get tlsFragmentSniHint => '將伺服器名稱 (SNI) 拆分到多個 TCP 封包';
 
   @override
+  String get tlsFragmentRecord => 'TLS 記錄';
+
+  @override
+  String get tlsFragmentRecordHint => '將伺服器名稱 (SNI) 拆分到兩筆 TLS 記錄';
+
+  @override
   String get tlsFragmentOffHint => '一般 TLS 連線';
 
   @override
@@ -3010,6 +2983,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get tunBusy => '另一個 Firefox VPN 副本正在使用 TUN 模式。';
 
   @override
+  String get tunNoDriver => '系統的 TUN 驅動程式無法使用。請重新啟動電腦後再試一次。';
+
+  @override
   String get tunInstall => '安裝';
 
   @override
@@ -3276,46 +3252,4 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   @override
   String get zedUpload => 'Upload';
 
-  @override
-  String get batchImport => 'Batch import';
-
-  @override
-  String get batchImportHint =>
-      'One account per line: email:password. The separators email----password, email,password and email password work too.';
-
-  @override
-  String get batchImportEmpty => 'Paste at least one account first.';
-
-  @override
-  String get batchLineInvalid => 'Not an account line';
-
-  @override
-  String get batchAdded => 'Added';
-
-  @override
-  String get batchNeedsManual => 'Needs manual sign-in';
-
-  @override
-  String get batchLineSkipped => 'Skipped';
-
-  @override
-  String get batchSkip => 'Skip';
-
-  @override
-  String get batchImportAction => 'Import';
-
-  @override
-  String batchProgress(int current, int total) {
-    return 'Adding $current of $total…';
-  }
-
-  @override
-  String batchSkipped(int skipped) {
-    return '$skipped skipped';
-  }
-
-  @override
-  String batchSummary(int added, int failed) {
-    return '$added added, $failed failed';
-  }
 }

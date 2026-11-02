@@ -865,6 +865,13 @@ class AppLocalizationsAz extends AppLocalizations {
       'Server adını (SNI) bir neçə TCP paketinə bölür';
 
   @override
+  String get tlsFragmentRecord => 'TLS qeydi';
+
+  @override
+  String get tlsFragmentRecordHint =>
+      'Server adını (SNI) iki TLS qeydinə bölür';
+
+  @override
   String get tlsFragmentOffHint => 'Adi TLS bağlantısı';
 
   @override
@@ -1407,6 +1414,10 @@ class AppLocalizationsAz extends AppLocalizations {
       'Firefox VPN-in başqa nüsxəsi TUN rejimindən istifadə edir.';
 
   @override
+  String get tunNoDriver =>
+      'Sistemin TUN sürücüsü əlçatan deyil. Kompüteri yenidən başladın və yenidən cəhd edin.';
+
+  @override
   String get tunInstall => 'Quraşdır';
 
   @override
@@ -1678,46 +1689,4 @@ class AppLocalizationsAz extends AppLocalizations {
   @override
   String get zedUpload => 'Upload';
 
-  @override
-  String get batchImport => 'Batch import';
-
-  @override
-  String get batchImportHint =>
-      'One account per line: email:password. The separators email----password, email,password and email password work too.';
-
-  @override
-  String get batchImportEmpty => 'Paste at least one account first.';
-
-  @override
-  String get batchLineInvalid => 'Not an account line';
-
-  @override
-  String get batchAdded => 'Added';
-
-  @override
-  String get batchNeedsManual => 'Needs manual sign-in';
-
-  @override
-  String get batchLineSkipped => 'Skipped';
-
-  @override
-  String get batchSkip => 'Skip';
-
-  @override
-  String get batchImportAction => 'Import';
-
-  @override
-  String batchProgress(int current, int total) {
-    return 'Adding $current of $total…';
-  }
-
-  @override
-  String batchSkipped(int skipped) {
-    return '$skipped skipped';
-  }
-
-  @override
-  String batchSummary(int added, int failed) {
-    return '$added added, $failed failed';
-  }
 }

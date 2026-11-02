@@ -248,6 +248,8 @@
   "tlsFragmentSni": "Nama server (SNI)",
   "tlsFragmentFirstByteHint": "Memisahkan header TLS pada byte pertama (0x16)",
   "tlsFragmentSniHint": "Membagi nama server (SNI) ke beberapa paket TCP",
+  "tlsFragmentRecord": "Rekaman TLS",
+  "tlsFragmentRecordHint": "Membagi nama server (SNI) ke dua rekaman TLS",
   "tlsFragmentOffHint": "Koneksi TLS biasa",
   "sectionBypass": "Jika Mozilla diblokir",
   "apiRelay": "Server relay",
@@ -397,6 +399,7 @@
   "tunOutdated": "Layanan TUN lebih lama dari aplikasi ini. Pasang lagi untuk memakai mode TUN.",
   "tunAppOutdated": "Layanan TUN lebih baru dari aplikasi ini. Perbarui aplikasi untuk memakai mode TUN.",
   "tunBusy": "Salinan lain Firefox VPN sedang memakai mode TUN.",
+  "tunNoDriver": "Driver TUN sistem tidak tersedia. Mulai ulang komputer lalu coba lagi.",
   "tunInstall": "Pasang",
   "tunInstallAgain": "Pasang lagi",
   "trayTunMode": "Mode TUN (semua aplikasi)",
@@ -479,44 +482,5 @@
   "zedSpeed": "Speed",
   "zedSpeedLive": "Live",
   "zedDownload": "Download",
-  "zedUpload": "Upload",
-  "batchImport": "Batch import",
-  "batchImportHint": "One account per line: email:password. The separators email----password, email,password and email password work too.",
-  "batchImportEmpty": "Paste at least one account first.",
-  "batchLineInvalid": "Not an account line",
-  "batchAdded": "Added",
-  "batchNeedsManual": "Needs manual sign-in",
-  "batchLineSkipped": "Skipped",
-  "batchSkip": "Skip",
-  "batchImportAction": "Import",
-  "batchProgress": "Adding {current} of {total}…",
-  "@batchProgress": {
-    "placeholders": {
-      "current": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      }
-    }
-  },
-  "batchSkipped": "{skipped} skipped",
-  "@batchSkipped": {
-    "placeholders": {
-      "skipped": {
-        "type": "int"
-      }
-    }
-  },
-  "batchSummary": "{added} added, {failed} failed",
-  "@batchSummary": {
-    "placeholders": {
-      "added": {
-        "type": "int"
-      },
-      "failed": {
-        "type": "int"
-      }
-    }
-  }
+  "zedUpload": "Upload"
 }

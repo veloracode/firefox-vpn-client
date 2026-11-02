@@ -865,6 +865,13 @@ class AppLocalizationsVi extends AppLocalizations {
   String get tlsFragmentSniHint => 'Chia tên máy chủ (SNI) thành nhiều gói TCP';
 
   @override
+  String get tlsFragmentRecord => 'Bản ghi TLS';
+
+  @override
+  String get tlsFragmentRecordHint =>
+      'Chia tên máy chủ (SNI) thành hai bản ghi TLS';
+
+  @override
   String get tlsFragmentOffHint => 'Kết nối TLS thông thường';
 
   @override
@@ -1405,6 +1412,10 @@ class AppLocalizationsVi extends AppLocalizations {
   String get tunBusy => 'Một bản Firefox VPN khác đang dùng chế độ TUN.';
 
   @override
+  String get tunNoDriver =>
+      'Trình điều khiển TUN của hệ thống không khả dụng. Hãy khởi động lại máy tính rồi thử lại.';
+
+  @override
   String get tunInstall => 'Cài đặt';
 
   @override
@@ -1676,46 +1687,4 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get zedUpload => 'Upload';
 
-  @override
-  String get batchImport => 'Batch import';
-
-  @override
-  String get batchImportHint =>
-      'One account per line: email:password. The separators email----password, email,password and email password work too.';
-
-  @override
-  String get batchImportEmpty => 'Paste at least one account first.';
-
-  @override
-  String get batchLineInvalid => 'Not an account line';
-
-  @override
-  String get batchAdded => 'Added';
-
-  @override
-  String get batchNeedsManual => 'Needs manual sign-in';
-
-  @override
-  String get batchLineSkipped => 'Skipped';
-
-  @override
-  String get batchSkip => 'Skip';
-
-  @override
-  String get batchImportAction => 'Import';
-
-  @override
-  String batchProgress(int current, int total) {
-    return 'Adding $current of $total…';
-  }
-
-  @override
-  String batchSkipped(int skipped) {
-    return '$skipped skipped';
-  }
-
-  @override
-  String batchSummary(int added, int failed) {
-    return '$added added, $failed failed';
-  }
 }

@@ -248,6 +248,8 @@
   "tlsFragmentSni": "Kiszolgálónév (SNI)",
   "tlsFragmentFirstByteHint": "Az első bájtnál osztja ketté a TLS-fejlécet (0x16)",
   "tlsFragmentSniHint": "Több TCP-csomagra osztja a kiszolgálónevet (SNI)",
+  "tlsFragmentRecord": "TLS-rekord",
+  "tlsFragmentRecordHint": "Két TLS-rekordra osztja a kiszolgálónevet (SNI)",
   "tlsFragmentOffHint": "Normál TLS-kapcsolat",
   "sectionBypass": "Ha a Mozilla le van tiltva",
   "apiRelay": "Közvetítő szerver",
@@ -397,6 +399,7 @@
   "tunOutdated": "A TUN-szolgáltatás régebbi, mint ez az alkalmazás. A TUN mód használatához telepítse újra.",
   "tunAppOutdated": "A TUN-szolgáltatás újabb, mint ez az alkalmazás. A TUN mód használatához frissítse az alkalmazást.",
   "tunBusy": "A Firefox VPN egy másik példánya használja a TUN módot.",
+  "tunNoDriver": "A rendszer TUN-illesztőprogramja nem érhető el. Indítsa újra a számítógépet, és próbálja újra.",
   "tunInstall": "Telepítés",
   "tunInstallAgain": "Újratelepítés",
   "trayTunMode": "TUN mód (minden alkalmazás)",
@@ -479,44 +482,5 @@
   "zedSpeed": "Speed",
   "zedSpeedLive": "Live",
   "zedDownload": "Download",
-  "zedUpload": "Upload",
-  "batchImport": "Batch import",
-  "batchImportHint": "One account per line: email:password. The separators email----password, email,password and email password work too.",
-  "batchImportEmpty": "Paste at least one account first.",
-  "batchLineInvalid": "Not an account line",
-  "batchAdded": "Added",
-  "batchNeedsManual": "Needs manual sign-in",
-  "batchLineSkipped": "Skipped",
-  "batchSkip": "Skip",
-  "batchImportAction": "Import",
-  "batchProgress": "Adding {current} of {total}…",
-  "@batchProgress": {
-    "placeholders": {
-      "current": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      }
-    }
-  },
-  "batchSkipped": "{skipped} skipped",
-  "@batchSkipped": {
-    "placeholders": {
-      "skipped": {
-        "type": "int"
-      }
-    }
-  },
-  "batchSummary": "{added} added, {failed} failed",
-  "@batchSummary": {
-    "placeholders": {
-      "added": {
-        "type": "int"
-      },
-      "failed": {
-        "type": "int"
-      }
-    }
-  }
+  "zedUpload": "Upload"
 }

@@ -545,6 +545,8 @@
   "tlsFragmentSni": "Server name (SNI)",
   "tlsFragmentFirstByteHint": "Splits the TLS header at the first byte (0x16)",
   "tlsFragmentSniHint": "Splits the server name (SNI) across TCP packets",
+  "tlsFragmentRecord": "TLS record",
+  "tlsFragmentRecordHint": "Splits the server name (SNI) across two TLS records",
   "tlsFragmentOffHint": "Normal TLS connection",
   "sectionBypass": "If Mozilla is blocked",
   "apiRelay": "Relay server",
@@ -882,6 +884,7 @@
   "tunOutdated": "The TUN service is older than this app. Install it again to use TUN mode.",
   "tunAppOutdated": "The TUN service is newer than this app. Update the app to use TUN mode.",
   "tunBusy": "Another copy of Firefox VPN is using TUN mode.",
+  "tunNoDriver": "The system's TUN driver isn't available. Restart the computer and try again.",
   "tunInstall": "Install",
   "tunInstallAgain": "Install again",
   "trayTunMode": "TUN mode (all apps)",
@@ -1044,44 +1047,5 @@
   "zedSpeed": "Speed",
   "zedSpeedLive": "Live",
   "zedDownload": "Download",
-  "zedUpload": "Upload",
-  "batchImport": "Batch import",
-  "batchImportHint": "One account per line: email:password. The separators email----password, email,password and email password work too.",
-  "batchImportEmpty": "Paste at least one account first.",
-  "batchLineInvalid": "Not an account line",
-  "batchAdded": "Added",
-  "batchNeedsManual": "Needs manual sign-in",
-  "batchLineSkipped": "Skipped",
-  "batchSkip": "Skip",
-  "batchImportAction": "Import",
-  "batchProgress": "Adding {current} of {total}…",
-  "@batchProgress": {
-    "placeholders": {
-      "current": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      }
-    }
-  },
-  "batchSkipped": "{skipped} skipped",
-  "@batchSkipped": {
-    "placeholders": {
-      "skipped": {
-        "type": "int"
-      }
-    }
-  },
-  "batchSummary": "{added} added, {failed} failed",
-  "@batchSummary": {
-    "placeholders": {
-      "added": {
-        "type": "int"
-      },
-      "failed": {
-        "type": "int"
-      }
-    }
-  }
+  "zedUpload": "Upload"
 }

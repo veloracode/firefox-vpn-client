@@ -1611,6 +1611,18 @@ abstract class AppLocalizations {
   /// **'Splits the server name (SNI) across TCP packets'**
   String get tlsFragmentSniHint;
 
+  /// No description provided for @tlsFragmentRecord.
+  ///
+  /// In en, this message translates to:
+  /// **'TLS record'**
+  String get tlsFragmentRecord;
+
+  /// No description provided for @tlsFragmentRecordHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Splits the server name (SNI) across two TLS records'**
+  String get tlsFragmentRecordHint;
+
   /// No description provided for @tlsFragmentOffHint.
   ///
   /// In en, this message translates to:
@@ -2505,6 +2517,12 @@ abstract class AppLocalizations {
   /// **'Another copy of Firefox VPN is using TUN mode.'**
   String get tunBusy;
 
+  /// No description provided for @tunNoDriver.
+  ///
+  /// In en, this message translates to:
+  /// **'The system\'s TUN driver isn\'t available. Restart the computer and try again.'**
+  String get tunNoDriver;
+
   /// No description provided for @tunInstall.
   ///
   /// In en, this message translates to:
@@ -3003,77 +3021,6 @@ abstract class AppLocalizations {
   /// **'Upload'**
   String get zedUpload;
 
-  /// No description provided for @batchImport.
-  ///
-  /// In en, this message translates to:
-  /// **'Batch import'**
-  String get batchImport;
-
-  /// No description provided for @batchImportHint.
-  ///
-  /// In en, this message translates to:
-  /// **'One account per line: email:password. The separators email----password, email,password and email password work too.'**
-  String get batchImportHint;
-
-  /// No description provided for @batchImportEmpty.
-  ///
-  /// In en, this message translates to:
-  /// **'Paste at least one account first.'**
-  String get batchImportEmpty;
-
-  /// No description provided for @batchLineInvalid.
-  ///
-  /// In en, this message translates to:
-  /// **'Not an account line'**
-  String get batchLineInvalid;
-
-  /// No description provided for @batchAdded.
-  ///
-  /// In en, this message translates to:
-  /// **'Added'**
-  String get batchAdded;
-
-  /// No description provided for @batchNeedsManual.
-  ///
-  /// In en, this message translates to:
-  /// **'Needs manual sign-in'**
-  String get batchNeedsManual;
-
-  /// No description provided for @batchLineSkipped.
-  ///
-  /// In en, this message translates to:
-  /// **'Skipped'**
-  String get batchLineSkipped;
-
-  /// No description provided for @batchSkip.
-  ///
-  /// In en, this message translates to:
-  /// **'Skip'**
-  String get batchSkip;
-
-  /// No description provided for @batchImportAction.
-  ///
-  /// In en, this message translates to:
-  /// **'Import'**
-  String get batchImportAction;
-
-  /// No description provided for @batchProgress.
-  ///
-  /// In en, this message translates to:
-  /// **'Adding {current} of {total}…'**
-  String batchProgress(int current, int total);
-
-  /// No description provided for @batchSkipped.
-  ///
-  /// In en, this message translates to:
-  /// **'{skipped} skipped'**
-  String batchSkipped(int skipped);
-
-  /// No description provided for @batchSummary.
-  ///
-  /// In en, this message translates to:
-  /// **'{added} added, {failed} failed'**
-  String batchSummary(int added, int failed);
 }
 
 class _AppLocalizationsDelegate
