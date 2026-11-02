@@ -7,7 +7,7 @@ import 'widgets.dart';
 /// The help row under the sign-in forms: create a Firefox account (in
 /// the system browser), and the dot method that makes many accounts
 /// out of one Gmail inbox. Shown by the single sign-in dialog and the
-/// batch import dialog alike.
+/// sign-in dialog alike.
 class AccountHelpLinks extends StatelessWidget {
   const AccountHelpLinks({super.key});
 

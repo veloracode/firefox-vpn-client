@@ -6,14 +6,13 @@ import '../core/models.dart';
 import '../l10n/app_localizations.dart';
 import '../platform.dart';
 import 'accounts_page.dart' show accountReason;
-import 'batch_import_dialog.dart';
 import 'format.dart';
 import 'signin_dialog.dart';
 import 'widgets.dart';
 
 /// The Foxy accounts page: the classic page's accounts as phone-style
 /// cards, with the same actions (use now, refresh, remove, the on/off
-/// switch), plus batch import. Every action is the core's, through the
+/// switch). Every action is the core's, through the
 /// controller; only the arrangement is FoxyVPN's.
 class FoxyAccountsPage extends StatelessWidget {
   const FoxyAccountsPage({super.key, required this.core});
@@ -32,12 +31,6 @@ class FoxyAccountsPage extends StatelessWidget {
         Row(
           children: [
             Expanded(child: PageTitle(l.navAccounts)),
-            OutlinedButton.icon(
-              onPressed: () => showBatchImportDialog(context, core),
-              icon: const Icon(Icons.playlist_add_rounded),
-              label: Text(l.batchImport),
-            ),
-            const SizedBox(width: 8),
             FilledButton.icon(
               onPressed: () => showSignInDialog(context, core),
               icon: const Icon(Icons.add_rounded),
