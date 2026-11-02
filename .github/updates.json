@@ -1,6 +1,6 @@
 {
-  "android": "2.4.9",
-  "linux": "2.4.9",
-  "macos": "2.4.9",
-  "windows": "2.4.9"
+  "android": "1.0.0",
+  "linux": "1.0.0",
+  "macos": "1.0.0",
+  "windows": "1.0.0"
 }
