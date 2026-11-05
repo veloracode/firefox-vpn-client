@@ -842,6 +842,12 @@ class _PhoneHome extends StatelessWidget {
   Future<void> _toggle(bool on) async {
     if (status.systemProxySupported) {
       await core.setSystemProxy(on ? 'clear' : 'set');
+      // The mode alone connects nothing: the system proxy is applied only
+      // while the engine runs, so the orb powers the engine too, as every
+      // other home's does (homePowerPressed). Without this, on a computer
+      // this surface showed "on" with the engine off and nothing ever
+      // connected.
+      await core.setOn(!on);
     } else {
       await core.setOn(!on);
     }

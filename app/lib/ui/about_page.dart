@@ -80,6 +80,10 @@ class _AboutPageState extends State<AboutPage> {
               const Divider(height: 24),
               _Line(label: l.coreVersionLabel, value: status?.version ?? '—'),
               const Divider(height: 24),
+              // The fork's makers, as in this project's earlier builds;
+              // a name, not a sentence, so it is not localized.
+              const _Line(label: 'Creators', value: 'muse & arblant'),
+              const Divider(height: 24),
               // The result and the Download button under the title, so a
               // phone's narrow screen keeps the text readable.
               Row(
