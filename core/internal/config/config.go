@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net"
 	"net/url"
 	"os"
@@ -746,7 +747,38 @@ func DefaultDataDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return defaultDataDirFor(dir, runtime.GOOS, os.Getenv, fileExists), nil
+	data := defaultDataDirFor(dir, runtime.GOOS, os.Getenv, fileExists)
+	MoveLegacyDataDir(data)
+	return data, nil
+}
+
+// The app's data folder before upstream 1.0.9, by its name now. This fork
+// kept the program's name, so the old and the new folder are the same on
+// every system: the map is the identity, and MoveLegacyDataDir below can
+// never move a folder (when the old folder exists it IS dir, which the
+// first check in the function leaves alone; when it does not, there is
+// nothing to move). It is kept, in upstream's shape, so an install of this
+// fork upgrades in place with its accounts and settings untouched.
+var legacyDataFolders = map[string]string{AppFolder: AppFolder, linuxDataFolder: linuxDataFolder}
+
+// MoveLegacyDataDir moves the app's data folder of a version before
+// upstream 1.0.9 to dir, the app's data folder now, when the old one exists
+// and the new one does not yet (the app does the same: app/lib/core/core_api.dart).
+// Other folders (Windows' and a portable copy's user-data beside the app)
+// keep their name.
+func MoveLegacyDataDir(dir string) {
+	old, ok := legacyDataFolders[filepath.Base(dir)]
+	if !ok {
+		return
+	}
+	legacy := filepath.Join(filepath.Dir(dir), old)
+	if _, err := os.Lstat(dir); !errors.Is(err, fs.ErrNotExist) {
+		return
+	}
+	if info, err := os.Lstat(legacy); err != nil || !info.IsDir() {
+		return
+	}
+	_ = os.Rename(legacy, dir)
 }
 
 // ProgramDir is the program's folder: the desktop app's when this core
@@ -818,9 +850,12 @@ func defaultDataDirFor(exeDir, goos string, getenv func(string) string, exists f
 		if base == "" {
 			base = filepath.Join(home, ".local", "share")
 		}
-		return filepath.Join(base, "firefox-vpn-client")
+		return filepath.Join(base, linuxDataFolder)
 	}
 }
+
+// linuxDataFolder is the app's data folder on Linux, in XDG_DATA_HOME.
+const linuxDataFolder = "firefox-vpn-client"
 
 // CheckWritable verifies that dir can be created and written, so a
 // read-only installation folder fails with a clear message at startup.

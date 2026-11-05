@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "flutter_window.h"
+#include "gpu.h"
 #include "utils.h"
 
 namespace {
@@ -63,6 +64,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
 
   flutter::DartProject project(L"data");
+  // Impeller draws only a black window on a card below Direct3D 11.
+  if (OldGraphicsCard()) {
+    project.set_impeller_switch(flutter::ImpellerSwitch::Disabled);
+  }
 
   std::vector<std::string> command_line_arguments =
       GetCommandLineArguments();

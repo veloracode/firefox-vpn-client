@@ -157,6 +157,33 @@ void main() {
       );
     });
 
+    test('the fork data folder stays in place across upstream 1.0.9', () {
+      // This fork kept the program's name, so the folder of a version
+      // before upstream 1.0.9 and of this version are the same folder:
+      // moveLegacyDataDir must leave it, and its files, exactly as they
+      // are, and must not create anything when there is no folder.
+      final sep = Platform.pathSeparator;
+      for (final name in ['Firefox VPN Client', 'firefox-vpn-client']) {
+        final base = Directory.systemTemp.createTempSync('legacy');
+        addTearDown(() => base.deleteSync(recursive: true));
+        final dir = Directory('${base.path}$sep$name')..createSync();
+        File('${dir.path}${sep}config.json').writeAsStringSync('{}');
+        CoreLocator.moveLegacyDataDir(dir.path);
+        expect(File('${dir.path}${sep}config.json').existsSync(), isTrue);
+        expect(File('${dir.path}${sep}config.json').readAsStringSync(), '{}');
+        final empty = Directory.systemTemp.createTempSync('legacy');
+        addTearDown(() => empty.deleteSync(recursive: true));
+        CoreLocator.moveLegacyDataDir('${empty.path}$sep$name');
+        expect(Directory('${empty.path}$sep$name').existsSync(), isFalse);
+      }
+      // user-data beside the app keeps its name.
+      final base = Directory.systemTemp.createTempSync('legacy');
+      addTearDown(() => base.deleteSync(recursive: true));
+      Directory('${base.path}${sep}Firefox VPN Client').createSync();
+      CoreLocator.moveLegacyDataDir('${base.path}${sep}user-data');
+      expect(Directory('${base.path}${sep}user-data').existsSync(), isFalse);
+    });
+
     test('maps listen addresses to loopback URLs', () {
       expect(CoreLocator.listenUri('[::1]:9090').host, '::1');
       expect(
