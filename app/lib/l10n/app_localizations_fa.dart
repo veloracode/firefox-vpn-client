@@ -1754,23 +1754,23 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get dotMethodIntro =>
-      'جیمیل نقطه‌های آدرس ایمیل را نادیده می‌گیرد: a.b@gmail.com و ab@gmail.com دقیقاً یک صندوق ورودی هستند.';
+      'جیمیل نقطه‌های آدرس ایمیل را نادیده می‌گیرد: a.b@gmail.com و ab@gmail.com دقیقا یک صندوق ورودی هستند.';
 
   @override
   String get dotMethodPoint =>
-      'هر نسخهٔ نقطه‌دار هنگام ساخت حساب فایرفاکس یک ایمیل تازه به حساب می‌آید، اما همهٔ ایمیل‌های تأیید باز هم به همان یک صندوق می‌رسند.';
+      'هر نسخه نقطه‌دار هنگام ساخت حساب فایرفاکس یک ایمیل تازه به حساب می‌آید، اما همه ایمیل‌های تایید باز هم به همان یک صندوق می‌رسند.';
 
   @override
   String get dotMethodStep1 =>
-      'با یک نسخهٔ نقطه‌دار تازه از آدرستان یک حساب فایرفاکس بسازید.';
+      'با یک نسخه نقطه‌دار تازه از آدرستان یک حساب فایرفاکس بسازید.';
 
   @override
   String get dotMethodStep2 =>
-      'ایمیل تأیید را در همان صندوق باز کنید و آن را تأیید کنید، یا کد داخلش را بردارید.';
+      'ایمیل تایید را در همان صندوق باز کنید و آن را تایید کنید، یا کد داخلش را بردارید.';
 
   @override
   String get dotMethodStep3 =>
-      'برگردید اینجا و حساب را اضافه کنید. برای حساب‌های بیشتر، با یک نسخهٔ نقطه‌دار دیگر تکرار کنید.';
+      'برگردید اینجا و حساب را اضافه کنید. برای حساب‌های بیشتر، با یک نسخه نقطه‌دار دیگر تکرار کنید.';
 
   @override
   String get dotMethodExample => 'مثال';
@@ -1806,7 +1806,7 @@ class AppLocalizationsFa extends AppLocalizations {
   String get zedTapCoreCancel => 'برای لغو اتصال روی دایره بزنید';
 
   @override
-  String get zedTrafficProtected => 'همهٔ ترافیک محافظت می‌شود';
+  String get zedTrafficProtected => 'همه ترافیک محافظت می‌شود';
 
   @override
   String get zedVpnOn => 'VPN روشن است';
@@ -1874,6 +1874,7 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get zedUpload => 'آپلود';
 
+  @override
   String get testRelay => 'تست سلامت رله';
 
   @override

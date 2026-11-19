@@ -1817,6 +1817,7 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get zedUpload => 'Upload';
 
+  @override
   String get testRelay => '测试中继状态';
 
   @override
@@ -3651,6 +3652,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   @override
   String get zedUpload => 'Upload';
 
+  @override
   String get testRelay => '測試中繼狀態';
 
   @override

@@ -1889,6 +1889,7 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get zedUpload => 'Upload';
 
+  @override
   String get testRelay => 'Röle sağlığını test et';
 
   @override

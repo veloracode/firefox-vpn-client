@@ -1903,6 +1903,7 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get zedUpload => 'Upload';
 
+  @override
   String get testRelay => 'Tester le relais';
 
   @override

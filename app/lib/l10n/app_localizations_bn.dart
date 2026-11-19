@@ -1882,6 +1882,7 @@ class AppLocalizationsBn extends AppLocalizations {
   @override
   String get zedUpload => 'Upload';
 
+  @override
   String get testRelay => 'রিলের অবস্থা পরীক্ষা';
 
   @override

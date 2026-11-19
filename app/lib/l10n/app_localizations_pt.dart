@@ -1894,6 +1894,7 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get zedUpload => 'Upload';
 
+  @override
   String get testRelay => 'Testar o relé';
 
   @override

@@ -1892,6 +1892,7 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get zedUpload => 'Upload';
 
+  @override
   String get testRelay => 'Test relay health';
 
   @override

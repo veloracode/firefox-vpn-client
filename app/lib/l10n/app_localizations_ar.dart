@@ -1895,6 +1895,7 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get zedUpload => 'Upload';
 
+  @override
   String get testRelay => 'اختبار سلامة المرحّل';
 
   @override

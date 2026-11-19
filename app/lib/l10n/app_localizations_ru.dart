@@ -1896,6 +1896,7 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get zedUpload => 'Upload';
 
+  @override
   String get testRelay => 'Проверить реле';
 
   @override

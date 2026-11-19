@@ -1901,6 +1901,7 @@ class AppLocalizationsHu extends AppLocalizations {
   @override
   String get zedUpload => 'Upload';
 
+  @override
   String get testRelay => 'Átjátszó ellenőrzése';
 
   @override

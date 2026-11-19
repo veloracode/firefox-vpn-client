@@ -1886,6 +1886,7 @@ class AppLocalizationsId extends AppLocalizations {
   @override
   String get zedUpload => 'Upload';
 
+  @override
   String get testRelay => 'Uji kesehatan relai';
 
   @override

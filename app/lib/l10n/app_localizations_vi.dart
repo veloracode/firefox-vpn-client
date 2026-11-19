@@ -1887,6 +1887,7 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get zedUpload => 'Upload';
 
+  @override
   String get testRelay => 'Kiểm tra relay';
 
   @override
