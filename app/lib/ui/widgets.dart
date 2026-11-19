@@ -24,6 +24,23 @@ const firefoxAccountSignUpUrl = 'https://accounts.firefox.com/signup';
 const firefoxAccountSetPasswordUrl =
     'https://accounts.firefox.com/reset_password/';
 
+/// The program's logo, its tile (assets/logo.png, made by
+/// tool/app_icons.py), [size] logical pixels square.
+class AppLogo extends StatelessWidget {
+  const AppLogo({super.key, required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Image.asset(
+    'assets/logo.png',
+    width: size,
+    height: size,
+    filterQuality: FilterQuality.medium,
+    excludeFromSemantics: true,
+  );
+}
+
 /// Status colors that read in both themes.
 abstract final class StatusColors {
   static const good = Color(0xFF22A06B);
