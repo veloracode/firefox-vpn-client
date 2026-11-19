@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 
 import 'app_settings.dart';
@@ -56,7 +56,9 @@ Future<void> main(List<String> args) async {
       process: process,
       navigatorKey: navigatorKey,
       // --hidden: a new version that its update started in the tray.
-      startHidden: args.contains('--autostart') || args.contains('--hidden'),
+      startHidden:
+          (args.contains('--autostart') || args.contains('--hidden')) &&
+          !args.contains('--show'),
       autostarted: args.contains('--autostart'),
       manageAutostart: !args.any((a) => a.startsWith('--data-dir=')),
     ).start();
@@ -68,6 +70,7 @@ Future<void> main(List<String> args) async {
 /// that keeps the proxy up while the UI is closed.
 Future<void> runAndroid() async {
   WidgetsFlutterBinding.ensureInitialized();
+  AndroidCore.listenForHomeRequests();
   // Edge to edge: the home page's hero colors the status bar.
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(
@@ -79,6 +82,11 @@ Future<void> runAndroid() async {
   final dataDir = await AndroidCore.dataDir();
   final settings = await AppSettings.load(dataDir);
   await AndroidCore.loadMode();
+  await AndroidCore.prepareFirstRunRouting(
+    settings,
+    systemCountry:
+        WidgetsBinding.instance.platformDispatcher.locale.countryCode,
+  );
   final core = CoreController(
     AndroidCore(dataDir).connect,
     turnOn: AndroidCore.setOn,

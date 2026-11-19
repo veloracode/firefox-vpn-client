@@ -151,6 +151,10 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get accountsGuideUnlimited =>
+      'Les comptes Firefox ont actuellement des données illimitées.';
+
+  @override
   String accountsOrderNote(int percent) {
     return 'Dans l’ordre de cette liste : chacun jusqu’à $percent %, le dernier jusqu’à épuisement de ses données.';
   }
@@ -173,6 +177,9 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get delayTestFailed =>
       'Impossible de mesurer le délai des serveurs. Vérifiez votre connexion.';
+
+  @override
+  String get delayFromLastTest => 'Du test précédent';
 
   @override
   String get createAccountTitle => 'Pas de Firefox Account ?';
@@ -453,6 +460,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get settingsTitle => 'Paramètres';
+
+  @override
+  String get settingsNoMatch => 'Aucun résultat';
 
   @override
   String get sectionGeneral => 'Général';
@@ -742,6 +752,58 @@ class AppLocalizationsFr extends AppLocalizations {
       'Le compte suivant prend le relais lorsque ce pourcentage des données est consommé.';
 
   @override
+  String get signInMethod => 'Méthode de connexion';
+
+  @override
+  String get signInMethodBrowser => 'Connexion par le navigateur';
+
+  @override
+  String get signInMethodApi => 'Connexion directe';
+
+  @override
+  String get browserSignInBroken =>
+      'La page de connexion n\'a pas pu être ouverte.';
+
+  @override
+  String get browserSignInBlocked =>
+      'Mozilla n’a pas terminé la dernière étape de l’ajout du compte (HTTP 406).';
+
+  @override
+  String get browserSignInFallback => 'Connexion avec e-mail et mot de passe';
+
+  @override
+  String get backupExport => 'Enregistrer une sauvegarde';
+
+  @override
+  String get backupImport => 'Importer une sauvegarde';
+
+  @override
+  String backupSaved(String name) {
+    return 'Enregistré : $name';
+  }
+
+  @override
+  String get backupImportTitle => 'Ajouter ces comptes ?';
+
+  @override
+  String get backupAccountExists =>
+      'Déjà ajouté ; sa connexion sera reprise du fichier';
+
+  @override
+  String get backupImportAction => 'Ajouter';
+
+  @override
+  String backupImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count comptes ajoutés',
+      one: '1 compte ajouté',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get sectionDns => 'DNS';
 
   @override
@@ -773,7 +835,38 @@ class AppLocalizationsFr extends AppLocalizations {
   String get transportH3 => 'HTTP/3 (QUIC)';
 
   @override
+  String get ipVersion => 'Version IP';
+
+  @override
+  String get ipVersionAuto => 'Automatique (IPv4 d\'abord, puis IPv6)';
+
+  @override
+  String get ipVersionDual => 'Les deux à la fois (dual-stack)';
+
+  @override
+  String get ipVersionV6First => 'IPv6 d\'abord, puis IPv4';
+
+  @override
+  String get ipVersionV4 => 'IPv4 uniquement';
+
+  @override
+  String get ipVersionV6 => 'IPv6 uniquement';
+
+  @override
+  String get tunMtu => 'MTU';
+
+  @override
+  String get tunMtuHint =>
+      'Taille des paquets de l\'interface VPN, de 1280 à 9000. Vide : automatique.';
+
+  @override
+  String get tunMtuInvalid => 'Un nombre de 1280 à 9000, ou vide';
+
+  @override
   String get transportH2 => 'HTTP/2 (TCP)';
+
+  @override
+  String get transportH1 => 'HTTP/1.1 (TLS)';
 
   @override
   String get directRules => 'Direct';
@@ -855,6 +948,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get tlsFragment => 'Fragmentation TLS';
 
   @override
+  String get tlsFragmentAuto => 'Automatique';
+
+  @override
+  String get tlsFragmentAutoHint =>
+      'Essaie d’autres méthodes si la connexion habituelle échoue.';
+
+  @override
   String get tlsFragmentOff => 'Désactivé';
 
   @override
@@ -885,7 +985,20 @@ class AppLocalizationsFr extends AppLocalizations {
   String get sectionBypass => 'Si Mozilla est bloqué';
 
   @override
+  String get sharedRelay => 'Relais partagé';
+
+  @override
+  String get sharedRelayHint =>
+      'Utiliser les relais partagés de l’application si Mozilla bloque votre région. Un relais personnel activé est prioritaire.';
+
+  @override
+  String get personalRelay => 'Relais personnel';
+
+  @override
   String get apiRelay => 'Serveur relais';
+
+  @override
+  String get apiRelayUse => 'Utiliser le serveur relais';
 
   @override
   String get apiRelayHint =>
@@ -968,6 +1081,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get speedInNotification => 'Afficher la vitesse dans la notification';
 
   @override
+  String get showAppModeSwitch => 'Changement rapide de mode VPN';
+
+  @override
   String get liveTraffic => 'Trafic en direct';
 
   @override
@@ -1028,12 +1144,21 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String updateRequired(String version) {
+    return 'Veuillez passer à la version $version. Cette mise à jour est nécessaire.';
+  }
+
+  @override
   String get download => 'Télécharger';
 
   @override
   String updateCheckFailed(String error) {
     return 'Impossible de rechercher des mises à jour : $error';
   }
+
+  @override
+  String get updateCheckNoNetwork =>
+      'Impossible de joindre GitHub. Vérifiez votre connexion internet et réessayez.';
 
   @override
   String get updateNow => 'Mettre à jour';
@@ -1085,6 +1210,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get connectOnStartup => 'Se connecter au démarrage';
+
+  @override
+  String get autostartShowsWindow => 'Afficher la fenêtre de l\'app';
 
   @override
   String get proxyServiceActive => 'Service proxy actif';
@@ -1140,7 +1268,61 @@ class AppLocalizationsFr extends AppLocalizations {
   String get dataUsedTitle => 'Données utilisées';
 
   @override
+  String get monthlyData => 'Données';
+
+  @override
   String get bypassApps => 'Proxy par application';
+
+  @override
+  String get appClipboardImport => 'Importer depuis le presse-papiers';
+
+  @override
+  String get appClipboardExport => 'Exporter vers le presse-papiers';
+
+  @override
+  String get appClipboardUnavailable =>
+      'Impossible d’accéder au presse-papiers.';
+
+  @override
+  String get appClipboardNoMatches =>
+      'Aucune application installée ne correspond aux noms de paquets du presse-papiers.';
+
+  @override
+  String get appClipboardMerge => 'Fusionner';
+
+  @override
+  String get appClipboardReplace => 'Remplacer';
+
+  @override
+  String appClipboardImportPrompt(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count application(s) installée(s) correspondent. Les ajouter à la sélection actuelle ou la remplacer ?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String appClipboardImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count application(s) importée(s).',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String appClipboardExported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count nom(s) de paquet copié(s).',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get connectRetrying =>
@@ -1233,6 +1415,27 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get appModeIncludeHint =>
       'Seules les applications choisies passent par le VPN ; les autres se connectent directement.';
+
+  @override
+  String get modeAllApps => 'Toutes les apps';
+
+  @override
+  String get modeAllAppsHint => 'Toutes les apps passent par le VPN';
+
+  @override
+  String get modeSelectedApps => 'Apps sélectionnées';
+
+  @override
+  String get modeSelectedAppsHint => 'Seulement les apps sélectionnées';
+
+  @override
+  String selectedAppsCount(String count) {
+    return 'Apps sélectionnées  $count';
+  }
+
+  @override
+  String get allTrafficThroughVpn =>
+      'Tout le trafic du téléphone passe par le VPN.';
 
   @override
   String fromRegionList(String region) {
@@ -1700,4 +1903,25 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get zedUpload => 'Upload';
 
+  String get testRelay => 'Tester le relais';
+
+  @override
+  String get relayTestTitle => 'Test du relais';
+
+  @override
+  String get relayTestHint =>
+      'Vérifie uniquement le relais. Aucune requête à Mozilla ni information de compte n’est envoyée.';
+
+  @override
+  String get relayTestPassed => 'Le relais est prêt';
+
+  @override
+  String get relayTestFailed => 'L’état du relais n’a pas pu être confirmé';
+
+  @override
+  String get relayTestCopy => 'Copier le rapport';
+
+  @override
+  String get relayTestInterrupted =>
+      'Le test s’est terminé avant de recevoir un résultat complet.';
 }

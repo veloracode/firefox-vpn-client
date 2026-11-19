@@ -4,7 +4,12 @@
 // behind a captive portal, counts as connected.
 package netstate
 
-import "sync/atomic"
+import (
+	"net"
+	"slices"
+	"strings"
+	"sync/atomic"
+)
 
 // reported is the state the host reported (Report): 0 none, 1 connected,
 // 2 not connected.
@@ -45,3 +50,34 @@ func Connected() bool {
 // noticed by comparing two readings; ok is false where it cannot be read
 // (macOS, Android). It sends nothing.
 func Current() (name string, ok bool) { return current() }
+
+// RouteIdentity uses the default routes when available and local addresses
+// otherwise. Tunnel and link-local addresses do not identify the underlying
+// network. An empty result gives the caller no basis for reusing a route.
+func RouteIdentity() string {
+	if ReportedDown() {
+		return ""
+	}
+	if name, ok := Current(); ok && name != "" {
+		return name
+	}
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return ""
+	}
+	var parts []string
+	for _, iface := range interfaces {
+		if iface.Flags&net.FlagUp == 0 || iface.Flags&(net.FlagLoopback|net.FlagPointToPoint) != 0 {
+			continue
+		}
+		addresses, _ := iface.Addrs()
+		for _, address := range addresses {
+			ip, _, _ := net.ParseCIDR(address.String())
+			if ip.IsGlobalUnicast() {
+				parts = append(parts, iface.Name+"="+ip.String())
+			}
+		}
+	}
+	slices.Sort(parts)
+	return strings.Join(parts, ";")
+}

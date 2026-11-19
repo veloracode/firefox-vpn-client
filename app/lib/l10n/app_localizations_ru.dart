@@ -152,6 +152,10 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String get accountsGuideUnlimited =>
+      'У аккаунтов Firefox сейчас безлимитный трафик.';
+
+  @override
   String accountsOrderNote(int percent) {
     return 'В порядке этого списка: каждый до $percent%, последний — пока не кончится трафик.';
   }
@@ -173,6 +177,9 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get delayTestFailed =>
       'Не удалось измерить задержку серверов. Проверьте интернет.';
+
+  @override
+  String get delayFromLastTest => 'Из прошлой проверки';
 
   @override
   String get createAccountTitle => 'Нет Firefox Account?';
@@ -450,6 +457,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get settingsTitle => 'Настройки';
+
+  @override
+  String get settingsNoMatch => 'Ничего не найдено';
 
   @override
   String get sectionGeneral => 'Общие';
@@ -738,6 +748,58 @@ class AppLocalizationsRu extends AppLocalizations {
       'Когда израсходована эта доля трафика, включается следующий аккаунт.';
 
   @override
+  String get signInMethod => 'Способ входа';
+
+  @override
+  String get signInMethodBrowser => 'Вход через браузер';
+
+  @override
+  String get signInMethodApi => 'Прямой вход';
+
+  @override
+  String get browserSignInBroken => 'Не удалось открыть страницу входа.';
+
+  @override
+  String get browserSignInBlocked =>
+      'Mozilla не завершила последний шаг добавления аккаунта (HTTP 406).';
+
+  @override
+  String get browserSignInFallback => 'Вход с почтой и паролем';
+
+  @override
+  String get backupExport => 'Сохранить резервную копию';
+
+  @override
+  String get backupImport => 'Импортировать резервную копию';
+
+  @override
+  String backupSaved(String name) {
+    return 'Сохранено: $name';
+  }
+
+  @override
+  String get backupImportTitle => 'Добавить эти аккаунты?';
+
+  @override
+  String get backupAccountExists => 'Уже добавлен; вход будет взят из файла';
+
+  @override
+  String get backupImportAction => 'Добавить';
+
+  @override
+  String backupImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Добавлено $count аккаунта',
+      many: 'Добавлено $count аккаунтов',
+      few: 'Добавлено $count аккаунта',
+      one: 'Добавлен $count аккаунт',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get sectionDns => 'DNS';
 
   @override
@@ -769,7 +831,38 @@ class AppLocalizationsRu extends AppLocalizations {
   String get transportH3 => 'HTTP/3 (QUIC)';
 
   @override
+  String get ipVersion => 'Версия IP';
+
+  @override
+  String get ipVersionAuto => 'Авто (сначала IPv4, затем IPv6)';
+
+  @override
+  String get ipVersionDual => 'Оба сразу (dual-stack)';
+
+  @override
+  String get ipVersionV6First => 'Сначала IPv6, затем IPv4';
+
+  @override
+  String get ipVersionV4 => 'Только IPv4';
+
+  @override
+  String get ipVersionV6 => 'Только IPv6';
+
+  @override
+  String get tunMtu => 'MTU';
+
+  @override
+  String get tunMtuHint =>
+      'Размер пакета интерфейса VPN, от 1280 до 9000. Пусто: автоматически.';
+
+  @override
+  String get tunMtuInvalid => 'Число от 1280 до 9000 или пусто';
+
+  @override
   String get transportH2 => 'HTTP/2 (TCP)';
+
+  @override
+  String get transportH1 => 'HTTP/1.1 (TLS)';
 
   @override
   String get directRules => 'Напрямую';
@@ -850,6 +943,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String get tlsFragment => 'Фрагментация TLS';
 
   @override
+  String get tlsFragmentAuto => 'Автоматически';
+
+  @override
+  String get tlsFragmentAutoHint =>
+      'Пробует другие способы, если обычное подключение не удаётся.';
+
+  @override
   String get tlsFragmentOff => 'Выключено';
 
   @override
@@ -880,7 +980,20 @@ class AppLocalizationsRu extends AppLocalizations {
   String get sectionBypass => 'Если Mozilla заблокирована';
 
   @override
+  String get sharedRelay => 'Общий ретранслятор';
+
+  @override
+  String get sharedRelayHint =>
+      'Использовать общие ретрансляторы приложения, если Mozilla блокирует ваш регион. Включённый личный ретранслятор имеет приоритет.';
+
+  @override
+  String get personalRelay => 'Личный ретранслятор';
+
+  @override
   String get apiRelay => 'Сервер-ретранслятор';
+
+  @override
+  String get apiRelayUse => 'Использовать сервер-ретранслятор';
 
   @override
   String get apiRelayHint =>
@@ -962,6 +1075,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get speedInNotification => 'Показывать скорость в уведомлении';
 
   @override
+  String get showAppModeSwitch => 'Быстрое переключение режима VPN';
+
+  @override
   String get liveTraffic => 'Текущий трафик';
 
   @override
@@ -1023,12 +1139,21 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String updateRequired(String version) {
+    return 'Обновите приложение до версии $version. Это обновление необходимо.';
+  }
+
+  @override
   String get download => 'Скачать';
 
   @override
   String updateCheckFailed(String error) {
     return 'Не удалось проверить обновления: $error';
   }
+
+  @override
+  String get updateCheckNoNetwork =>
+      'Не удалось связаться с GitHub. Проверьте подключение к интернету и попробуйте ещё раз.';
 
   @override
   String get updateNow => 'Обновить';
@@ -1080,6 +1205,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get connectOnStartup => 'Подключаться при включении';
+
+  @override
+  String get autostartShowsWindow => 'Показывать окно приложения';
 
   @override
   String get proxyServiceActive => 'Прокси-служба работает';
@@ -1135,7 +1263,61 @@ class AppLocalizationsRu extends AppLocalizations {
   String get dataUsedTitle => 'Использовано';
 
   @override
+  String get monthlyData => 'Трафик';
+
+  @override
   String get bypassApps => 'Раздельное туннелирование';
+
+  @override
+  String get appClipboardImport => 'Импорт из буфера обмена';
+
+  @override
+  String get appClipboardExport => 'Экспорт в буфер обмена';
+
+  @override
+  String get appClipboardUnavailable =>
+      'Не удалось получить доступ к буферу обмена.';
+
+  @override
+  String get appClipboardNoMatches =>
+      'Имена пакетов в буфере обмена не совпадают ни с одним установленным приложением.';
+
+  @override
+  String get appClipboardMerge => 'Объединить';
+
+  @override
+  String get appClipboardReplace => 'Заменить';
+
+  @override
+  String appClipboardImportPrompt(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Найдено совпадений среди установленных приложений: $count. Добавить их к текущему списку или заменить его?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String appClipboardImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Импортировано приложений: $count.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String appClipboardExported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Скопировано имён пакетов: $count.',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get connectRetrying => 'Не удалось подключиться. Проверьте интернет.';
@@ -1226,6 +1408,26 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get appModeIncludeHint =>
       'Через VPN идут только выбранные приложения; остальные подключаются напрямую.';
+
+  @override
+  String get modeAllApps => 'Все приложения';
+
+  @override
+  String get modeAllAppsHint => 'Все приложения идут через VPN';
+
+  @override
+  String get modeSelectedApps => 'Выбранные приложения';
+
+  @override
+  String get modeSelectedAppsHint => 'Только выбранные приложения';
+
+  @override
+  String selectedAppsCount(String count) {
+    return 'Выбранные приложения  $count';
+  }
+
+  @override
+  String get allTrafficThroughVpn => 'Весь трафик телефона идёт через VPN.';
 
   @override
   String fromRegionList(String region) {
@@ -1694,4 +1896,25 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get zedUpload => 'Upload';
 
+  String get testRelay => 'Проверить реле';
+
+  @override
+  String get relayTestTitle => 'Проверка реле';
+
+  @override
+  String get relayTestHint =>
+      'Проверяется только реле. Запросы к Mozilla и данные аккаунта не отправляются.';
+
+  @override
+  String get relayTestPassed => 'Реле готово';
+
+  @override
+  String get relayTestFailed => 'Не удалось подтвердить исправность реле';
+
+  @override
+  String get relayTestCopy => 'Копировать отчёт';
+
+  @override
+  String get relayTestInterrupted =>
+      'Проверка завершилась до получения полного результата.';
 }

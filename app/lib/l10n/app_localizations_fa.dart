@@ -150,6 +150,10 @@ class AppLocalizationsFa extends AppLocalizations {
   }
 
   @override
+  String get accountsGuideUnlimited =>
+      'حجم ماهانه حساب‌های Firefox در حال حاضر نامحدود است.';
+
+  @override
   String accountsOrderNote(int percent) {
     return 'به ترتیب همین فهرست؛ هر حساب تا $percent٪ و آخرین حساب تا تمام شدن حجم.';
   }
@@ -170,7 +174,10 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get delayTestFailed =>
-      'تأخیر سرورها اندازه‌گیری نشد. اینترنت را بررسی کنید.';
+      'تاخیر سرورها اندازه‌گیری نشد. اینترنت را بررسی کنید.';
+
+  @override
+  String get delayFromLastTest => 'از تست قبلی';
 
   @override
   String get createAccountTitle => 'حساب Firefox ندارید؟';
@@ -232,7 +239,7 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get reasonSignInConfirm =>
-      'Mozilla می‌خواهد ورود تأیید شود: «ورود دوباره» را بزنید (فقط کد لازم است).';
+      'Mozilla می‌خواهد ورود تایید شود: «ورود دوباره» را بزنید (فقط کد لازم است).';
 
   @override
   String reasonSignInFailed(String detail) {
@@ -251,7 +258,7 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get reasonNotEntitled =>
-      'Mozilla این حساب را نپذیرفت؛ بعداً دوباره تلاش می‌شود.';
+      'Mozilla این حساب را نپذیرفت؛ بعدا دوباره تلاش می‌شود.';
 
   @override
   String get more => 'بیشتر';
@@ -267,7 +274,7 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String removeBody(String name) {
-    return '$name و اطلاعات ورود ذخیره‌شده آن از این کامپیوتر حذف می‌شود. بعداً می‌توانید دوباره اضافه‌اش کنید.';
+    return '$name و اطلاعات ورود ذخیره‌شده آن از این کامپیوتر حذف می‌شود. بعدا می‌توانید دوباره اضافه‌اش کنید.';
   }
 
   @override
@@ -357,7 +364,7 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String stepEmailLink(String email) {
-    return 'لینک تأییدی را که Mozilla به $email فرستاد باز کنید. ادامه کار خودکار است.';
+    return 'لینک تاییدی را که Mozilla به $email فرستاد باز کنید. ادامه کار خودکار است.';
   }
 
   @override
@@ -371,7 +378,7 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get signInNoAccountHint =>
-      'ایمیل را بررسی کنید، یا با همین ایمیل یک Firefox Account رایگان در سایت Mozilla بسازید، آن را از صندوق ایمیلتان تأیید کنید و بعد اینجا اضافه‌اش کنید.';
+      'ایمیل را بررسی کنید، یا با همین ایمیل یک Firefox Account رایگان در سایت Mozilla بسازید، آن را از صندوق ایمیلتان تایید کنید و بعد اینجا اضافه‌اش کنید.';
 
   @override
   String get createAccountButton => 'ساخت Firefox Account';
@@ -446,6 +453,9 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get settingsTitle => 'تنظیمات';
+
+  @override
+  String get settingsNoMatch => 'چیزی پیدا نشد';
 
   @override
   String get sectionGeneral => 'عمومی';
@@ -629,14 +639,14 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String routingSuggestBody(String country) {
-    return 'سایت‌ها و IP های $country مستقیم و بدون VPN باز می‌شوند. بعداً در بخش مسیریابی قابل تغییر است.';
+    return 'سایت‌ها و IP های $country مستقیم و بدون VPN باز می‌شوند. بعدا در بخش مسیریابی قابل تغییر است.';
   }
 
   @override
   String get yes => 'بله';
 
   @override
-  String get notNow => 'فعلاً نه';
+  String get notNow => 'فعلا نه';
 
   @override
   String get navServers => 'سرورها';
@@ -645,7 +655,7 @@ class AppLocalizationsFa extends AppLocalizations {
   String get navLogs => 'لاگ‌ها';
 
   @override
-  String get realDelay => 'تأخیر واقعی';
+  String get realDelay => 'تاخیر واقعی';
 
   @override
   String noticePort(String port) {
@@ -673,10 +683,10 @@ class AppLocalizationsFa extends AppLocalizations {
   String get modeRecommendedHint => 'Mozilla مکان را برایتان انتخاب می‌کند.';
 
   @override
-  String get modeFastestHint => 'مکانی با کمترین تأخیر در هر اتصال.';
+  String get modeFastestHint => 'مکانی با کمترین تاخیر در هر اتصال.';
 
   @override
-  String get testDelay => 'تست تأخیر واقعی';
+  String get testDelay => 'تست تاخیر واقعی';
 
   @override
   String get testingDelay => 'در حال تست… ممکن است یک دقیقه طول بکشد';
@@ -733,6 +743,55 @@ class AppLocalizationsFa extends AppLocalizations {
       'وقتی این مقدار از حجم مصرف شود، حساب بعدی جایگزین می‌شود.';
 
   @override
+  String get signInMethod => 'روش ورود';
+
+  @override
+  String get signInMethodBrowser => 'ورود با مرورگر';
+
+  @override
+  String get signInMethodApi => 'ورود مستقیم';
+
+  @override
+  String get browserSignInBroken => 'صفحه ورود باز نشد.';
+
+  @override
+  String get browserSignInBlocked =>
+      'موزیلا درخواست نهایی افزودن حساب را نپذیرفت (خطای ۴۰۶).';
+
+  @override
+  String get browserSignInFallback => 'ورود با ایمیل و رمز عبور';
+
+  @override
+  String get backupExport => 'گرفتن بک‌آپ';
+
+  @override
+  String get backupImport => 'ایمپورت بک‌آپ';
+
+  @override
+  String backupSaved(String name) {
+    return 'بک‌آپ ذخیره شد: $name';
+  }
+
+  @override
+  String get backupImportTitle => 'این حساب‌ها اضافه شوند؟';
+
+  @override
+  String get backupAccountExists => 'از قبل هست؛ ورودش از بک‌آپ گرفته می‌شود';
+
+  @override
+  String get backupImportAction => 'افزودن';
+
+  @override
+  String backupImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count حساب اضافه شد',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get sectionDns => 'DNS';
 
   @override
@@ -764,7 +823,38 @@ class AppLocalizationsFa extends AppLocalizations {
   String get transportH3 => 'HTTP/3 (QUIC)';
 
   @override
+  String get ipVersion => 'نسخه IP';
+
+  @override
+  String get ipVersionAuto => 'خودکار (اول IPv4، بعد IPv6)';
+
+  @override
+  String get ipVersionDual => 'هر دو هم‌زمان (Dual-Stack)';
+
+  @override
+  String get ipVersionV6First => 'اول IPv6، بعد IPv4';
+
+  @override
+  String get ipVersionV4 => 'فقط IPv4';
+
+  @override
+  String get ipVersionV6 => 'فقط IPv6';
+
+  @override
+  String get tunMtu => 'MTU';
+
+  @override
+  String get tunMtuHint =>
+      'اندازه بسته‌های رابط VPN، از ۱۲۸۰ تا ۹۰۰۰. خالی: خودکار.';
+
+  @override
+  String get tunMtuInvalid => 'عددی از ۱۲۸۰ تا ۹۰۰۰، یا خالی';
+
+  @override
   String get transportH2 => 'HTTP/2 (TCP)';
+
+  @override
+  String get transportH1 => 'HTTP/1.1 (TLS)';
 
   @override
   String get directRules => 'مستقیم';
@@ -781,7 +871,7 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get blockRulesHint =>
-      'سایت‌ها و آدرس‌های این فهرست اصلاً باز نمی‌شوند، نه مستقیم و نه از VPN: برای تبلیغات یا سایت‌هایی که نمی‌خواهید هیچ‌وقت باز شوند.';
+      'سایت‌ها و آدرس‌های این فهرست اصلا باز نمی‌شوند، نه مستقیم و نه از VPN: برای تبلیغات یا سایت‌هایی که نمی‌خواهید هیچ‌وقت باز شوند.';
 
   @override
   String get rulesTitle => 'قوانین';
@@ -845,6 +935,12 @@ class AppLocalizationsFa extends AppLocalizations {
   String get tlsFragment => 'فرگمنت TLS';
 
   @override
+  String get tlsFragmentAuto => 'خودکار';
+
+  @override
+  String get tlsFragmentAutoHint => 'اگر اتصال عادی نشد، بقیه را امتحان می‌کند';
+
+  @override
   String get tlsFragmentOff => 'غیرفعال';
 
   @override
@@ -854,16 +950,16 @@ class AppLocalizationsFa extends AppLocalizations {
   String get tlsFragmentSni => 'نام سرور (SNI)';
 
   @override
-  String get tlsFragmentFirstByteHint => 'جدا شدن هدر TLS از بایت اول (0x16)';
+  String get tlsFragmentFirstByteHint => 'جدا کردن هدر TLS از بایت اول';
 
   @override
-  String get tlsFragmentSniHint => 'تقسیم نام سرور (SNI) بین چند بسته TCP';
+  String get tlsFragmentSniHint => 'نام سرور در چند بسته TCP';
 
   @override
   String get tlsFragmentRecord => 'دو تکه کردن TLS';
 
   @override
-  String get tlsFragmentRecordHint => 'ارسال نام سرور (SNI) در دو تکه TLS';
+  String get tlsFragmentRecordHint => 'نام سرور در دو تکه TLS';
 
   @override
   String get tlsFragmentOffHint => 'اتصال عادی TLS';
@@ -872,7 +968,20 @@ class AppLocalizationsFa extends AppLocalizations {
   String get sectionBypass => 'اگر موزیلا مسدود است';
 
   @override
+  String get sharedRelay => 'رله اشتراکی';
+
+  @override
+  String get sharedRelayHint =>
+      'اگر موزیلا دسترسی از منطقه شما را محدود کرده، از رله‌های اشتراکی برنامه استفاده می‌شود. رله شخصیِ فعال در اولویت است.';
+
+  @override
+  String get personalRelay => 'رله شخصی';
+
+  @override
   String get apiRelay => 'سرور رله';
+
+  @override
+  String get apiRelayUse => 'استفاده از سرور رله';
 
   @override
   String get apiRelayHint =>
@@ -896,7 +1005,7 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get upstreamProxyInvalid =>
-      'آدرس پروکسی را وارد کنید؛ مثلاً 127.0.0.1.';
+      'آدرس پروکسی را وارد کنید؛ مثلا 127.0.0.1.';
 
   @override
   String get upstreamProxyInvalidPort => 'پورتی بین 1 تا 65535 وارد کنید.';
@@ -952,6 +1061,9 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get speedInNotification => 'نمایش سرعت در اعلان';
+
+  @override
+  String get showAppModeSwitch => 'تغییر سریع حالت VPN';
 
   @override
   String get liveTraffic => 'ترافیک لحظه‌ای';
@@ -1015,12 +1127,21 @@ class AppLocalizationsFa extends AppLocalizations {
   }
 
   @override
+  String updateRequired(String version) {
+    return 'لطفا به نسخه $version به‌روزرسانی کنید. این به‌روزرسانی ضروری است.';
+  }
+
+  @override
   String get download => 'دانلود';
 
   @override
   String updateCheckFailed(String error) {
     return 'بررسی به‌روزرسانی ممکن نشد: $error';
   }
+
+  @override
+  String get updateCheckNoNetwork =>
+      'اتصال به GitHub برقرار نشد. اتصال اینترنت را بررسی کنید و دوباره امتحان کنید.';
 
   @override
   String get updateNow => 'به‌روزرسانی';
@@ -1072,6 +1193,9 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get connectOnStartup => 'اتصال خودکار هنگام روشن شدن';
+
+  @override
+  String get autostartShowsWindow => 'نمایش پنجره برنامه';
 
   @override
   String get proxyServiceActive => 'سرویس پروکسی فعال';
@@ -1127,7 +1251,59 @@ class AppLocalizationsFa extends AppLocalizations {
   String get dataUsedTitle => 'حجم مصرف‌شده';
 
   @override
+  String get monthlyData => 'حجم';
+
+  @override
   String get bypassApps => 'انتخاب برنامه‌ها';
+
+  @override
+  String get appClipboardImport => 'وارد کردن از کلیپ‌بورد';
+
+  @override
+  String get appClipboardExport => 'کپی در کلیپ‌بورد';
+
+  @override
+  String get appClipboardUnavailable => 'دسترسی به کلیپ‌بورد ممکن نبود.';
+
+  @override
+  String get appClipboardNoMatches =>
+      'نام‌های بسته در کلیپ‌بورد با هیچ برنامه نصب‌شده‌ای مطابقت ندارند.';
+
+  @override
+  String get appClipboardMerge => 'ادغام';
+
+  @override
+  String get appClipboardReplace => 'جایگزینی';
+
+  @override
+  String appClipboardImportPrompt(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count برنامه نصب‌شده پیدا شد.',
+    );
+    return '$_temp0 به فهرست فعلی اضافه شوند یا جای آن را بگیرند؟';
+  }
+
+  @override
+  String appClipboardImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count برنامه وارد شد.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String appClipboardExported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count نام بسته کپی شد.',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get connectRetrying => 'اتصال برقرار نشد. اینترنت را بررسی کنید.';
@@ -1176,7 +1352,7 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get failServer =>
-      'سرویس Mozilla موقتاً مشکل دارد. برنامه خودش دوباره تلاش می‌کند.';
+      'سرویس Mozilla موقتا مشکل دارد. برنامه خودش دوباره تلاش می‌کند.';
 
   @override
   String get failNoAccount => 'هیچ حسابی آماده نیست. صفحه حساب‌ها را باز کنید.';
@@ -1211,11 +1387,31 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get appModeExcludeHint =>
-      'برنامه‌های انتخاب‌شده مستقیم وصل می‌شوند، نه از VPN؛ مثلاً اپ‌های بانکی که آدرس خارجی را نمی‌پذیرند.';
+      'برنامه‌های انتخاب‌شده مستقیم وصل می‌شوند، نه از VPN؛ مثلا اپ‌های بانکی که آدرس خارجی را نمی‌پذیرند.';
 
   @override
   String get appModeIncludeHint =>
       'فقط برنامه‌های انتخاب‌شده از VPN عبور می‌کنند؛ بقیه مستقیم وصل می‌شوند.';
+
+  @override
+  String get modeAllApps => 'تمام برنامه‌ها';
+
+  @override
+  String get modeAllAppsHint => 'عبور تمام برنامه‌ها از VPN';
+
+  @override
+  String get modeSelectedApps => 'برنامه‌های انتخابی';
+
+  @override
+  String get modeSelectedAppsHint => 'فقط برنامه‌های انتخاب‌شده';
+
+  @override
+  String selectedAppsCount(String count) {
+    return 'برنامه‌های انتخاب‌شده  $count';
+  }
+
+  @override
+  String get allTrafficThroughVpn => 'کل ترافیک گوشی از VPN عبور می‌کند.';
 
   @override
   String fromRegionList(String region) {
@@ -1308,7 +1504,7 @@ class AppLocalizationsFa extends AppLocalizations {
   String get ruleDomain => 'سایت و زیردامنه‌هایش';
 
   @override
-  String get ruleFull => 'دقیقاً همین نام';
+  String get ruleFull => 'دقیقا همین نام';
 
   @override
   String get ruleKeyword => 'نام‌هایی که این کلمه را دارند';
@@ -1678,4 +1874,24 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get zedUpload => 'آپلود';
 
+  String get testRelay => 'تست سلامت رله';
+
+  @override
+  String get relayTestTitle => 'تست سلامت رله';
+
+  @override
+  String get relayTestHint =>
+      'فقط خود رله بررسی می‌شود؛ درخواستی به موزیلا یا اطلاعات حساب ارسال نمی‌شود.';
+
+  @override
+  String get relayTestPassed => 'رله آماده است';
+
+  @override
+  String get relayTestFailed => 'سلامت رله تایید نشد';
+
+  @override
+  String get relayTestCopy => 'کپی گزارش';
+
+  @override
+  String get relayTestInterrupted => 'تست پیش از دریافت نتیجه کامل متوقف شد.';
 }

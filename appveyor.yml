@@ -1,0 +1,74 @@
+# AppVeyor — alternative CI for the Windows build only, while GitHub
+# Actions is disabled on the veloracode account. It mirrors the windows
+# job of .github/workflows/build.yml: same toolchain (Flutter 3.47.7,
+# Go from core/go.mod), same build script, same two output files.
+#
+# One project setting is made in the AppVeyor UI, not in this file:
+# Settings -> Environment -> add FIREFOX_VPN_SIGNING_KEY as a secret
+# variable (the update-signing key). Without it the build succeeds but
+# the binaries take no updates, which is not a release build.
+version: 1.0.0-{build}
+image: Visual Studio 2022
+branches:
+  only:
+    - main
+environment:
+  FLUTTER_VERSION: 3.47.7
+  # core/go.mod's Go version; the image's preinstalled Go is older.
+  GO_VERSION: 1.27.2
+install:
+  - ps: |
+      $ErrorActionPreference = 'Stop'
+      # PowerShell 7: scripts/build-windows.ps1 requires it (PowerShell
+      # 5.1 writes zip paths with backslashes).
+      if (-not (Get-Command pwsh -ErrorAction SilentlyContinue)) {
+        choco install pwsh -y --no-progress
+      }
+      # Go, pinned to core/go.mod (zip is self-contained; no installer).
+      if (-not (Test-Path C:\go-pinned\bin\go.exe)) {
+        Invoke-WebRequest "https://go.dev/dl/go$env:GO_VERSION.windows-amd64.zip" -OutFile go.zip
+        Expand-Archive go.zip -DestinationPath C:\go-pinned-tmp
+        Move-Item C:\go-pinned-tmp\go C:\go-pinned
+      }
+      $env:Path = "C:\go-pinned\bin;$env:Path"
+      go version
+      # Flutter, pinned: the image's preinstalled Flutter is older.
+      if (-not (Test-Path C:\flutter-pinned\bin\flutter.bat)) {
+        Invoke-WebRequest "https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_$($env:FLUTTER_VERSION)-stable.zip" -OutFile flutter.zip
+        Expand-Archive flutter.zip -DestinationPath C:\flutter-pinned-tmp
+        Move-Item C:\flutter-pinned-tmp\flutter C:\flutter-pinned
+      }
+      $env:Path = "C:\flutter-pinned\bin;$env:Path"
+      git config --global --add safe.directory C:/flutter-pinned
+      flutter --version
+      flutter precache --windows
+      # Inno Setup 6 is preinstalled on this image; fail early if not.
+      if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) {
+        choco install innosetup -y --no-progress
+      }
+cache:
+  - C:\go-pinned
+  - C:\flutter-pinned
+test_script:
+  - ps: |
+      $env:Path = "C:\go-pinned\bin;$env:Path"
+      Push-Location core
+      go vet ./...
+      if ($LASTEXITCODE -ne 0) { throw 'go vet failed' }
+      go test ./...
+      if ($LASTEXITCODE -ne 0) { throw 'go test failed' }
+      Pop-Location
+build_script:
+  - pwsh: |
+      $env:Path = "C:\go-pinned\bin;C:\flutter-pinned\bin;$env:Path"
+      ./scripts/build-windows.ps1
+      if ($LASTEXITCODE -ne 0) { throw 'build-windows.ps1 failed' }
+      $v = (Select-String -Path app\pubspec.yaml -Pattern '^version:\s*(\d+\.\d+\.\d+)').Matches[0].Groups[1].Value
+      New-Item -ItemType Directory out | Out-Null
+      Copy-Item "dist\Firefox-VPN-$v-Windows-x64.zip" "out\Firefox-VPN-$v-Windows-x64.zip"
+      Copy-Item "dist\Firefox-VPN-$v-Windows-Setup-x64.exe" "out\Firefox-VPN-$v-Windows-Setup-x64.exe"
+      Copy-Item "dist\Firefox-VPN-$v-Windows-x64.zip" out\Firefox-VPN-Windows-x64.zip
+      Copy-Item "dist\Firefox-VPN-$v-Windows-Setup-x64.exe" out\Firefox-VPN-Windows-Setup-x64.exe
+artifacts:
+  - path: out\*
+    name: windows

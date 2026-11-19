@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -9,16 +10,73 @@ void main() {
     late HttpServer server;
     late CoreApi api;
     final seen = <String, Object?>{};
+    Completer<void>? relayFinish;
 
     setUp(() async {
       seen.clear();
+      relayFinish = null;
       // A local fixture: unknown requests fail and nothing leaves loopback.
       server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
       server.listen((req) async {
+        if (req.method == 'GET' && req.uri.path == '/api/backup') {
+          seen['token'] = req.headers.value('X-Local-Token');
+          req.response
+            ..headers.contentType = ContentType('application', 'zip')
+            ..headers.set(
+              'Content-Disposition',
+              'attachment; filename="Firefox-VPN-backup-2026-11-06_19-26-03.zip"',
+            )
+            ..add([0x50, 0x4b, 0x03, 0x04]);
+          await req.response.close();
+          return;
+        }
         final body = await utf8.decoder.bind(req).join();
         seen['token'] = req.headers.value('X-Local-Token');
         seen['type'] = req.headers.contentType?.mimeType;
         seen['body'] = body;
+        if (req.method == 'POST' && req.uri.path == '/api/relay/test') {
+          try {
+            req.response.bufferOutput = false;
+            if (seen['rejectRelay'] == true) {
+              req.response.statusCode = 500;
+              req.response.write(
+                '{"error":"fixture-secret must not be echoed"}',
+              );
+            } else {
+              req.response.headers.contentType = ContentType(
+                'application',
+                'x-ndjson',
+              );
+              req.response.write(
+                '${jsonEncode({
+                  'type': 'step',
+                  'step': {'stage': 'tcp', 'status': 'ok', 'detail': 'Connected', 'elapsed_ms': 12},
+                })}\n',
+              );
+              await req.response.flush();
+              if (relayFinish != null) await relayFinish!.future;
+              req.response.write(
+                '${jsonEncode({
+                  'type': 'result',
+                  'result': {
+                    'ok': true,
+                    'host': 'relay.example',
+                    'total_ms': 20,
+                    'steps': [
+                      {'stage': 'tcp', 'status': 'ok', 'detail': 'Connected', 'elapsed_ms': 12},
+                    ],
+                  },
+                })}\n',
+              );
+            }
+            await req.response.close();
+          } on HttpException {
+            // Closing the dialog intentionally aborts this connection.
+          } on SocketException {
+            // The separate status client must remain available.
+          }
+          return;
+        }
         // As the core's guard: a state change must be JSON.
         final json = req.headers.contentType?.mimeType == 'application/json';
         final (status, out) = switch ((req.method, req.uri.path)) {
@@ -35,8 +93,24 @@ void main() {
             },
           ),
           ('POST', '/api/system-proxy') => (200, {'mode': 'clear'}),
+          ('POST', '/api/update/download') => (200, {'state': 'downloading'}),
           ('DELETE', '/api/accounts/a') => (200, {}),
           ('DELETE', '/api/signin/s') => (200, {}),
+          ('POST', '/api/signin/browser/proxy') => (
+            200,
+            {'address': '127.0.0.1:41234'},
+          ),
+          ('DELETE', '/api/signin/browser/proxy') => (200, {'closed': true}),
+          ('POST', '/api/backup/inspect') => (
+            200,
+            {
+              'accounts': [
+                {'email': 'a@example.com', 'has_password': true},
+                {'email': 'b@example.com', 'exists': true},
+              ],
+            },
+          ),
+          ('POST', '/api/backup/import') => (200, {'added': 1, 'updated': 1}),
           ('POST', '/api/test') => (409, {'error': 'the proxy is not running'}),
           _ => (404, {'error': 'not found'}),
         };
@@ -55,6 +129,9 @@ void main() {
     });
 
     tearDown(() async {
+      if (relayFinish != null && !relayFinish!.isCompleted) {
+        relayFinish!.complete();
+      }
       api.close();
       await server.close(force: true);
     });
@@ -67,10 +144,84 @@ void main() {
       expect(s.totalAccounts, 2);
     });
 
+    test('streams relay diagnostic steps and the final report', () async {
+      final events = await api
+          .testRelay('https://relay.example/?secret=fixture-secret')
+          .toList();
+      expect(events.length, 2);
+      expect(events.first.step?.stage, 'tcp');
+      expect(events.last.result?.ok, isTrue);
+      expect(events.last.result?.steps.single.detail, 'Connected');
+      expect(seen['token'], 'secret-token');
+      expect(jsonDecode(seen['body'] as String), {
+        'url': 'https://relay.example/?secret=fixture-secret',
+        'stream': true,
+      });
+    });
+
+    test(
+      'cancelling relay diagnostics leaves status polling available',
+      () async {
+        relayFinish = Completer<void>();
+        final first = await api
+            .testRelay('https://relay.example/')
+            .first
+            .timeout(const Duration(seconds: 3));
+        expect(first.step?.stage, 'tcp');
+        expect((await api.status()).readyAccounts, 1);
+        relayFinish!.complete();
+      },
+    );
+
+    test('relay diagnostic API errors do not echo an input secret', () async {
+      seen['rejectRelay'] = true;
+      await expectLater(
+        api.testRelay('https://relay.example/?secret=fixture-secret').toList(),
+        throwsA(
+          isA<CoreApiException>()
+              .having((e) => e.statusCode, 'status', 500)
+              .having(
+                (e) => e.message,
+                'message',
+                isNot(contains('fixture-secret')),
+              ),
+        ),
+      );
+    });
+
     test('sends JSON with a DELETE too, which the core requires', () async {
       await api.removeAccount('a');
       expect(seen['type'], 'application/json');
       await api.cancelSignIn('s');
+      expect(seen['type'], 'application/json');
+    });
+
+    test('saves and takes in a backup', () async {
+      final file = await api.exportBackup();
+      expect(seen['token'], 'secret-token');
+      expect(file.name, 'Firefox-VPN-backup-2026-11-06_19-26-03.zip');
+      expect(file.bytes, [0x50, 0x4b, 0x03, 0x04]);
+
+      final contents = await api.inspectBackup(file.bytes);
+      expect(jsonDecode(seen['body'] as String), {
+        'data': base64Encode(file.bytes),
+      });
+      expect(contents.accounts.map((a) => a.email), [
+        'a@example.com',
+        'b@example.com',
+      ]);
+      expect(contents.accounts.first.hasPassword, isTrue);
+      expect(contents.accounts.last.exists, isTrue);
+
+      final done = await api.importBackup(file.bytes);
+      expect(seen['type'], 'application/json');
+      expect(done.added + done.updated, 2);
+    });
+
+    test('opens and closes the sign-in proxy', () async {
+      expect(await api.openSignInProxy(port: 41234), '127.0.0.1:41234');
+      expect(jsonDecode(seen['body'] as String), {'port': 41234});
+      await api.closeSignInProxy();
       expect(seen['type'], 'application/json');
     });
 
@@ -79,6 +230,24 @@ void main() {
       expect(seen['type'], 'application/json');
       expect(jsonDecode(seen['body'] as String), {'mode': 'clear'});
     });
+
+    test(
+      'passes manifest download metadata through the authenticated API',
+      () async {
+        final source = <String, Object?>{
+          'file': 'Firefox-VPN-Windows-x64.zip',
+          'url': 'https://cdn.example/package',
+          'checksums_url': 'https://cdn.example/sums',
+          'signature_url': 'https://cdn.example/signature',
+        };
+        await api.downloadUpdate('1.2.3', source: source);
+        expect(seen['token'], 'secret-token');
+        expect(jsonDecode(seen['body'] as String), {
+          'version': '1.2.3',
+          'source': source,
+        });
+      },
+    );
 
     test('turns error answers into CoreApiException', () async {
       await expectLater(

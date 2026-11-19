@@ -72,8 +72,7 @@ class CoreService : VpnService() {
                 turnOff(this@CoreService)
                 return
             }
-            // The core gave the connect up (no connection to Mozilla within
-            // a minute): the VPN and its notification go too.
+            // The core finished its attempts: the VPN and its notification go too.
             if (!mobile.Mobile.isOn()) {
                 Log.w(TAG, "the connect was given up; turning the VPN off")
                 turnOff(this@CoreService)
@@ -87,6 +86,7 @@ class CoreService : VpnService() {
                 return
             }
             val code = when {
+                mobile.Mobile.connectPending() -> ""
                 offline -> NO_NETWORK
                 mobile.Mobile.running() -> mobile.Mobile.exitCountry()
                 else -> ""
@@ -102,7 +102,7 @@ class CoreService : VpnService() {
                 shownSpeed = speed
                 getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification(code))
             }
-            if (on && usesVpn(this@CoreService) && appMode(this@CoreService) == MODE_EXCLUDE) {
+            if (on && usesVpn(this@CoreService) && routingEnabled(this@CoreService) && appMode(this@CoreService) == MODE_EXCLUDE) {
                 checkSuggested()
             }
             // The speed changes all the time: shown, it is read more often.
@@ -234,7 +234,14 @@ class CoreService : VpnService() {
         startCore(this, on = true)
         // On already after the button (Connect, which a SetOn would cancel);
         // this turns it on after the system restarted the service.
-        if (!mobile.Mobile.isOn()) mobile.Mobile.setOn(true)
+        if (!mobile.Mobile.isOn()) {
+            if (intent == null) {
+                mobile.Mobile.setOn(true)
+            } else {
+                turnOff(this)
+                return START_NOT_STICKY
+            }
+        }
         if (usesVpn(this) && !startTunnel()) {
             turnOff(this)
             return START_NOT_STICKY
@@ -276,10 +283,12 @@ class CoreService : VpnService() {
             return false
         }
         return try {
-            val config = mobile.Mobile.tunConfig(MTU)
+            // tun.mtu when the user set one, else the app's own.
+            val mtu = mobile.Mobile.tunMTU().takeIf { it > 0 } ?: MTU
+            val config = mobile.Mobile.tunConfig(mtu)
             val builder = Builder()
                 .setSession(getString(R.string.app_name))
-                .setMtu(MTU)
+                .setMtu(mtu)
                 .addAddress("172.19.0.1", 30)
                 .addRoute("0.0.0.0", 0)
                 // The tunnel answers DNS sent here (core/mobile), with
@@ -309,6 +318,10 @@ class CoreService : VpnService() {
      * (Bypass selected apps). Apps no longer installed are skipped.
      */
     private fun applyApps(builder: Builder) {
+        if (!routingEnabled(this)) {
+            builder.addDisallowedApplication(packageName)
+            return
+        }
         fun each(packages: Set<String>, add: (String) -> Unit) {
             for (pkg in packages) {
                 try {
@@ -514,6 +527,24 @@ class CoreService : VpnService() {
 
         fun appSet(context: Context, key: String): Set<String> = prefs(context).getStringSet(key, emptySet()) ?: emptySet()
 
+        const val ROUTING_ENABLED = "routing_enabled"
+
+        fun routingEnabled(context: Context): Boolean {
+            val p = prefs(context)
+            if (p.contains(ROUTING_ENABLED)) {
+                return p.getBoolean(ROUTING_ENABLED, false)
+            }
+            return p.getString(MODE, MODE_EXCLUDE) == MODE_INCLUDE ||
+                    (p.getStringSet(BYPASS, emptySet())?.isNotEmpty() == true)
+        }
+
+        fun setRoutingEnabled(context: Context, on: Boolean) {
+            val p = prefs(context)
+            if (p.contains(ROUTING_ENABLED) && p.getBoolean(ROUTING_ENABLED, false) == on) return
+            p.edit().putBoolean(ROUTING_ENABLED, on).apply()
+            reconnect(context)
+        }
+
         /** Keeps the app choice: the mode and the sets. */
         fun setAppRouting(context: Context, mode: String, sets: Map<String, Set<String>>) {
             val edit = prefs(context).edit().putString(MODE, mode)
@@ -619,7 +650,7 @@ class CoreService : VpnService() {
                 context.startService(intent)
             }
             startCore(context, on = true)
-            // Given up by the core if it does not reach Mozilla in a minute.
+            // The core owns the connection and any retries.
             mobile.Mobile.connect()
             on = true
             connected = false
@@ -646,8 +677,8 @@ class CoreService : VpnService() {
 
         /** Starts the core, with the proxy [on] or off, if it does not run. */
         @Synchronized
-        fun startCore(context: Context, on: Boolean) {
-            if (mobile.Mobile.running()) return
+        fun startCore(context: Context, on: Boolean): String? {
+            if (mobile.Mobile.running()) return null
             if ((context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
                 importFromComputer(context)
             } else {
@@ -655,10 +686,12 @@ class CoreService : VpnService() {
                 // a release build never takes data from there.
                 File(context.getExternalFilesDir(null), "import").takeIf { it.exists() }?.deleteRecursively()
             }
-            try {
+            return try {
                 mobile.Mobile.start(dataDir(context).absolutePath, on)
+                null
             } catch (e: Exception) {
                 Log.e(TAG, "the core did not start", e)
+                e.message ?: e.javaClass.simpleName
             }
         }
 

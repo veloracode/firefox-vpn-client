@@ -32,10 +32,15 @@ const routingCheckInterval = time.Hour
 // routingState is the daemon's routing: the router built from the
 // settings and the lists, and the state of the list updates.
 type routingState struct {
-	mu        sync.Mutex
-	router    *routing.Router
-	err       string // why routing is on but not working
-	updating  bool
+	mu       sync.Mutex
+	router   *routing.Router
+	err      string // why routing is on but not working
+	updating bool
+	// refetch asks the update loop for one download even though the lists
+	// look current: they are on disk and fresh, but a rule cannot find its
+	// tag in them, so they are the wrong lists however they got there.
+	// Cleared when that download is attempted, so it cannot loop.
+	refetch   bool
 	lastCheck time.Time
 	lastErr   string
 	wake      chan struct{}
@@ -91,7 +96,22 @@ func (d *Daemon) applyRouting(cfg config.Routing) {
 	}
 	d.routing.mu.Lock()
 	d.routing.router, d.routing.err = router, problem
+	// Lists that are present and current but miss a tag a rule needs are
+	// the wrong lists: the source record may be absent, so the usual
+	// staleness and source checks both say there is nothing to do, and
+	// routing would stay broken until the files simply aged out. Ask for
+	// one download instead.
+	needsLists := problem != "" && router == nil
+	if needsLists {
+		d.routing.refetch = true
+	}
 	d.routing.mu.Unlock()
+	if needsLists {
+		select {
+		case d.routing.wake <- struct{}{}:
+		default:
+		}
+	}
 	if engine := d.currentEngine(); engine != nil {
 		engine.routed.SetRouter(router)
 	}
@@ -200,7 +220,12 @@ func (d *Daemon) wakeRouting() {
 func (d *Daemon) runRoutingUpdates() {
 	for {
 		cfg := d.config().Routing
-		if cfg.Enabled && (routing.Due(d.paths.RoutingDir, cfg.UpdateInterval.Duration(), routingFiles(cfg)) ||
+		d.routing.mu.Lock()
+		refetch := d.routing.refetch
+		d.routing.refetch = false
+		d.routing.mu.Unlock()
+		if cfg.Enabled && (refetch ||
+			routing.Due(d.paths.RoutingDir, cfg.UpdateInterval.Duration(), routingFiles(cfg)) ||
 			routing.SourceChanged(d.paths.RoutingDir, cfg.GeoSiteURL, cfg.GeoIPURL) ||
 			(appListsWanted && routing.AppListDue(d.paths.RoutingDir, cfg.Region, cfg.UpdateInterval.Duration()))) {
 			_ = d.updateRoutingLists()

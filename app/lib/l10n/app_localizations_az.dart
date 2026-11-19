@@ -150,6 +150,10 @@ class AppLocalizationsAz extends AppLocalizations {
   }
 
   @override
+  String get accountsGuideUnlimited =>
+      'Firefox hesablarının hal-hazırda limitsiz trafiki var.';
+
+  @override
   String accountsOrderNote(int percent) {
     return 'Bu siyahının sırası ilə: hər hesab $percent%-dək, sonuncu isə datası bitənədək.';
   }
@@ -171,6 +175,9 @@ class AppLocalizationsAz extends AppLocalizations {
   @override
   String get delayTestFailed =>
       'Serverlərin gecikməsi ölçülə bilmədi. İnterneti yoxlayın.';
+
+  @override
+  String get delayFromLastTest => 'Əvvəlki testdən';
 
   @override
   String get createAccountTitle => 'Firefox Account hesabınız yoxdur?';
@@ -448,6 +455,9 @@ class AppLocalizationsAz extends AppLocalizations {
 
   @override
   String get settingsTitle => 'Ayarlar';
+
+  @override
+  String get settingsNoMatch => 'Heç nə tapılmadı';
 
   @override
   String get sectionGeneral => 'Ümumi';
@@ -736,6 +746,56 @@ class AppLocalizationsAz extends AppLocalizations {
       'Trafikin bu qədəri istifadə olunanda növbəti hesaba keçilir.';
 
   @override
+  String get signInMethod => 'Giriş üsulu';
+
+  @override
+  String get signInMethodBrowser => 'Brauzerlə giriş';
+
+  @override
+  String get signInMethodApi => 'Birbaşa giriş';
+
+  @override
+  String get browserSignInBroken => 'Giriş səhifəsi açıla bilmədi.';
+
+  @override
+  String get browserSignInBlocked =>
+      'Mozilla hesabın əlavə edilməsinin son addımını tamamlamadı (HTTP 406).';
+
+  @override
+  String get browserSignInFallback => 'E-poçt və şifrə ilə giriş';
+
+  @override
+  String get backupExport => 'Ehtiyat nüsxəni saxla';
+
+  @override
+  String get backupImport => 'Ehtiyat nüsxəni idxal et';
+
+  @override
+  String backupSaved(String name) {
+    return 'Saxlanıldı: $name';
+  }
+
+  @override
+  String get backupImportTitle => 'Bu hesablar əlavə edilsin?';
+
+  @override
+  String get backupAccountExists =>
+      'Artıq əlavə edilib; girişi fayldan alınacaq';
+
+  @override
+  String get backupImportAction => 'Əlavə et';
+
+  @override
+  String backupImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count hesab əlavə edildi',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get sectionDns => 'DNS';
 
   @override
@@ -767,7 +827,38 @@ class AppLocalizationsAz extends AppLocalizations {
   String get transportH3 => 'HTTP/3 (QUIC)';
 
   @override
+  String get ipVersion => 'IP versiyası';
+
+  @override
+  String get ipVersionAuto => 'Avtomatik (əvvəl IPv4, sonra IPv6)';
+
+  @override
+  String get ipVersionDual => 'Hər ikisi birlikdə (dual-stack)';
+
+  @override
+  String get ipVersionV6First => 'Əvvəl IPv6, sonra IPv4';
+
+  @override
+  String get ipVersionV4 => 'Yalnız IPv4';
+
+  @override
+  String get ipVersionV6 => 'Yalnız IPv6';
+
+  @override
+  String get tunMtu => 'MTU';
+
+  @override
+  String get tunMtuHint =>
+      'VPN interfeysinin paket ölçüsü, 1280-dən 9000-ə qədər. Boş: avtomatik.';
+
+  @override
+  String get tunMtuInvalid => '1280-dən 9000-ə qədər rəqəm və ya boş';
+
+  @override
   String get transportH2 => 'HTTP/2 (TCP)';
+
+  @override
+  String get transportH1 => 'HTTP/1.1 (TLS)';
 
   @override
   String get directRules => 'Birbaşa';
@@ -848,6 +939,13 @@ class AppLocalizationsAz extends AppLocalizations {
   String get tlsFragment => 'TLS fraqmentasiyası';
 
   @override
+  String get tlsFragmentAuto => 'Avtomatik';
+
+  @override
+  String get tlsFragmentAutoHint =>
+      'Adi bağlantı alınmasa, başqa üsulları sınayır.';
+
+  @override
   String get tlsFragmentOff => 'Söndürülüb';
 
   @override
@@ -878,7 +976,20 @@ class AppLocalizationsAz extends AppLocalizations {
   String get sectionBypass => 'Mozilla bloklanıbsa';
 
   @override
+  String get sharedRelay => 'Paylaşılan rele';
+
+  @override
+  String get sharedRelayHint =>
+      'Mozilla regionunuzu bloklayarsa tətbiqin paylaşılan relelərindən istifadə edin. Aktiv şəxsi rele üstünlük təşkil edir.';
+
+  @override
+  String get personalRelay => 'Şəxsi rele';
+
+  @override
   String get apiRelay => 'Relay serveri';
+
+  @override
+  String get apiRelayUse => 'Relay serverindən istifadə et';
 
   @override
   String get apiRelayHint =>
@@ -961,6 +1072,9 @@ class AppLocalizationsAz extends AppLocalizations {
   String get speedInNotification => 'Bildirişdə sürəti göstər';
 
   @override
+  String get showAppModeSwitch => 'Sürətli VPN rejimi dəyişimi';
+
+  @override
   String get liveTraffic => 'Canlı trafik';
 
   @override
@@ -1022,12 +1136,21 @@ class AppLocalizationsAz extends AppLocalizations {
   }
 
   @override
+  String updateRequired(String version) {
+    return 'Zəhmət olmasa $version versiyasına yeniləyin. Bu yeniləmə tələb olunur.';
+  }
+
+  @override
   String get download => 'Yüklə';
 
   @override
   String updateCheckFailed(String error) {
     return 'Yeniləmələri yoxlamaq mümkün olmadı: $error';
   }
+
+  @override
+  String get updateCheckNoNetwork =>
+      'GitHub-a qoşulmaq mümkün olmadı. İnternet bağlantınızı yoxlayın və yenidən cəhd edin.';
 
   @override
   String get updateNow => 'Yenilə';
@@ -1079,6 +1202,9 @@ class AppLocalizationsAz extends AppLocalizations {
 
   @override
   String get connectOnStartup => 'Açılışda avtomatik qoşul';
+
+  @override
+  String get autostartShowsWindow => 'Proqramın pəncərəsini göstər';
 
   @override
   String get proxyServiceActive => 'Proksi xidməti aktivdir';
@@ -1134,7 +1260,61 @@ class AppLocalizationsAz extends AppLocalizations {
   String get dataUsedTitle => 'İstifadə olunan trafik';
 
   @override
+  String get monthlyData => 'Trafik';
+
+  @override
   String get bypassApps => 'Tətbiqlər üzrə proksi';
+
+  @override
+  String get appClipboardImport => 'Mübadilə buferindən idxal et';
+
+  @override
+  String get appClipboardExport => 'Mübadilə buferinə köçür';
+
+  @override
+  String get appClipboardUnavailable =>
+      'Mübadilə buferinə daxil olmaq mümkün olmadı.';
+
+  @override
+  String get appClipboardNoMatches =>
+      'Mübadilə buferindəki paket adlarına uyğun quraşdırılmış tətbiq yoxdur.';
+
+  @override
+  String get appClipboardMerge => 'Birləşdir';
+
+  @override
+  String get appClipboardReplace => 'Əvəz et';
+
+  @override
+  String appClipboardImportPrompt(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Quraşdırılmış $count tətbiq tapıldı. Onları cari seçimə əlavə etmək, yoxsa seçimi əvəz etmək istəyirsiniz?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String appClipboardImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tətbiq idxal edildi.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String appClipboardExported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count paket adı kopyalandı.',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get connectRetrying => 'Qoşulmaq alınmadı. İnterneti yoxlayın.';
@@ -1222,6 +1402,26 @@ class AppLocalizationsAz extends AppLocalizations {
   @override
   String get appModeIncludeHint =>
       'Yalnız seçilmiş tətbiqlər VPN-dən keçir; digərləri birbaşa qoşulur.';
+
+  @override
+  String get modeAllApps => 'Bütün tətbiqlər';
+
+  @override
+  String get modeAllAppsHint => 'Bütün tətbiqlər VPN-dən keçir';
+
+  @override
+  String get modeSelectedApps => 'Seçilmiş tətbiqlər';
+
+  @override
+  String get modeSelectedAppsHint => 'Yalnız seçilmiş tətbiqlər';
+
+  @override
+  String selectedAppsCount(String count) {
+    return 'Seçilmiş tətbiqlər  $count';
+  }
+
+  @override
+  String get allTrafficThroughVpn => 'Telefonun bütün trafiki VPN-dən keçir.';
 
   @override
   String fromRegionList(String region) {
@@ -1689,4 +1889,24 @@ class AppLocalizationsAz extends AppLocalizations {
   @override
   String get zedUpload => 'Upload';
 
+  String get testRelay => 'Relay sağlamlığını yoxla';
+
+  @override
+  String get relayTestTitle => 'Relay sağlamlıq testi';
+
+  @override
+  String get relayTestHint =>
+      'Yalnız relay yoxlanılır. Mozilla-ya sorğu və hesab məlumatı göndərilmir.';
+
+  @override
+  String get relayTestPassed => 'Relay hazırdır';
+
+  @override
+  String get relayTestFailed => 'Relay sağlamlığı təsdiqlənmədi';
+
+  @override
+  String get relayTestCopy => 'Hesabatı köçür';
+
+  @override
+  String get relayTestInterrupted => 'Tam nəticə alınmadan test başa çatdı.';
 }

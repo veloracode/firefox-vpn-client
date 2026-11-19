@@ -3,6 +3,7 @@ package service
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -18,6 +19,7 @@ import (
 	"github.com/armanlife/firefox-vpn-client/core/internal/accounts"
 	"github.com/armanlife/firefox-vpn-client/core/internal/config"
 	"github.com/armanlife/firefox-vpn-client/core/internal/fxa"
+	"github.com/armanlife/firefox-vpn-client/core/internal/guardian"
 	"github.com/armanlife/firefox-vpn-client/core/internal/logx"
 	"github.com/armanlife/firefox-vpn-client/core/internal/proxy"
 )
@@ -54,6 +56,64 @@ func addTestAccount(t *testing.T, d *Daemon, name string) string {
 		t.Fatal(err)
 	}
 	return acc.ID
+}
+
+func TestManualQuotaRefreshReadsPassHeadersWhenHeadIsForbidden(t *testing.T) {
+	for _, status := range []int{http.StatusOK, http.StatusTooManyRequests, http.StatusForbidden} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			d := newTestDaemon(t)
+			id := addTestAccount(t, d, "quota")
+			if _, err := d.mgr.ObserveUsage(id, accounts.Usage{LimitBytes: 50 * testGiB, RemainingBytes: 49 * testGiB}); err != nil {
+				t.Fatal(err)
+			}
+			var methods []string
+			setCoreControlPlane(t, func(r *http.Request) (*http.Response, error) {
+				if r.URL.Path != "/api/v1/fpn/token" || r.Header.Get("Authorization") != "Bearer access-quota" {
+					return nil, fmt.Errorf("unexpected quota request %s %s", r.Method, r.URL.Path)
+				}
+				methods = append(methods, r.Method)
+				switch r.Method {
+				case http.MethodHead:
+					return coreResponse(r, http.StatusForbidden, "", nil), nil
+				case http.MethodGet:
+					if status == http.StatusForbidden {
+						return coreResponse(r, status, "", nil), nil
+					}
+					used := int64(2)
+					if status == http.StatusTooManyRequests {
+						used = 50
+					}
+					return coreResponse(r, status, "", quotaHeader(used)), nil
+				default:
+					return nil, fmt.Errorf("unexpected quota method %s", r.Method)
+				}
+			})
+			if err := d.refreshAccountUsage(id, false); !errors.Is(err, guardian.ErrNotEntitled) {
+				t.Fatalf("expected the background read to stop at HEAD: %v", err)
+			}
+			client := newDashboardClient(t, d)
+			wantStatus, wantRemaining := http.StatusOK, int64(48*testGiB)
+			switch status {
+			case http.StatusTooManyRequests:
+				wantRemaining = 0
+			case http.StatusForbidden:
+				wantStatus, wantRemaining = http.StatusBadRequest, 49*testGiB
+			}
+			if rec := client.do(http.MethodPost, "/api/accounts/"+id+"/refresh", nil); rec.Code != wantStatus {
+				t.Fatalf("manual quota refresh: %d %s", rec.Code, rec.Body)
+			}
+			if got := strings.Join(methods, ","); got != "HEAD,HEAD,GET" {
+				t.Fatalf("quota methods %s", got)
+			}
+			acc, err := d.store.Get(id)
+			if err != nil || acc.Usage == nil || acc.Usage.LimitBytes != 50*testGiB {
+				t.Fatalf("quota was not saved: %v", err)
+			}
+			if acc.Usage.RemainingBytes != wantRemaining {
+				t.Fatalf("unexpected remaining quota %d", acc.Usage.RemainingBytes)
+			}
+		})
+	}
 }
 
 type dashboardClient struct {
@@ -214,6 +274,32 @@ func TestDashboardSettingsValidateAndApply(t *testing.T) {
 	}
 }
 
+func TestDashboardRelaySwitchesSaveIndependently(t *testing.T) {
+	d := newTestDaemon(t)
+	t.Cleanup(func() { guardian.SetRegionRecovery(nil) })
+	c := newDashboardClient(t, d)
+	settings := decodeBody[settingsView](t, c.do(http.MethodGet, "/api/settings", nil))
+	for _, shared := range []bool{false, true} {
+		cfg := settings.Config
+		cfg.Network.APIRelayEnabled = false
+		cfg.Network.APIRelay = "https://personal.example/"
+		cfg.Network.SharedRelayEnabled = shared
+		if rec := c.do(http.MethodPut, "/api/settings", map[string]any{"config": cfg}); rec.Code != http.StatusOK {
+			t.Fatal("relay switches could not be saved")
+		}
+		view := decodeBody[settingsView](t, c.do(http.MethodGet, "/api/settings", nil))
+		saved, _, err := config.Load(d.paths.Config)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, n := range []config.Network{view.Config.Network, saved.Network} {
+			if n.APIRelayEnabled || n.SharedRelayEnabled != shared || n.SharedRelayInUse() != shared || n.APIRelay != cfg.Network.APIRelay {
+				t.Fatal("shared relay did not remain independent from the disabled personal relay")
+			}
+		}
+	}
+}
+
 // An account whose quota reset has passed stops showing as used up by itself,
 // with no request to read it again.
 func TestAPassedResetShowsWithoutARefresh(t *testing.T) {
@@ -340,6 +426,7 @@ func TestDashboardSignInWithoutAPassword(t *testing.T) {
 func TestDashboardSignInWithEmailCode(t *testing.T) {
 	d := newTestDaemon(t)
 	session := strings.Repeat("ab", 32)
+	verified := false
 	setCoreControlPlane(t, func(r *http.Request) (*http.Response, error) {
 		switch {
 		case r.URL.Path == "/v1/account/login":
@@ -349,9 +436,20 @@ func TestDashboardSignInWithEmailCode(t *testing.T) {
 			if !strings.Contains(string(body), `"123456"`) {
 				return coreResponse(r, http.StatusBadRequest, `{"errno":183,"message":"Invalid code"}`, nil), nil
 			}
+			verified = true
 			return coreResponse(r, http.StatusOK, `{}`, nil), nil
 		case r.URL.Path == "/v1/oauth/token":
+			return coreResponse(r, http.StatusNotAcceptable, "", nil), nil
+		case r.URL.Path == "/v1/oauth/authorization":
+			var request struct{ State string }
+			if !verified || json.NewDecoder(r.Body).Decode(&request) != nil || request.State == "" {
+				return nil, fmt.Errorf("OAuth authorization did not follow verification")
+			}
+			return coreResponse(r, http.StatusOK, `{"code":"fixture-code","state":"`+request.State+`"}`, nil), nil
+		case r.URL.Host == "oauth.accounts.firefox.com" && r.URL.Path == "/v1/token":
 			return coreResponse(r, http.StatusOK, `{"access_token":"access-new","refresh_token":"refresh-new","expires_in":3600,"scope":"profile"}`, nil), nil
+		case r.URL.Path == "/v1/session/destroy":
+			return coreResponse(r, http.StatusOK, `{}`, nil), nil
 		case r.Method == http.MethodHead && strings.HasSuffix(r.URL.Path, "/api/v1/fpn/token"):
 			return coreResponse(r, http.StatusOK, "", quotaHeader(2)), nil
 		}
@@ -661,5 +759,47 @@ func TestNetworkURLsNameTheComputersAddresses(t *testing.T) {
 		if got := networkURLs(listen, "/app/"); got != nil {
 			t.Errorf("%s: %v", listen, got)
 		}
+	}
+}
+
+func TestSignInProxyOnlyForTheApp(t *testing.T) {
+	d := newTestDaemon(t)
+	d.localToken = "local-token-fixture"
+	t.Cleanup(d.signInProxy.close)
+	handler := newDashboardServer(d).handler()
+	call := func(method, token string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(method, "/api/signin/browser/proxy", strings.NewReader(`{"port":0}`))
+		req.Host = "127.0.0.1:10820"
+		req.Header.Set("Content-Type", "application/json")
+		if token != "" {
+			req.Header.Set(localTokenHeader, token)
+		}
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+		return rec
+	}
+
+	// A browser on the dashboard (no login set here) is not the app.
+	if rec := call(http.MethodPost, ""); rec.Code != http.StatusForbidden {
+		t.Fatalf("without the local token: %d %s, want 403", rec.Code, rec.Body)
+	}
+	if rec := call(http.MethodPost, "wrong"); rec.Code != http.StatusForbidden {
+		t.Fatalf("with a wrong token: %d %s, want 403", rec.Code, rec.Body)
+	}
+
+	rec := call(http.MethodPost, d.localToken)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("open: %d %s", rec.Code, rec.Body)
+	}
+	first := decodeBody[map[string]string](t, rec)["address"]
+	if !strings.HasPrefix(first, "127.0.0.1:") {
+		t.Fatalf("address %q, want loopback", first)
+	}
+	// Opened again (the page shown again): the same proxy.
+	if again := decodeBody[map[string]string](t, call(http.MethodPost, d.localToken))["address"]; again != first {
+		t.Fatalf("second open gave %q, want %q", again, first)
+	}
+	if rec := call(http.MethodDelete, d.localToken); rec.Code != http.StatusOK {
+		t.Fatalf("close: %d %s", rec.Code, rec.Body)
 	}
 }

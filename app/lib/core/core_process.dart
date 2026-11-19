@@ -24,7 +24,22 @@ class CoreProcess {
   /// The core stopped soon after starting; it is not started again until
   /// [retryNow], so a lasting problem (a taken port) does not loop.
   bool _failedFast = false;
-  final _stderr = <String>[];
+  /// The core's stderr, as both ends: a crash says why on its first line
+  /// and then prints a stack of dozens, so keeping only the last lines keeps
+  /// only the stack's tail - which is what a crash report needs least.
+  final _stderrFirst = <String>[];
+  final _stderrLast = <String>[];
+
+  /// What to tell the user and the log when the core stops: the reason it
+  /// gave, then the last of what it was doing.
+  String get _stderrDetail {
+    final parts = [
+      ..._stderrFirst,
+      if (_stderrLast.isNotEmpty) '...',
+      ..._stderrLast,
+    ];
+    return parts.join(' ');
+  }
 
   /// The core's last structured error: `app-error: <code> <detail>` on
   /// stderr (core/doc/OPERATOR.md, desktop app mode).
@@ -106,7 +121,7 @@ class CoreProcess {
       }
       throw CoreUnavailable(
         CoreProblem.exited,
-        error?.detail ?? _stderr.join(' '),
+        error?.detail ?? _stderrDetail,
       );
     }
     if (!File(executable).existsSync()) {
@@ -139,7 +154,8 @@ class CoreProcess {
   }
 
   Future<void> _start() async {
-    _stderr.clear();
+    _stderrFirst.clear();
+    _stderrLast.clear();
     _appError = null;
     _startedAt = DateTime.now();
     // On Windows detachedWithStdio: no console window for the
@@ -171,8 +187,15 @@ class CoreProcess {
                       detail: rest.substring(space + 1),
                     );
             }
-            _stderr.add(line);
-            if (_stderr.length > 5) _stderr.removeAt(0);
+            // The first lines carry a crash's reason; the last carry
+            // what it was doing when it stopped. The middle of a stack is
+            // the part nobody needs.
+            if (_stderrFirst.length < 6) {
+              _stderrFirst.add(line);
+            } else {
+              _stderrLast.add(line);
+              if (_stderrLast.length > 4) _stderrLast.removeAt(0);
+            }
           },
           // The pipe closes when the core exits.
           onDone: () {

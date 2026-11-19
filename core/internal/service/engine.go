@@ -92,6 +92,7 @@ func (d *Daemon) startEngine() (*proxyEngine, error) {
 			Guardian:   cfg.Network.GuardianEndpoint,
 			Timeout:    connectTimeout,
 			UseH3:      engineTransport(cfg) == "h3",
+			UseH1:      engineTransport(cfg) == "h1",
 			Sessions:   cfg.Proxy.UpstreamConnections,
 			StatusFile: d.paths.Status,
 			Accounts:   d.pool,
@@ -156,15 +157,15 @@ func (d *Daemon) expectedSelection(cfg config.Config) (proxy.Candidate, string) 
 // connectEngine is the first wake: it fetches the server list and a pass
 // (together), resolves "fastest" with that pass, selects the upstream, and
 // builds the controller with its first H2/H3 session. idle.wakeMu is held.
-func (d *Daemon) connectEngine(e *proxyEngine) (*proxy.Controller, error) {
+func (d *Daemon) connectEngine(ctx context.Context, e *proxyEngine) (*proxy.Controller, error) {
 	cfg := e.cfg
 	server := strings.TrimSpace(cfg.Proxy.Server)
 	country := strings.TrimSpace(cfg.Proxy.Country)
 
 	listed := make(chan []serverlist.Country, 1)
 	go func() { listed <- d.refreshLocations(cfg) }()
-	ctx, cancel := context.WithTimeout(context.Background(), proxy.PassRenewTimeout)
-	auth, pass, err := d.pool.AcquirePass(ctx, e.upstream.Guardian)
+	passCtx, cancel := context.WithTimeout(ctx, proxy.PassRenewTimeout)
+	auth, pass, err := d.pool.AcquirePass(passCtx, e.upstream.Guardian)
 	cancel()
 	if err != nil {
 		return nil, err
@@ -180,7 +181,11 @@ func (d *Daemon) connectEngine(e *proxyEngine) (*proxy.Controller, error) {
 		known := d.countries
 		d.mu.Unlock()
 		if len(known) == 0 || server != "" {
-			countries = <-listed
+			select {
+			case countries = <-listed:
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			}
 		} else {
 			logx.Debug("server list still loading; connecting with the one from before")
 			countries = known
@@ -190,7 +195,10 @@ func (d *Daemon) connectEngine(e *proxyEngine) (*proxy.Controller, error) {
 
 	fastest := server == "" && strings.EqualFold(country, proxy.FastestCountry)
 	if fastest {
-		country = d.resolveFastestCountry(pass.RawToken)
+		country = d.resolveFastestCountry(ctx, pass.RawToken)
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
 	}
 	selected, fromState, err := proxy.ResolveWithStateAndCountry(server, country, countries, d.paths.Selection, d.failover.Avoided)
 	if err != nil {
@@ -243,7 +251,7 @@ func (d *Daemon) connectEngine(e *proxyEngine) (*proxy.Controller, error) {
 	withPass := upstream
 	withPass.Auth, withPass.Pass = auth, pass
 	controller, err := proxy.NewController(withPass)
-	if err != nil && upstream.UseH3 {
+	if err != nil && ctx.Err() == nil && upstream.UseH3 {
 		// Networks that filter QUIC (UDP), as in Iran, often let the same
 		// server through over TCP: HTTP/2 for this engine instead.
 		logx.Warn("HTTP/3 did not connect; using HTTP/2 instead proxy=%s err=%s", selected.Addr, logx.Err(err))
@@ -251,6 +259,22 @@ func (d *Daemon) connectEngine(e *proxyEngine) (*proxy.Controller, error) {
 		controller, err = proxy.NewController(withPass)
 		if err == nil {
 			e.fellBackToH2.Store(true)
+		}
+	}
+	if err != nil && ctx.Err() == nil && fallback != nil && !standIn && !e.upstream.UseH3 && selected.IsRecommended() {
+		if next, ok := upstream.Failover.StandInAfterTimeout(fallback(), selected, err); ok {
+			if nextURL, urlErr := proxy.NormalizeURL(next.Addr); urlErr == nil {
+				logx.Info("recommended server timed out on first connect; trying a stand-in from=%s to=%s", selected.Addr, next.Addr)
+				withPass.Server, withPass.ProxyURL = next, nextURL
+				if alternate, alternateErr := proxy.NewController(withPass); alternateErr == nil {
+					upstream.Failover.StandInConnected(selected)
+					controller, err = alternate, nil
+					upstream.Server, upstream.ProxyURL = next, nextURL
+					selected, standIn, selectionSource = next, true, "server_failover"
+				} else {
+					logx.Warn("recommended server's stand-in did not connect proxy=%s err=%s", next.Addr, logx.Err(alternateErr))
+				}
+			}
 		}
 	}
 	if err != nil {
@@ -284,9 +308,9 @@ func (d *Daemon) connectEngine(e *proxyEngine) (*proxy.Controller, error) {
 // reconnectEngine wakes an engine that was connected before: a new pass
 // and session for the same server (or the one the failover moved to),
 // without selecting or measuring again. idle.wakeMu is held.
-func (d *Daemon) reconnectEngine(e *proxyEngine) (*proxy.Controller, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), proxy.PassRenewTimeout)
-	auth, pass, err := d.pool.AcquirePass(ctx, e.upstream.Guardian)
+func (d *Daemon) reconnectEngine(ctx context.Context, e *proxyEngine) (*proxy.Controller, error) {
+	passCtx, cancel := context.WithTimeout(ctx, proxy.PassRenewTimeout)
+	auth, pass, err := d.pool.AcquirePass(passCtx, e.upstream.Guardian)
 	cancel()
 	if err != nil {
 		return nil, err
@@ -422,11 +446,21 @@ func (e *proxyEngine) stop() {
 	e.routed.Close()
 }
 
-// refreshLocations fetches and filters the server list (unless an exact
-// server is configured) and keeps it for the dashboard's location choices.
+const serverListFreshFor = 24 * time.Hour
+
+// refreshLocations reuses a fresh server list and keeps a stale one available
+// when Remote Settings cannot be reached.
 func (d *Daemon) refreshLocations(cfg config.Config) []serverlist.Country {
 	if strings.TrimSpace(cfg.Proxy.Server) != "" {
 		return nil
+	}
+	d.locationsMu.Lock()
+	defer d.locationsMu.Unlock()
+	cached, savedAt, cacheErr := serverlist.LoadCache(d.paths.ServerList)
+	if age := time.Since(savedAt); cacheErr == nil && age >= 0 && age < serverListFreshFor {
+		if countries := d.filterLocations(cached, d.knownFirefoxVersion()); len(countries) > 0 {
+			return countries
+		}
 	}
 	// The Firefox version the records are evaluated for is looked up
 	// while the list downloads.
@@ -442,13 +476,16 @@ func (d *Daemon) refreshLocations(cfg config.Config) []serverlist.Country {
 	} else {
 		// The list changes rarely: the last one fetched does.
 		logx.Warn("fetching server list failed: %v", err)
-		if cached, savedAt, cacheErr := serverlist.LoadCache(d.paths.ServerList); cacheErr == nil {
+		if cacheErr == nil {
 			logx.Info("using the server list saved %s", savedAt.Local().Format("2006-01-02 15:04"))
 			countries = cached
 		}
 	}
-	var dropped []serverlist.FilteredRecord
-	countries, dropped = serverlist.Filter(countries, serverlist.Environment{FirefoxVersion: <-version})
+	return d.filterLocations(countries, <-version)
+}
+
+func (d *Daemon) filterLocations(countries []serverlist.Country, version string) []serverlist.Country {
+	countries, dropped := serverlist.Filter(countries, serverlist.Environment{FirefoxVersion: version})
 	for _, record := range dropped {
 		logx.Debug("server-list record skipped country_code=%s filter=%q reason=%s", record.Code, record.Expression, record.Reason)
 	}
@@ -509,10 +546,10 @@ func (d *Daemon) firefoxVersion() string {
 	return version
 }
 
-// engineTransport is proxy.transport, or "h2" through an upstream proxy: a
-// SOCKS5 connection is TCP, and QUIC is not.
+// engineTransport is proxy.transport, or "h2" for HTTP/3 through an
+// upstream proxy: a SOCKS5 connection is TCP, and QUIC is not.
 func engineTransport(cfg config.Config) string {
-	if cfg.Network.UpstreamProxyInUse() != "" {
+	if cfg.Network.UpstreamProxyInUse() != "" && cfg.Proxy.Transport == "h3" {
 		return "h2"
 	}
 	return cfg.Proxy.Transport

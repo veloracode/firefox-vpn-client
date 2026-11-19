@@ -10,11 +10,10 @@ import (
 	"time"
 
 	utls "github.com/refraction-networking/utls"
-	"github.com/refraction-networking/utls/dicttls"
 
+	"github.com/armanlife/firefox-vpn-client/core/internal/firefoxtls"
 	"github.com/armanlife/firefox-vpn-client/core/internal/hellosplit"
 	"github.com/armanlife/firefox-vpn-client/core/internal/logx"
-	"github.com/armanlife/firefox-vpn-client/core/internal/resolver"
 )
 
 var (
@@ -34,109 +33,71 @@ var (
 // use, leaving the rest to Go's for a network that drops it silently.
 const firefoxHandshakeShare = 2
 
-// firefoxHello is the ClientHello of desktop Firefox 158, in its order, which
-// Firefox keeps from one connection to the next. A spec is good for one
-// connection.
-func firefoxHello() *utls.ClientHelloSpec {
-	return &utls.ClientHelloSpec{
-		TLSVersMin: utls.VersionTLS12,
-		TLSVersMax: utls.VersionTLS13,
-		CipherSuites: []uint16{
-			utls.TLS_AES_128_GCM_SHA256,
-			utls.TLS_CHACHA20_POLY1305_SHA256,
-			utls.TLS_AES_256_GCM_SHA384,
-			utls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-			utls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-			utls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256,
-			utls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305_SHA256,
-			utls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-			utls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-			utls.TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA,
-			utls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
-			utls.TLS_RSA_WITH_AES_128_GCM_SHA256,
-			utls.TLS_RSA_WITH_AES_256_GCM_SHA384,
-			utls.TLS_RSA_WITH_AES_128_CBC_SHA,
-			utls.TLS_RSA_WITH_AES_256_CBC_SHA,
-		},
-		CompressionMethods: []uint8{0},
-		Extensions: []utls.TLSExtension{
-			&utls.SNIExtension{},
-			&utls.ExtendedMasterSecretExtension{},
-			&utls.RenegotiationInfoExtension{Renegotiation: utls.RenegotiateOnceAsClient},
-			&utls.SupportedCurvesExtension{Curves: []utls.CurveID{
-				utls.X25519MLKEM768, utls.X25519, utls.CurveP256, utls.CurveP384, utls.CurveP521,
-			}},
-			&utls.SupportedPointsExtension{SupportedPoints: []uint8{0}},
-			&utls.SessionTicketExtension{},
-			&utls.ALPNExtension{AlpnProtocols: []string{"h2", "http/1.1"}},
-			&utls.StatusRequestExtension{},
-			&utls.FakeDelegatedCredentialsExtension{SupportedSignatureAlgorithms: []utls.SignatureScheme{
-				utls.ECDSAWithP256AndSHA256, utls.ECDSAWithP384AndSHA384, utls.ECDSAWithP521AndSHA512, utls.ECDSAWithSHA1,
-			}},
-			&utls.SCTExtension{},
-			&utls.KeyShareExtension{KeyShares: []utls.KeyShare{
-				{Group: utls.X25519MLKEM768}, {Group: utls.X25519}, {Group: utls.CurveP256},
-			}},
-			&utls.SupportedVersionsExtension{Versions: []uint16{utls.VersionTLS13, utls.VersionTLS12}},
-			&utls.SignatureAlgorithmsExtension{SupportedSignatureAlgorithms: []utls.SignatureScheme{
-				utls.ECDSAWithP256AndSHA256, utls.ECDSAWithP384AndSHA384, utls.ECDSAWithP521AndSHA512,
-				utls.PSSWithSHA256, utls.PSSWithSHA384, utls.PSSWithSHA512,
-				utls.PKCS1WithSHA256, utls.PKCS1WithSHA384, utls.PKCS1WithSHA512,
-				utls.ECDSAWithSHA1, utls.PKCS1WithSHA1,
-			}},
-			&utls.PSKKeyExchangeModesExtension{Modes: []uint8{utls.PskModeDHE}},
-			&utls.FakeRecordSizeLimitExtension{Limit: 0x4001},
-			&utls.UtlsCompressCertExtension{Algorithms: []utls.CertCompressionAlgo{
-				utls.CertCompressionZlib, utls.CertCompressionBrotli, utls.CertCompressionZstd,
-			}},
-			&utls.GREASEEncryptedClientHelloExtension{
-				CandidateCipherSuites: []utls.HPKESymmetricCipherSuite{
-					{KdfId: dicttls.HKDF_SHA256, AeadId: dicttls.AEAD_AES_128_GCM},
-					{KdfId: dicttls.HKDF_SHA256, AeadId: dicttls.AEAD_CHACHA20_POLY1305},
-				},
-				CandidatePayloadLens: []uint16{224},
-			},
-			&utls.UtlsPreSharedKeyExtension{},
-		},
+// The protocols a connection to Mozilla speaks over TLS (ALPN).
+const (
+	alpnH2 = "h2"
+	alpnH1 = "http/1.1"
+)
+
+// negotiated checks the protocol TLS agreed on: HTTP/2 must be named; for
+// HTTP/1.1 a server that names none speaks it too.
+func negotiated(proto, got string) error {
+	switch {
+	case got == proto, proto == alpnH1 && got == "":
+		return nil
+	case proto == alpnH1:
+		return errProxyHTTP1Unavailable
 	}
+	return errProxyHTTP2Unavailable
 }
 
-// firefoxHandshake completes TLS on raw with Firefox's hello.
+// firefoxHandshake completes TLS on raw with Firefox's hello, for HTTP/2.
 func firefoxHandshake(ctx context.Context, raw net.Conn, name string) (net.Conn, error) {
-	conn := utls.UClient(raw, &utls.Config{
-		RootCAs:            upstreamRoots.Load(),
-		ServerName:         name,
-		ClientSessionCache: upstreamFirefoxSessions,
-		OmitEmptyPsk:       true,
-	}, utls.HelloCustom)
-	if err := conn.ApplyPreset(firefoxHello()); err != nil {
-		return nil, err
-	}
-	if err := conn.HandshakeContext(ctx); err != nil {
-		return nil, err
-	}
-	if conn.ConnectionState().NegotiatedProtocol != "h2" {
-		return nil, errProxyHTTP2Unavailable
-	}
-	return conn, nil
+	return firefoxHandshakeFor(alpnH2)(ctx, raw, name)
 }
 
-// goHandshake completes TLS on raw with Go's own hello.
+// firefoxHandshakeFor is firefoxHandshake for proto: Firefox offers both
+// protocols; HTTP/1.1 alone, offered alone, makes the server take it.
+func firefoxHandshakeFor(proto string) func(context.Context, net.Conn, string) (net.Conn, error) {
+	offer := []string{alpnH2, alpnH1}
+	if proto == alpnH1 {
+		offer = []string{alpnH1}
+	}
+	return func(ctx context.Context, raw net.Conn, name string) (net.Conn, error) {
+		conn, err := firefoxtls.Handshake(ctx, raw, name, upstreamRoots.Load(), upstreamFirefoxSessions, offer...)
+		if err != nil {
+			return nil, err
+		}
+		if err := negotiated(proto, conn.ConnectionState().NegotiatedProtocol); err != nil {
+			return nil, err
+		}
+		return conn, nil
+	}
+}
+
+// goHandshake completes TLS on raw with Go's own hello, for HTTP/2.
 func goHandshake(ctx context.Context, raw net.Conn, name string) (net.Conn, error) {
-	conn := tls.Client(raw, &tls.Config{
-		RootCAs:            upstreamRoots.Load(),
-		ServerName:         name,
-		MinVersion:         tls.VersionTLS12,
-		NextProtos:         []string{"h2"},
-		ClientSessionCache: upstreamTLSSessions,
-	})
-	if err := conn.HandshakeContext(ctx); err != nil {
-		return nil, err
+	return goHandshakeFor(alpnH2)(ctx, raw, name)
+}
+
+// goHandshakeFor is goHandshake for proto.
+func goHandshakeFor(proto string) func(context.Context, net.Conn, string) (net.Conn, error) {
+	return func(ctx context.Context, raw net.Conn, name string) (net.Conn, error) {
+		conn := tls.Client(raw, &tls.Config{
+			RootCAs:            upstreamRoots.Load(),
+			ServerName:         name,
+			MinVersion:         tls.VersionTLS12,
+			NextProtos:         []string{proto},
+			ClientSessionCache: upstreamTLSSessions,
+		})
+		if err := conn.HandshakeContext(ctx); err != nil {
+			return nil, err
+		}
+		if err := negotiated(proto, conn.ConnectionState().NegotiatedProtocol); err != nil {
+			return nil, err
+		}
+		return conn, nil
 	}
-	if conn.ConnectionState().NegotiatedProtocol != "h2" {
-		return nil, errProxyHTTP2Unavailable
-	}
-	return conn, nil
 }
 
 // firefoxContext limits ctx to the share of its time the Firefox hello may use.
@@ -157,7 +118,7 @@ func (e *upstreamHandshakeError) Unwrap() error { return e.err }
 
 // upstreamHandshake connects to proxyHost and completes TLS with shake.
 func upstreamHandshake(ctx context.Context, proxyHost, name string, shake func(context.Context, net.Conn, string) (net.Conn, error)) (net.Conn, *watchedConn, error) {
-	dialed, err := resolver.Dial(ctx, "tcp", proxyHost)
+	dialed, err := dialUpstream(ctx, proxyHost)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -165,7 +126,7 @@ func upstreamHandshake(ctx context.Context, proxyHost, name string, shake func(c
 	conn, err := shake(ctx, raw, name)
 	if err != nil {
 		_ = raw.Close()
-		if errors.Is(err, errProxyHTTP2Unavailable) {
+		if errors.Is(err, errProxyHTTP2Unavailable) || errors.Is(err, errProxyHTTP1Unavailable) {
 			return nil, nil, err
 		}
 		return nil, nil, &upstreamHandshakeError{err}
@@ -177,19 +138,25 @@ func upstreamHandshake(ctx context.Context, proxyHost, name string, shake func(c
 // for HTTP/2. It looks like the Firefox its User-Agent says it is; a handshake
 // that fails that way is tried again with Go's hello.
 func dialUpstreamTLS(ctx context.Context, proxyURL *url.URL, proxyHost string) (net.Conn, *watchedConn, error) {
+	return dialUpstreamTLSFor(ctx, proxyURL, proxyHost, alpnH2)
+}
+
+// dialUpstreamTLSFor is dialUpstreamTLS for proto (alpnH2 or alpnH1).
+func dialUpstreamTLSFor(ctx context.Context, proxyURL *url.URL, proxyHost, proto string) (net.Conn, *watchedConn, error) {
 	name := proxyURL.Hostname()
+	goShake := goHandshakeFor(proto)
 	if upstreamGoTLS.Load() {
-		return upstreamHandshake(ctx, proxyHost, name, goHandshake)
+		return upstreamHandshake(ctx, proxyHost, name, goShake)
 	}
 	firstCtx, cancel := firefoxContext(ctx)
 	defer cancel()
-	conn, raw, err := upstreamHandshake(firstCtx, proxyHost, name, firefoxHandshake)
+	conn, raw, err := upstreamHandshake(firstCtx, proxyHost, name, firefoxHandshakeFor(proto))
 	var failed *upstreamHandshakeError
 	if err == nil || ctx.Err() != nil || !errors.As(err, &failed) {
 		return conn, raw, err
 	}
 	logx.Warn("upstream TLS with Firefox's hello failed; trying Go's proxy=%s err=%s", proxyHost, logx.Err(err))
-	conn, raw, err = upstreamHandshake(ctx, proxyHost, name, goHandshake)
+	conn, raw, err = upstreamHandshake(ctx, proxyHost, name, goShake)
 	if err == nil {
 		upstreamGoTLS.Store(true)
 	}

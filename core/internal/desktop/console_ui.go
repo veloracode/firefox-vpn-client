@@ -59,7 +59,7 @@ func (b daemonBackend) connectionTest(context.Context) (proxy.ConnectionTestResu
 }
 func (b daemonBackend) restart(context.Context) error { b.d.RequestRestart(); return nil }
 func (b daemonBackend) ping(ctx context.Context) ([]proxy.LocationPing, error) {
-	results, _, err := b.d.PingAll(ctx, nil)
+	results, _, err := b.d.PingAll(ctx, nil, true)
 	return results, err
 }
 func (b daemonBackend) setLocation(_ context.Context, country string) error {

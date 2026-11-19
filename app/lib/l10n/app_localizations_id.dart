@@ -150,6 +150,10 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
+  String get accountsGuideUnlimited =>
+      'Akun Firefox saat ini punya kuota tanpa batas.';
+
+  @override
   String accountsOrderNote(int percent) {
     return 'Sesuai urutan daftar ini: masing-masing sampai $percent%, yang terakhir sampai datanya habis.';
   }
@@ -171,6 +175,9 @@ class AppLocalizationsId extends AppLocalizations {
   @override
   String get delayTestFailed =>
       'Tidak dapat mengukur jeda server. Periksa internet Anda.';
+
+  @override
+  String get delayFromLastTest => 'Dari tes sebelumnya';
 
   @override
   String get createAccountTitle => 'Belum punya Firefox Account?';
@@ -446,6 +453,9 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get settingsTitle => 'Pengaturan';
+
+  @override
+  String get settingsNoMatch => 'Tidak ada yang cocok';
 
   @override
   String get sectionGeneral => 'Umum';
@@ -735,6 +745,56 @@ class AppLocalizationsId extends AppLocalizations {
       'Pindah ke akun berikutnya saat kuota sudah terpakai sebanyak ini.';
 
   @override
+  String get signInMethod => 'Metode masuk';
+
+  @override
+  String get signInMethodBrowser => 'Masuk lewat peramban';
+
+  @override
+  String get signInMethodApi => 'Masuk langsung';
+
+  @override
+  String get browserSignInBroken => 'Halaman masuk tidak dapat dibuka.';
+
+  @override
+  String get browserSignInBlocked =>
+      'Mozilla tidak menyelesaikan langkah terakhir untuk menambahkan akun (HTTP 406).';
+
+  @override
+  String get browserSignInFallback => 'Masuk dengan email dan kata sandi';
+
+  @override
+  String get backupExport => 'Simpan cadangan';
+
+  @override
+  String get backupImport => 'Impor cadangan';
+
+  @override
+  String backupSaved(String name) {
+    return 'Tersimpan: $name';
+  }
+
+  @override
+  String get backupImportTitle => 'Tambahkan akun-akun ini?';
+
+  @override
+  String get backupAccountExists =>
+      'Sudah ada; info masuknya diambil dari file';
+
+  @override
+  String get backupImportAction => 'Tambah';
+
+  @override
+  String backupImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count akun ditambahkan',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get sectionDns => 'DNS';
 
   @override
@@ -766,7 +826,38 @@ class AppLocalizationsId extends AppLocalizations {
   String get transportH3 => 'HTTP/3 (QUIC)';
 
   @override
+  String get ipVersion => 'Versi IP';
+
+  @override
+  String get ipVersionAuto => 'Otomatis (IPv4 dulu, lalu IPv6)';
+
+  @override
+  String get ipVersionDual => 'Keduanya sekaligus (dual-stack)';
+
+  @override
+  String get ipVersionV6First => 'IPv6 dulu, lalu IPv4';
+
+  @override
+  String get ipVersionV4 => 'Hanya IPv4';
+
+  @override
+  String get ipVersionV6 => 'Hanya IPv6';
+
+  @override
+  String get tunMtu => 'MTU';
+
+  @override
+  String get tunMtuHint =>
+      'Ukuran paket antarmuka VPN, 1280 hingga 9000. Kosong: otomatis.';
+
+  @override
+  String get tunMtuInvalid => 'Angka dari 1280 hingga 9000, atau kosong';
+
+  @override
   String get transportH2 => 'HTTP/2 (TCP)';
+
+  @override
+  String get transportH1 => 'HTTP/1.1 (TLS)';
 
   @override
   String get directRules => 'Langsung';
@@ -848,6 +939,13 @@ class AppLocalizationsId extends AppLocalizations {
   String get tlsFragment => 'Fragmentasi TLS';
 
   @override
+  String get tlsFragmentAuto => 'Otomatis';
+
+  @override
+  String get tlsFragmentAutoHint =>
+      'Mencoba cara lain jika koneksi biasa gagal.';
+
+  @override
   String get tlsFragmentOff => 'Nonaktif';
 
   @override
@@ -878,7 +976,20 @@ class AppLocalizationsId extends AppLocalizations {
   String get sectionBypass => 'Jika Mozilla diblokir';
 
   @override
+  String get sharedRelay => 'Relai bersama';
+
+  @override
+  String get sharedRelayHint =>
+      'Gunakan relai bersama aplikasi jika Mozilla memblokir wilayah Anda. Relai pribadi yang aktif diprioritaskan.';
+
+  @override
+  String get personalRelay => 'Relai pribadi';
+
+  @override
   String get apiRelay => 'Server relay';
+
+  @override
+  String get apiRelayUse => 'Gunakan server relay';
 
   @override
   String get apiRelayHint =>
@@ -960,6 +1071,9 @@ class AppLocalizationsId extends AppLocalizations {
   String get speedInNotification => 'Tampilkan kecepatan di notifikasi';
 
   @override
+  String get showAppModeSwitch => 'Ganti mode VPN dengan cepat';
+
+  @override
   String get liveTraffic => 'Lalu lintas langsung';
 
   @override
@@ -1021,12 +1135,21 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
+  String updateRequired(String version) {
+    return 'Perbarui ke versi $version. Pembaruan ini diperlukan.';
+  }
+
+  @override
   String get download => 'Unduh';
 
   @override
   String updateCheckFailed(String error) {
     return 'Tidak dapat memeriksa pembaruan: $error';
   }
+
+  @override
+  String get updateCheckNoNetwork =>
+      'Tidak dapat menghubungi GitHub. Periksa koneksi internet Anda lalu coba lagi.';
 
   @override
   String get updateNow => 'Perbarui';
@@ -1078,6 +1201,9 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get connectOnStartup => 'Sambungkan saat sistem menyala';
+
+  @override
+  String get autostartShowsWindow => 'Tampilkan jendela aplikasi';
 
   @override
   String get proxyServiceActive => 'Layanan proxy aktif';
@@ -1133,7 +1259,60 @@ class AppLocalizationsId extends AppLocalizations {
   String get dataUsedTitle => 'Data terpakai';
 
   @override
+  String get monthlyData => 'Kuota';
+
+  @override
   String get bypassApps => 'Proxy per aplikasi';
+
+  @override
+  String get appClipboardImport => 'Impor dari papan klip';
+
+  @override
+  String get appClipboardExport => 'Ekspor ke papan klip';
+
+  @override
+  String get appClipboardUnavailable => 'Papan klip tidak dapat diakses.';
+
+  @override
+  String get appClipboardNoMatches =>
+      'Tidak ada aplikasi terinstal yang cocok dengan nama paket di papan klip.';
+
+  @override
+  String get appClipboardMerge => 'Gabungkan';
+
+  @override
+  String get appClipboardReplace => 'Ganti';
+
+  @override
+  String appClipboardImportPrompt(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Ditemukan $count aplikasi terinstal yang cocok. Tambahkan ke pilihan saat ini atau ganti pilihan?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String appClipboardImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count aplikasi diimpor.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String appClipboardExported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count nama paket disalin.',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get connectRetrying => 'Tidak dapat terhubung. Periksa internet Anda.';
@@ -1223,6 +1402,26 @@ class AppLocalizationsId extends AppLocalizations {
   @override
   String get appModeIncludeHint =>
       'Hanya aplikasi terpilih yang lewat VPN; aplikasi lain terhubung langsung.';
+
+  @override
+  String get modeAllApps => 'Semua aplikasi';
+
+  @override
+  String get modeAllAppsHint => 'Semua aplikasi lewat VPN';
+
+  @override
+  String get modeSelectedApps => 'Aplikasi terpilih';
+
+  @override
+  String get modeSelectedAppsHint => 'Hanya aplikasi terpilih';
+
+  @override
+  String selectedAppsCount(String count) {
+    return 'Aplikasi terpilih  $count';
+  }
+
+  @override
+  String get allTrafficThroughVpn => 'Semua lalu lintas ponsel lewat VPN.';
 
   @override
   String fromRegionList(String region) {
@@ -1687,4 +1886,25 @@ class AppLocalizationsId extends AppLocalizations {
   @override
   String get zedUpload => 'Upload';
 
+  String get testRelay => 'Uji kesehatan relai';
+
+  @override
+  String get relayTestTitle => 'Uji kesehatan relai';
+
+  @override
+  String get relayTestHint =>
+      'Hanya memeriksa relai. Tidak mengirim permintaan Mozilla atau informasi akun.';
+
+  @override
+  String get relayTestPassed => 'Relai siap';
+
+  @override
+  String get relayTestFailed => 'Kesehatan relai tidak dapat dipastikan';
+
+  @override
+  String get relayTestCopy => 'Salin laporan';
+
+  @override
+  String get relayTestInterrupted =>
+      'Pengujian berakhir sebelum hasil lengkap diterima.';
 }

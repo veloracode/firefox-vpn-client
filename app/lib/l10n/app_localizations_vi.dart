@@ -150,6 +150,10 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
+  String get accountsGuideUnlimited =>
+      'Tài khoản Firefox hiện có dữ liệu không giới hạn.';
+
+  @override
   String accountsOrderNote(int percent) {
     return 'Theo thứ tự danh sách này: mỗi tài khoản đến $percent%, tài khoản cuối dùng đến khi hết dữ liệu.';
   }
@@ -171,6 +175,9 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get delayTestFailed =>
       'Không đo được độ trễ của máy chủ. Hãy kiểm tra internet.';
+
+  @override
+  String get delayFromLastTest => 'Từ lần kiểm tra trước';
 
   @override
   String get createAccountTitle => 'Chưa có Firefox Account?';
@@ -448,6 +455,9 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get settingsTitle => 'Cài đặt';
+
+  @override
+  String get settingsNoMatch => 'Không có kết quả';
 
   @override
   String get sectionGeneral => 'Chung';
@@ -737,6 +747,56 @@ class AppLocalizationsVi extends AppLocalizations {
       'Khi dung lượng đã dùng đạt mức này, ứng dụng chuyển sang tài khoản tiếp theo.';
 
   @override
+  String get signInMethod => 'Phương thức đăng nhập';
+
+  @override
+  String get signInMethodBrowser => 'Đăng nhập qua trình duyệt';
+
+  @override
+  String get signInMethodApi => 'Đăng nhập trực tiếp';
+
+  @override
+  String get browserSignInBroken => 'Không thể mở trang đăng nhập.';
+
+  @override
+  String get browserSignInBlocked =>
+      'Mozilla chưa hoàn tất bước cuối để thêm tài khoản (HTTP 406).';
+
+  @override
+  String get browserSignInFallback => 'Đăng nhập bằng email và mật khẩu';
+
+  @override
+  String get backupExport => 'Lưu bản sao lưu';
+
+  @override
+  String get backupImport => 'Nhập bản sao lưu';
+
+  @override
+  String backupSaved(String name) {
+    return 'Đã lưu: $name';
+  }
+
+  @override
+  String get backupImportTitle => 'Thêm các tài khoản này?';
+
+  @override
+  String get backupAccountExists =>
+      'Đã có sẵn; thông tin đăng nhập sẽ lấy từ tệp';
+
+  @override
+  String get backupImportAction => 'Thêm';
+
+  @override
+  String backupImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Đã thêm $count tài khoản',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get sectionDns => 'DNS';
 
   @override
@@ -768,7 +828,38 @@ class AppLocalizationsVi extends AppLocalizations {
   String get transportH3 => 'HTTP/3 (QUIC)';
 
   @override
+  String get ipVersion => 'Phiên bản IP';
+
+  @override
+  String get ipVersionAuto => 'Tự động (IPv4 trước, rồi IPv6)';
+
+  @override
+  String get ipVersionDual => 'Cả hai cùng lúc (dual-stack)';
+
+  @override
+  String get ipVersionV6First => 'IPv6 trước, rồi IPv4';
+
+  @override
+  String get ipVersionV4 => 'Chỉ IPv4';
+
+  @override
+  String get ipVersionV6 => 'Chỉ IPv6';
+
+  @override
+  String get tunMtu => 'MTU';
+
+  @override
+  String get tunMtuHint =>
+      'Kích thước gói của giao diện VPN, từ 1280 đến 9000. Để trống: tự động.';
+
+  @override
+  String get tunMtuInvalid => 'Một số từ 1280 đến 9000, hoặc để trống';
+
+  @override
   String get transportH2 => 'HTTP/2 (TCP)';
+
+  @override
+  String get transportH1 => 'HTTP/1.1 (TLS)';
 
   @override
   String get directRules => 'Trực tiếp';
@@ -849,6 +940,13 @@ class AppLocalizationsVi extends AppLocalizations {
   String get tlsFragment => 'Phân mảnh TLS';
 
   @override
+  String get tlsFragmentAuto => 'Tự động';
+
+  @override
+  String get tlsFragmentAutoHint =>
+      'Thử các cách khác nếu kết nối thông thường thất bại.';
+
+  @override
   String get tlsFragmentOff => 'Tắt';
 
   @override
@@ -878,7 +976,20 @@ class AppLocalizationsVi extends AppLocalizations {
   String get sectionBypass => 'Nếu Mozilla bị chặn';
 
   @override
+  String get sharedRelay => 'Chuyển tiếp dùng chung';
+
+  @override
+  String get sharedRelayHint =>
+      'Dùng máy chủ chuyển tiếp dùng chung của ứng dụng nếu Mozilla chặn khu vực của bạn. Máy chủ chuyển tiếp cá nhân đang bật được ưu tiên.';
+
+  @override
+  String get personalRelay => 'Chuyển tiếp cá nhân';
+
+  @override
   String get apiRelay => 'Máy chủ chuyển tiếp';
+
+  @override
+  String get apiRelayUse => 'Dùng máy chủ chuyển tiếp';
 
   @override
   String get apiRelayHint =>
@@ -959,6 +1070,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get speedInNotification => 'Hiện tốc độ trong thông báo';
 
   @override
+  String get showAppModeSwitch => 'Chuyển nhanh chế độ VPN';
+
+  @override
   String get liveTraffic => 'Lưu lượng hiện tại';
 
   @override
@@ -1020,12 +1134,21 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
+  String updateRequired(String version) {
+    return 'Vui lòng cập nhật lên phiên bản $version. Bản cập nhật này là bắt buộc.';
+  }
+
+  @override
   String get download => 'Tải xuống';
 
   @override
   String updateCheckFailed(String error) {
     return 'Không thể kiểm tra cập nhật: $error';
   }
+
+  @override
+  String get updateCheckNoNetwork =>
+      'Không thể kết nối tới GitHub. Hãy kiểm tra kết nối internet và thử lại.';
 
   @override
   String get updateNow => 'Cập nhật';
@@ -1077,6 +1200,9 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get connectOnStartup => 'Tự động kết nối khi khởi động';
+
+  @override
+  String get autostartShowsWindow => 'Hiện cửa sổ ứng dụng';
 
   @override
   String get proxyServiceActive => 'Dịch vụ proxy đang hoạt động';
@@ -1132,7 +1258,60 @@ class AppLocalizationsVi extends AppLocalizations {
   String get dataUsedTitle => 'Dung lượng đã dùng';
 
   @override
+  String get monthlyData => 'Dữ liệu';
+
+  @override
   String get bypassApps => 'Proxy theo ứng dụng';
+
+  @override
+  String get appClipboardImport => 'Nhập từ bảng tạm';
+
+  @override
+  String get appClipboardExport => 'Xuất vào bảng tạm';
+
+  @override
+  String get appClipboardUnavailable => 'Không thể truy cập bảng tạm.';
+
+  @override
+  String get appClipboardNoMatches =>
+      'Không có ứng dụng đã cài đặt nào khớp với tên gói trong bảng tạm.';
+
+  @override
+  String get appClipboardMerge => 'Gộp';
+
+  @override
+  String get appClipboardReplace => 'Thay thế';
+
+  @override
+  String appClipboardImportPrompt(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Tìm thấy $count ứng dụng đã cài đặt phù hợp. Thêm chúng vào danh sách hiện tại hay thay thế danh sách?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String appClipboardImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Đã nhập $count ứng dụng.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String appClipboardExported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Đã sao chép $count tên gói.',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get connectRetrying => 'Không thể kết nối. Hãy kiểm tra internet.';
@@ -1223,6 +1402,27 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get appModeIncludeHint =>
       'Chỉ các ứng dụng đã chọn đi qua VPN; các ứng dụng khác kết nối trực tiếp.';
+
+  @override
+  String get modeAllApps => 'Tất cả ứng dụng';
+
+  @override
+  String get modeAllAppsHint => 'Tất cả ứng dụng đi qua VPN';
+
+  @override
+  String get modeSelectedApps => 'Ứng dụng đã chọn';
+
+  @override
+  String get modeSelectedAppsHint => 'Chỉ ứng dụng đã chọn';
+
+  @override
+  String selectedAppsCount(String count) {
+    return 'Ứng dụng đã chọn  $count';
+  }
+
+  @override
+  String get allTrafficThroughVpn =>
+      'Toàn bộ lưu lượng của điện thoại đi qua VPN.';
 
   @override
   String fromRegionList(String region) {
@@ -1687,4 +1887,25 @@ class AppLocalizationsVi extends AppLocalizations {
   @override
   String get zedUpload => 'Upload';
 
+  String get testRelay => 'Kiểm tra relay';
+
+  @override
+  String get relayTestTitle => 'Kiểm tra tình trạng relay';
+
+  @override
+  String get relayTestHint =>
+      'Chỉ kiểm tra relay. Không gửi yêu cầu tới Mozilla hoặc thông tin tài khoản.';
+
+  @override
+  String get relayTestPassed => 'Relay đã sẵn sàng';
+
+  @override
+  String get relayTestFailed => 'Không thể xác nhận tình trạng relay';
+
+  @override
+  String get relayTestCopy => 'Sao chép báo cáo';
+
+  @override
+  String get relayTestInterrupted =>
+      'Kiểm tra kết thúc trước khi nhận được kết quả đầy đủ.';
 }

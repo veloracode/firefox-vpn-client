@@ -1,11 +1,14 @@
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../app_settings.dart';
+import '../core/android_core.dart';
 import '../core/core_controller.dart';
 import '../l10n/app_localizations.dart';
 import 'about_page.dart';
+import 'format.dart';
+import 'announcement_panel.dart';
 import 'accounts_page.dart';
 import 'foxy_accounts_page.dart';
 import 'foxy_overview_page.dart';
@@ -46,6 +49,20 @@ class MobileShell extends StatefulWidget {
 class _MobileShellState extends State<MobileShell> {
   int _tab = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    AndroidCore.homeRequests.addListener(_openHome);
+  }
+
+  void _openHome() => setState(() => _tab = 0);
+
+  @override
+  void dispose() {
+    AndroidCore.homeRequests.removeListener(_openHome);
+    super.dispose();
+  }
+
   /// Opens [page] under a top bar named [title]; it follows the core.
   void _push(String title, Widget Function() page) {
     Navigator.of(context).push(
@@ -85,7 +102,7 @@ class _MobileShellState extends State<MobileShell> {
     void openAccounts() => _push(
       l.navAccounts,
       () => settings.uiDesign == UiDesign.classic
-          ? AccountsPage(core: core)
+          ? AccountsPage(core: core, settings: settings)
           : FoxyAccountsPage(core: core),
     );
     void openConnection() => _push(
@@ -162,11 +179,16 @@ class _MobileShellState extends State<MobileShell> {
         body: SafeArea(
           // The home page's hero reaches under the status bar.
           top: _tab != 0 || widget.noCore != null || widget.banner != null,
-          child: Column(
-            children: [
-              ?widget.banner,
-              Expanded(child: page),
-            ],
+          child: AnnouncementOverlay(
+            settings: settings,
+            onOpenUpdates: () =>
+                _push(l.checkUpdates, () => AboutPage(core: core)),
+            child: Column(
+              children: [
+                ?widget.banner,
+                Expanded(child: page),
+              ],
+            ),
           ),
         ),
         bottomNavigationBar: _themed(
@@ -209,7 +231,7 @@ class _MobileShellState extends State<MobileShell> {
 
 /// The Settings tab: what the app manages, the groups of settings, and the
 /// app's own pages.
-class _SettingsList extends StatelessWidget {
+class _SettingsList extends StatefulWidget {
   const _SettingsList({
     required this.onOpenServers,
     required this.onOpenAccounts,
@@ -225,10 +247,40 @@ class _SettingsList extends StatelessWidget {
   final AppSettings settings;
 
   @override
+  State<_SettingsList> createState() => _SettingsListState();
+}
+
+class _SettingsListState extends State<_SettingsList> {
+  /// What was typed, folded for matching; empty shows the whole list.
+  String _query = '';
+  final _search = TextEditingController();
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
-    Widget group(String title, List<Widget> tiles) =>
-        SettingsGroup(title: title, tiles: tiles);
+    final core = widget.core;
+    final settings = widget.settings;
+    final push = widget.push;
+    final onOpenServers = widget.onOpenServers;
+    final onOpenAccounts = widget.onOpenAccounts;
+    bool matches(String name) =>
+        _query.isEmpty || foldForSearch(name).contains(_query);
+    // A group keeps only the rows whose name matches, and goes away itself
+    // when none of them does.
+    Widget? group(String title, List<(String, Widget)> tiles) {
+      final kept = [
+        for (final (name, tile) in tiles)
+          if (matches(name)) tile,
+      ];
+      return kept.isEmpty ? null : SettingsGroup(title: title, tiles: kept);
+    }
+
     Widget tile(IconData icon, String title, VoidCallback onTap) => ListTile(
       leading: Icon(icon),
       title: Text(title),
@@ -236,31 +288,54 @@ class _SettingsList extends StatelessWidget {
       trailing: const Icon(Icons.chevron_right_rounded),
       onTap: onTap,
     );
-    Widget section(SettingsSection section, IconData icon, String name) => tile(
-      icon,
+    void open(SettingsSection section, String name) => push(
       name,
-      () => push(
-        name,
-        () => SettingsPage(core: core, settings: settings, section: section),
-      ),
+      () => SettingsPage(core: core, settings: settings, section: section),
     );
-    return ListView(
-      padding: pagePadding(context),
-      children: [
-        PageTitle(l.settingsTitle),
+    (String, Widget) section(
+      SettingsSection section,
+      IconData icon,
+      String name,
+    ) => (name, tile(icon, name, () => open(section, name)));
+    (String, Widget) row(IconData icon, String name, VoidCallback onTap) =>
+        (name, tile(icon, name, onTap));
+    // The sections this list opens: TUN is not among them, and the app's
+    // port and web dashboard are a computer's.
+    final offered = {
+      SettingsSection.general,
+      SettingsSection.connection,
+      SettingsSection.routing,
+      SettingsSection.dns,
+      SettingsSection.relay,
+      SettingsSection.fragment,
+      SettingsSection.upstreamProxy,
+      if (!Platform.isAndroid) SettingsSection.advanced,
+    };
+    // The sections' own settings, when something was typed: each one under
+    // the section that holds it, so one tap opens it.
+    final hits = _query.isEmpty
+        ? const <(SettingsSection, String)>[]
+        : [
+            for (final entry in settingsIndex(l))
+              if (foldForSearch(entry.$2).contains(_query) &&
+                  offered.contains(entry.$1) &&
+                  settingOnThisPlatform(l, entry.$2))
+                entry,
+          ];
+    final groups = [
+      ?group(l.sectionGeneral, [
         // Language and theme first, what someone looks for before anything
         // else, with which country and account; then how the traffic goes,
         // what helps when Mozilla is blocked, and the app itself.
-        group(l.sectionGeneral, [
-          section(
-            SettingsSection.general,
-            Icons.tune_rounded,
-            l.sectionGeneral,
-          ),
-          tile(Icons.public_rounded, l.navServers, onOpenServers),
-          tile(Icons.people_outline_rounded, l.navAccounts, onOpenAccounts),
-        ]),
-        group(l.groupNetwork, [
+        section(
+          SettingsSection.general,
+          Icons.tune_rounded,
+          l.sectionGeneral,
+        ),
+        row(Icons.public_rounded, l.navServers, onOpenServers),
+        row(Icons.people_outline_rounded, l.navAccounts, onOpenAccounts),
+      ]),
+      ?group(l.groupNetwork, [
           section(
             SettingsSection.connection,
             Icons.vpn_lock_outlined,
@@ -273,7 +348,7 @@ class _SettingsList extends StatelessWidget {
           ),
           section(SettingsSection.dns, Icons.dns_rounded, l.sectionDns),
         ]),
-        group(l.sectionBypass, [
+      ?group(l.sectionBypass, [
           section(SettingsSection.relay, Icons.cloud_outlined, l.apiRelay),
           section(
             SettingsSection.fragment,
@@ -286,7 +361,7 @@ class _SettingsList extends StatelessWidget {
             l.upstreamProxy,
           ),
         ]),
-        group(l.groupApp, [
+      ?group(l.groupApp, [
           // The app's port and the web dashboard: computers only (a narrow
           // window shows this layout too).
           if (!Platform.isAndroid)
@@ -295,17 +370,73 @@ class _SettingsList extends StatelessWidget {
               Icons.build_outlined,
               l.sectionAdvanced,
             ),
-          tile(
+          row(
             Icons.receipt_long_outlined,
             l.navLogs,
             () => push(l.navLogs, () => LogsPage(core: core)),
           ),
-          tile(
+          row(
             Icons.info_outline_rounded,
             l.navAbout,
             () => push(l.navAbout, () => AboutPage(core: core)),
           ),
         ]),
+    ];
+    return ListView(
+      padding: pagePadding(context),
+      children: [
+        PageTitle(l.settingsTitle),
+        Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: TextField(
+            controller: _search,
+            onChanged: (v) => setState(() => _query = foldForSearch(v)),
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: l.search,
+              prefixIcon: const Icon(Icons.search_rounded),
+              suffixIcon: _search.text.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: MaterialLocalizations.of(
+                        context,
+                      ).deleteButtonTooltip,
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => setState(() {
+                        _search.clear();
+                        _query = '';
+                      }),
+                    ),
+              border: const OutlineInputBorder(),
+            ),
+          ),
+        ),
+        if (groups.isEmpty && hits.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 32),
+            child: Text(
+              l.settingsNoMatch,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ...groups,
+        if (hits.isNotEmpty)
+          SettingsGroup(
+            title: l.settingsTitle,
+            tiles: [
+              for (final (section, name) in hits)
+                ListTile(
+                  leading: const Icon(Icons.chevron_right_rounded),
+                  title: Text(name),
+                  subtitle: Text(settingsSectionName(l, section)),
+                  onTap: () => open(section, settingsSectionName(l, section)),
+                ),
+            ],
+          ),
       ],
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import '../app_settings.dart';
 import 'core_api.dart';
 
 /// An app installed on the phone.
@@ -46,6 +47,11 @@ class AppRouting {
 
   Set<String> get _chosen => onlyChosen ? only : bypass;
 
+  /// The number of chosen apps.
+  int get chosenCount => _chosen.length;
+
+  List<String> get chosenPackages => _chosen.toList()..sort();
+
   /// Whether [package] is checked in the current mode.
   bool checked(String package) => _chosen.contains(package);
 
@@ -53,6 +59,17 @@ class AppRouting {
     on ? _chosen.add(package) : _chosen.remove(package);
     if (!onlyChosen && suggested.contains(package)) {
       on ? declined.remove(package) : declined.add(package);
+    }
+  }
+
+  void importPackages(Set<String> packages, {required bool merge}) {
+    if (!merge) {
+      for (final package in _chosen.difference(packages)) {
+        toggle(package, false);
+      }
+    }
+    for (final package in packages) {
+      toggle(package, true);
     }
   }
 
@@ -86,9 +103,41 @@ class VpnNotAllowed implements Exception {
 class AndroidCore {
   static const _channel = MethodChannel('app/android');
 
+  /// A Quick Settings long-press returns the existing UI to Home.
+  static final homeRequests = ValueNotifier<int>(0);
+
+  static void listenForHomeRequests() {
+    _channel.setMethodCallHandler((call) async {
+      if (call.method == 'openHome') homeRequests.value++;
+    });
+  }
+
   /// The core's data folder inside the app's private storage.
   static Future<String> dataDir() async =>
       await _channel.invokeMethod<String>('dataDir') ?? '';
+
+  /// Only a new installation asks Android for country codes. It does not
+  /// read persistent identifiers, change the language, or modify saved routing.
+  static Future<void> prepareFirstRunRouting(
+    AppSettings settings, {
+    String? systemCountry,
+  }) async {
+    if (!settings.firstRun) return;
+    Map<String, String>? countries;
+    try {
+      countries = await _channel
+          .invokeMapMethod<String, String>('routingCountries')
+          .timeout(const Duration(seconds: 2));
+    } on Exception {
+      // No telephony, an unavailable platform service, or a failed call:
+      // the system country still supplies a language-independent fallback.
+    }
+    settings.firstRunRegion = AppSettings.regionForCountries([
+      countries?['network_country'],
+      countries?['sim_country'],
+      systemCountry,
+    ]);
+  }
 
   AndroidCore(this._dataDir);
 
@@ -98,21 +147,21 @@ class AndroidCore {
   /// run; it throws [CoreUnavailable] until the core answers.
   Future<CoreApi> connect() async {
     if (await _channel.invokeMethod<bool>('isRunning') != true) {
-      await _channel.invokeMethod<void>('startCore');
+      final error = await _channel.invokeMethod<String>('startCore');
+      if (error != null) throw CoreUnavailable(CoreProblem.exited, error);
       throw const CoreUnavailable(CoreProblem.starting);
     }
-    try {
-      final api = CoreApi(await CoreLocator.locate(_dataDir));
-      try {
-        await api.status();
-        return api;
-      } on Exception {
-        api.close();
-        rethrow;
-      }
-    } on CoreUnavailable {
-      // Started, and its API is still coming up.
+    final listen = await _channel.invokeMethod<String>('dashboardAddress');
+    if (listen == null || listen.isEmpty) {
       throw const CoreUnavailable(CoreProblem.starting);
+    }
+    final api = CoreApi(await CoreLocator.locate(_dataDir, listen: listen));
+    try {
+      await api.status();
+      return api;
+    } on Exception {
+      api.close();
+      rethrow;
     }
   }
 
@@ -131,10 +180,30 @@ class AndroidCore {
   /// apps set up to use the local proxy). Read at start ([loadMode]).
   static final mode = ValueNotifier<String>('vpn');
 
+  /// The routing sub-mode on Android: 'all' (all apps) or 'selected' (bypass/only apps).
+  static final appRoutingMode = ValueNotifier<String>('all');
+
+  /// The count of selected apps in app routing.
+  static final selectedAppsCount = ValueNotifier<int>(0);
+
+  /// Whether per-app routing is enabled (selected apps vs all apps).
+  static Future<bool> routingEnabled() async =>
+      await _channel.invokeMethod<bool>('routingEnabled') ?? false;
+
+  /// Sets whether per-app routing is enabled.
+  static Future<void> setRoutingEnabled(bool on) async =>
+      await _channel.invokeMethod<void>('setRoutingEnabled', {'on': on});
+
   static Future<void> loadMode() async {
     mode.value = await _channel.invokeMethod<String>('connectionMode') ?? 'vpn';
     showSpeed.value = await _channel.invokeMethod<bool>('showSpeed') ?? false;
     isTv = await _channel.invokeMethod<bool>('isTv') ?? false;
+    try {
+      final enabled = await routingEnabled();
+      final r = await appRouting();
+      appRoutingMode.value = enabled ? 'selected' : 'all';
+      selectedAppsCount.value = r.chosenCount;
+    } catch (_) {}
   }
 
   /// Whether this is a TV, worked with a remote: the home page then says
@@ -164,6 +233,35 @@ class AndroidCore {
       await setOn(true);
     }
   }
+
+  /// Sends this app's WebViews through the proxy at [address]
+  /// ("127.0.0.1:port"), or straight out again when it is null. Reports
+  /// false when this phone's WebView cannot take a proxy; the views then
+  /// connect by themselves.
+  static Future<bool> setWebViewProxy(String? address) async =>
+      await _channel.invokeMethod<bool>('setWebViewProxy', {
+        'address': address,
+      }) ??
+      false;
+
+  /// Saves [bytes] as a file where the user picks, with the system's
+  /// dialog; the file's name, or null when the user backed out.
+  static Future<String?> saveFile(
+    String name,
+    Uint8List bytes, {
+    String mime = 'application/zip',
+  }) => _channel.invokeMethod<String>('saveFile', {
+    'name': name,
+    'bytes': bytes,
+    'mime': mime,
+  });
+
+  /// The bytes of a file the user picks with the system's dialog, or null
+  /// when the user backed out. Read to the end: a provider's reported size
+  /// can be wrong.
+  static Future<Uint8List?> openFile({
+    List<String> mimes = const ['application/zip', 'application/octet-stream'],
+  }) => _channel.invokeMethod<Uint8List>('openFile', {'mimes': mimes});
 
   /// The installed apps but this one, the system's too.
   static Future<List<InstalledApp>> installedApps() async {

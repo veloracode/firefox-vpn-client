@@ -141,6 +141,7 @@
     }
   },
   "accountsGuide": "Each Firefox Account has {size} of data a month. You can add several: when one runs out, the app moves to the next one by itself.",
+  "accountsGuideUnlimited": "Firefox Accounts have unlimited data at the moment.",
   "accountsOrderNote": "In the order of this list: each up to {percent}%, the last one until its data runs out.",
   "@accountsGuide": {
     "placeholders": {
@@ -168,6 +169,7 @@
   "noAccounts": "No accounts yet",
   "noAccountsHint": "Add a Firefox Account to connect.",
   "delayTestFailed": "Couldn't measure the servers' delay. Check your internet.",
+  "delayFromLastTest": "From the last test",
   "createAccountTitle": "Don't have a Firefox Account?",
   "createAccountHint": "Create one for free at accounts.firefox.com, then come back and press Add account.",
   "moveUp": "Move up",
@@ -335,6 +337,7 @@
   "errNotAnswering": "The core is not answering.",
   "errRefused": "The core refused the app; it may belong to another copy.",
   "settingsTitle": "Settings",
+  "settingsNoMatch": "Nothing matches that",
   "sectionGeneral": "General",
   "language": "Language",
   "languageSystem": "System default",
@@ -491,6 +494,33 @@
   "sectionAccounts": "Account switching",
   "switchThreshold": "Switch account at",
   "switchThresholdHint": "The next account takes over when this share of the quota is used.",
+  "signInMethod": "Sign-in method",
+  "signInMethodBrowser": "Sign in with the browser",
+  "signInMethodApi": "Sign in directly",
+  "browserSignInBroken": "The sign-in page could not be opened.",
+  "browserSignInBlocked": "Mozilla did not complete the final step of adding the account (HTTP 406).",
+  "browserSignInFallback": "Sign in with email and password",
+  "backupExport": "Save a backup",
+  "backupImport": "Import a backup",
+  "backupSaved": "Saved: {name}",
+  "@backupSaved": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "backupImportTitle": "Add these accounts?",
+  "backupAccountExists": "Already added; it signs in from the file",
+  "backupImportAction": "Add",
+  "backupImported": "{count, plural, =1{1 account added} other{{count} accounts added}}",
+  "@backupImported": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "sectionDns": "DNS",
   "dnsPreset": "DNS servers",
   "dnsSystem": "System",
@@ -501,7 +531,17 @@
   "testDns": "Test DNS",
   "transport": "Protocol",
   "transportH3": "HTTP/3 (QUIC)",
+  "ipVersion": "IP version",
+  "ipVersionAuto": "Auto (IPv4, then IPv6)",
+  "ipVersionDual": "Both at once (dual-stack)",
+  "ipVersionV6First": "IPv6 first, then IPv4",
+  "ipVersionV4": "IPv4 only",
+  "ipVersionV6": "IPv6 only",
+  "tunMtu": "MTU",
+  "tunMtuHint": "The VPN interface's packet size, 1280 to 9000. Empty: automatic.",
+  "tunMtuInvalid": "A number from 1280 to 9000, or empty",
   "transportH2": "HTTP/2 (TCP)",
+  "transportH1": "HTTP/1.1 (TLS)",
   "directRules": "Direct",
   "directRulesHint": "Sites and addresses in this list open without the VPN, straight through your own internet. The chosen country's rules are already here: add, change, or remove lines. Choosing another country replaces them with its own.",
   "restoreRegionRules": "Restore the region's rules",
@@ -540,6 +580,8 @@
   "portRefusedNote": "Mozilla's proxy does not connect to this port.",
   "sectionAdvanced": "Advanced",
   "tlsFragment": "TLS fragmentation",
+  "tlsFragmentAuto": "Automatic",
+  "tlsFragmentAutoHint": "Tries other methods if the normal connection fails.",
   "tlsFragmentOff": "Off",
   "tlsFragmentFirstByte": "First byte",
   "tlsFragmentSni": "Server name (SNI)",
@@ -549,7 +591,11 @@
   "tlsFragmentRecordHint": "Splits the server name (SNI) across two TLS records",
   "tlsFragmentOffHint": "Normal TLS connection",
   "sectionBypass": "If Mozilla is blocked",
+  "sharedRelay": "Shared relay",
+  "sharedRelayHint": "Use the app's shared relays if Mozilla blocks your region. An enabled personal relay takes priority.",
+  "personalRelay": "Personal relay",
   "apiRelay": "Relay server",
+  "apiRelayUse": "Use the relay server",
   "apiRelayHint": "Your own Cloudflare Worker, or relay.php on your own host.\nUsed only when Mozilla doesn't answer directly: the sign-in, accounts, and server list go through it, not the VPN traffic.",
   "upstreamProxy": "Upstream proxy",
   "upstreamProxyOn": "Upstream proxy is on",
@@ -581,6 +627,7 @@
   },
   "showPublicIp": "Show the public IP",
   "speedInNotification": "Show speed in the notification",
+  "showAppModeSwitch": "Quick VPN mode switch",
   "liveTraffic": "Live traffic",
   "totalTraffic": "Total traffic",
   "verboseLogs": "Detailed logs",
@@ -616,6 +663,12 @@
   "checkingUpdates": "Checking…",
   "upToDate": "You have the latest version.",
   "updateAvailable": "Version {version} is available.",
+  "updateRequired": "Please update to version {version}. This update is required.",
+  "@updateRequired": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  },
   "@updateAvailable": {
     "placeholders": {
       "version": {
@@ -631,6 +684,10 @@
         "type": "String"
       }
     }
+  },
+  "updateCheckNoNetwork": "Could not reach GitHub. Check your internet connection and try again.",
+  "@updateCheckNoNetwork": {
+    "description": "The update check could not reach GitHub (no connection, a timeout, or a refused TLS handshake)."
   },
   "updateNow": "Update",
   "updateDownloading": "Downloading version {version}…",
@@ -687,6 +744,7 @@
   "tapToDisconnect": "Click to disconnect",
   "startOnBoot": "Start on boot",
   "connectOnStartup": "Connect on startup",
+  "autostartShowsWindow": "Show the app's window",
   "proxyServiceActive": "Proxy service active",
   "navHome": "Home",
   "groupApp": "App",
@@ -720,7 +778,26 @@
   "connectedTo": "Connected to",
   "vpnNotAllowed": "The VPN needs your permission. Tap the button again and allow it.",
   "dataUsedTitle": "Data used",
+  "monthlyData": "Data",
   "bypassApps": "Per-app proxy",
+  "appClipboardImport": "Import from Clipboard",
+  "appClipboardExport": "Export to Clipboard",
+  "appClipboardUnavailable": "Couldn't access the clipboard.",
+  "appClipboardNoMatches": "No installed apps match the package names in the clipboard.",
+  "appClipboardMerge": "Merge",
+  "appClipboardReplace": "Replace",
+  "appClipboardImportPrompt": "{count, plural, one{Found 1 installed app.} other{Found {count} installed apps.}} Add the matches to the current selection or replace it?",
+  "@appClipboardImportPrompt": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "appClipboardImported": "{count, plural, one{Imported 1 app.} other{Imported {count} apps.}}",
+  "@appClipboardImported": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "appClipboardExported": "{count, plural, one{Copied 1 package name.} other{Copied {count} package names.}}",
+  "@appClipboardExported": {
+    "placeholders": { "count": { "type": "int" } }
+  },
   "connectRetrying": "Couldn't connect. Check your internet.",
   "failUnreachable": "Couldn't reach Mozilla's servers. Try another internet connection.",
   "failUpstreamProxy": "Couldn't reach Mozilla through your upstream proxy. Check that it's running.",
@@ -766,6 +843,19 @@
   "appModeInclude": "Proxy selected apps",
   "appModeExcludeHint": "Selected apps connect directly, not through the VPN: for example banking apps that refuse foreign addresses.",
   "appModeIncludeHint": "Only the selected apps go through the VPN; the others connect directly.",
+  "modeAllApps": "All apps",
+  "modeAllAppsHint": "All apps go through the VPN",
+  "modeSelectedApps": "Selected apps",
+  "modeSelectedAppsHint": "Only the selected apps",
+  "selectedAppsCount": "Selected apps  {count}",
+  "@selectedAppsCount": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "allTrafficThroughVpn": "All of the phone's traffic goes through the VPN.",
   "fromRegionList": "Suggested: on the {region} list",
   "@fromRegionList": {
     "placeholders": {
@@ -1047,5 +1137,12 @@
   "zedSpeed": "Speed",
   "zedSpeedLive": "Live",
   "zedDownload": "Download",
-  "zedUpload": "Upload"
+  "zedUpload": "Upload",
+  "testRelay": "Test relay health",
+  "relayTestTitle": "Relay health test",
+  "relayTestHint": "Checks only the relay. No Mozilla request or account information is sent.",
+  "relayTestPassed": "Relay is ready",
+  "relayTestFailed": "Relay health could not be confirmed",
+  "relayTestCopy": "Copy report",
+  "relayTestInterrupted": "The test ended before a complete result was received."
 }

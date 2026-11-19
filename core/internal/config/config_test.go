@@ -57,10 +57,80 @@ func TestLoadKeepsDefaultsForOmittedFields(t *testing.T) {
 	}
 }
 
+// A relay set before network.api_relay_enabled existed stays in use; one
+// turned off keeps its address.
+func TestRelayEnabledByDefault(t *testing.T) {
+	path := filepath.Join(t.TempDir(), FileName)
+	if err := os.WriteFile(path, []byte(`{"network":{"api_relay":"https://relay.example/"}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, _, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Network.APIRelayInUse() != "https://relay.example/" {
+		t.Fatalf("a relay without the switch must stay in use: %+v", cfg.Network)
+	}
+	cfg.Network.APIRelayEnabled = false
+	if cfg.Network.APIRelayInUse() != "" || cfg.Network.APIRelay == "" {
+		t.Fatalf("turned off: %+v", cfg.Network)
+	}
+}
+
+func TestSharedRelayDefaultDoesNotInheritDisabledPersonalRelay(t *testing.T) {
+	path := filepath.Join(t.TempDir(), FileName)
+	if err := os.WriteFile(path, []byte(`{"network":{"api_relay_enabled":false,"api_relay":"https://personal.example/"}}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, _, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Network.APIRelayEnabled || !cfg.Network.SharedRelayInUse() {
+		t.Fatal("an old disabled personal relay disabled the new shared relay default")
+	}
+	cfg.Network.SharedRelayEnabled = false
+	if err := Save(path, cfg); err != nil {
+		t.Fatal(err)
+	}
+	saved, _, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if saved.Network.SharedRelayEnabled || saved.Network.APIRelayEnabled || saved.Network.APIRelay != cfg.Network.APIRelay {
+		t.Fatal("independent switches and the saved personal address did not survive reload")
+	}
+}
+
+func TestPersonalAndSharedRelaySelectionAreIndependent(t *testing.T) {
+	for _, tc := range []struct {
+		name                     string
+		personal, shared         bool
+		address                  string
+		wantPersonal, wantShared bool
+	}{
+		{"shared without personal address", false, true, "", false, true},
+		{"disabled personal retains address", false, true, "https://personal.example/", false, true},
+		{"empty personal does not block shared", true, true, "", false, true},
+		{"enabled personal takes priority", true, true, "https://personal.example/", true, false},
+		{"shared off keeps personal", true, false, "https://personal.example/", true, false},
+		{"both off", false, false, "https://personal.example/", false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			n := Network{APIRelayEnabled: tc.personal, SharedRelayEnabled: tc.shared, APIRelay: tc.address}
+			if (n.APIRelayInUse() != "") != tc.wantPersonal || n.SharedRelayInUse() != tc.wantShared {
+				t.Fatal("one relay switch changed the other relay's availability")
+			}
+		})
+	}
+}
+
 func TestLoadRejectsInvalidConfig(t *testing.T) {
 	for name, body := range map[string]string{
 		"country and server":     `{"proxy":{"country":"US","server":"us.example:443"}}`,
-		"bad transport":          `{"proxy":{"transport":"h1"}}`,
+		"bad transport":          `{"proxy":{"transport":"h4"}}`,
+		"bad ip version":         `{"proxy":{"ip_version":"ipv5"}}`,
+		"mtu too small":          `{"tun":{"mtu":576}}`,
 		"threshold too high":     `{"accounts":{"switch_threshold_percent":120}}`,
 		"duration as number":     `{"proxy":{"idle_sleep":20}}`,
 		"duplicate account":      `{"accounts":{"order":[{"id":"a","enabled":true},{"id":"a","enabled":true}]}}`,
@@ -468,6 +538,19 @@ func TestCleanUpstreamProxy(t *testing.T) {
 	} {
 		if got := CleanUpstreamProxy(in_); got != want {
 			t.Errorf("%q: %q, want %q", in_, got, want)
+		}
+	}
+}
+
+func TestIPVersionDefaultsToAuto(t *testing.T) {
+	if got := Default().Proxy.IPVersion; got != "auto" {
+		t.Fatalf("default ip_version = %q, want auto", got)
+	}
+	for _, v := range []string{"", "auto", "dual", "ipv6_first", "ipv4", "ipv6"} {
+		cfg := Default()
+		cfg.Proxy.IPVersion = v
+		if err := cfg.Validate(); err != nil {
+			t.Errorf("%q refused: %v", v, err)
 		}
 	}
 }

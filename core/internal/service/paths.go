@@ -9,6 +9,7 @@ import (
 
 	"github.com/armanlife/firefox-vpn-client/core/internal/accounts"
 	"github.com/armanlife/firefox-vpn-client/core/internal/config"
+	"github.com/armanlife/firefox-vpn-client/core/internal/guardian"
 	"github.com/armanlife/firefox-vpn-client/core/internal/logx"
 )
 
@@ -92,6 +93,7 @@ func LoadConfig(paths DataPaths, forceVerbose bool) (config.Config, error) {
 	if err := configureAPIRelay(cfg.Network); err != nil {
 		return config.Config{}, fmt.Errorf("invalid network.api_relay: %w", err)
 	}
+	guardian.LoadTokenRouteCache(filepath.Join(paths.Dir, "guardian-route.json"))
 	return cfg, nil
 }
 

@@ -26,6 +26,7 @@
     <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 5a1 1 0 0 1 1-1h6l2 2h8a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1zm2 1v12h14V8h-7.8l-2-2z"/></symbol>
     <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></symbol>
     <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M17.7 6.3A8 8 0 1 0 20 12h-2a6 6 0 1 1-1.8-4.2L13 11h7V4z"/></symbol>
+    <symbol id="i-more" viewBox="0 0 24 24"><path d="M12 8a2 2 0 1 0-2-2 2 2 0 0 0 2 2zm0 2a2 2 0 1 0 2 2 2 2 0 0 0-2-2zm0 6a2 2 0 1 0 2 2 2 2 0 0 0-2-2z"/></symbol>
     <symbol id="i-plus" viewBox="0 0 24 24"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></symbol>
     <symbol id="i-copy" viewBox="0 0 24 24"><path d="M8 7V4a1 1 0 0 1 1-1h11a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1h-3v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1zm2 0h6a1 1 0 0 1 1 1v6h2V5h-9zM6 9v9h9V9z"/></symbol>
     <symbol id="i-up" viewBox="0 0 24 24"><path d="m12 7 6 6-1.4 1.4-4.6-4.6-4.6 4.6L6 13z"/></symbol>
@@ -212,6 +213,14 @@
             <div class="hero-actions">
               <a class="btn" href="https://accounts.firefox.com/" target="_blank" rel="noopener noreferrer"><svg><use href="#i-link"/></svg><span>Create account</span></a>
               <button id="add-account" class="btn primary"><svg><use href="#i-plus"/></svg><span>Add account</span></button>
+              <details class="more-menu" id="backup-menu">
+                <summary class="btn" title="More" aria-label="More"><svg><use href="#i-more"/></svg></summary>
+                <div class="menu-panel">
+                  <button type="button" id="backup-save"><svg><use href="#i-down"/></svg><span>Save a backup</span></button>
+                  <button type="button" id="backup-import"><svg><use href="#i-up"/></svg><span>Import a backup</span></button>
+                </div>
+              </details>
+              <input type="file" id="backup-file" accept=".zip,application/zip" hidden>
             </div>
           </div>
           <div id="account-list" class="account-list"></div>
@@ -358,12 +367,26 @@
                   </div>
                   <div class="set-row">
                     <span class="set-ic"><svg><use href="#i-bolt"/></svg></span>
-                    <span class="set-text"><span class="set-title">Protocol</span><small>HTTP/3 falls back to HTTP/2 where QUIC is blocked</small></span>
+                    <span class="set-text"><span class="set-title">Protocol</span><small>HTTP/3 falls back to HTTP/2 where QUIC is blocked; HTTP/1.1 opens a TLS connection per site connection, for networks that slow or cut long connections</small></span>
                     <span class="set-ctl">
                       <span class="segs" role="radiogroup" aria-label="Protocol">
+                        <label><input type="radio" name="proxy.transport" value="h1"><span>HTTP/1.1</span></label>
                         <label><input type="radio" name="proxy.transport" value="h2"><span>HTTP/2</span></label>
                         <label><input type="radio" name="proxy.transport" value="h3"><span>HTTP/3</span></label>
                       </span>
+                    </span>
+                  </div>
+                  <div class="set-row">
+                    <span class="set-ic"><svg><use href="#i-lan"/></svg></span>
+                    <span class="set-text"><label for="f-ip-version">IP version</label><small>The connection to Mozilla's servers only</small></span>
+                    <span class="set-ctl">
+                      <select id="f-ip-version" name="proxy.ip_version">
+                        <option value="auto">Auto (IPv4, then IPv6)</option>
+                        <option value="dual">Both at once (dual-stack)</option>
+                        <option value="ipv6_first">IPv6 first, then IPv4</option>
+                        <option value="ipv4">IPv4 only</option>
+                        <option value="ipv6">IPv6 only</option>
+                      </select>
                     </span>
                   </div>
                   <div class="set-row">
@@ -585,8 +608,23 @@
                 <div class="set-list">
                   <div class="set-row">
                     <span class="set-ic"><svg><use href="#i-swap"/></svg></span>
+                    <span class="set-text"><label for="f-shared-relay-on">Shared relay</label><small>Use the app's shared relays if Mozilla blocks your region. An enabled personal relay takes priority.</small></span>
+                    <span class="set-ctl"><label class="switch"><input type="checkbox" id="f-shared-relay-on" name="network.shared_relay_enabled"><span></span></label></span>
+                  </div>
+                  <div class="set-row">
+                    <span class="set-ic"><svg><use href="#i-swap"/></svg></span>
+                    <span class="set-text"><label for="f-relay-on">Personal relay</label><small>Turning this off keeps your address and does not disable shared relays.</small></span>
+                    <span class="set-ctl"><label class="switch"><input type="checkbox" id="f-relay-on" name="network.api_relay_enabled"><span></span></label></span>
+                  </div>
+                  <div class="set-row">
+                    <span class="set-ic"><svg><use href="#i-swap"/></svg></span>
                     <span class="set-text"><label for="f-relay">Relay server</label><small>Your own Cloudflare Worker, or relay.php on your own host.<br>Used only when Mozilla doesn't answer directly: the sign-in, accounts, and server list go through it, not the VPN traffic.</small></span>
                     <span class="set-ctl"><input id="f-relay" name="network.api_relay" spellcheck="false" placeholder="https://relay.NAME.workers.dev/?secret=…"></span>
+                  </div>
+                  <div class="set-row">
+                    <span class="set-ic"><svg><use href="#i-gauge"/></svg></span>
+                    <span class="set-text"><span>Relay health</span><small>Test the entered address without saving it or enabling the relay.</small></span>
+                    <span class="set-ctl"><button type="button" class="btn" id="relay-test">Test relay health</button></span>
                   </div>
                 </div>
               </fieldset>
@@ -596,9 +634,10 @@
                 <div class="set-list">
                   <div class="set-row">
                     <span class="set-ic"><svg><use href="#i-cut"/></svg></span>
-                    <span class="set-text"><label for="f-fragment">Fragmentation</label><small class="points"><span>Off: Normal TLS connection</span><span>First byte: Splits the TLS header at the first byte (0x16)</span><span>Server name (SNI): Splits the server name (SNI) across TCP packets</span></small></span>
+                    <span class="set-text"><label for="f-fragment">Fragmentation</label><small class="points"><span>Automatic tries other methods if the normal connection fails.</span><span>Off uses normal TLS.</span></small></span>
                     <span class="set-ctl">
                       <select id="f-fragment" name="network.hello_split">
+                        <option value="auto">Automatic</option>
                         <option value="off">Off</option>
                         <option value="first-byte">First byte</option>
                         <option value="sni">Server name (SNI)</option>
@@ -741,7 +780,7 @@
         <label class="field"><span>Email</span><input name="email" type="email" autocomplete="off" required></label>
         <label class="field"><span>Password</span><input name="password" class="secret" autocomplete="off" spellcheck="false" autocapitalize="off" data-reveal data-1p-ignore data-lpignore="true" data-bwignore required></label>
         <p class="muted small">Don't have a Firefox Account? <a href="https://accounts.firefox.com/" target="_blank" rel="noopener noreferrer">Create one</a></p>
-        <p class="muted small">The password is saved encrypted in the data folder. When the account's tokens stop working and cannot be renewed, the program uses it to sign in again by itself (Auto re-login).</p>
+        <p class="muted small">The password is saved encrypted in the data folder for when you choose Sign in again.</p>
       </div>
       <div id="signin-step" hidden>
         <p id="signin-message" class="step-message"></p>
@@ -756,6 +795,19 @@
     </form>
   </dialog>
 
+  <dialog id="relay-test-dialog" aria-labelledby="relay-test-title">
+    <div class="dialog-body">
+      <h2 id="relay-test-title">Relay health test</h2>
+      <p class="muted small">Checks only the relay. No Mozilla request or account information is sent.</p>
+      <p id="relay-test-state" role="status">Testing…</p>
+      <pre id="relay-test-log" dir="ltr" aria-live="polite"></pre>
+      <div class="dialog-actions">
+        <button type="button" class="btn" id="relay-test-copy">Copy report</button>
+        <button type="button" class="btn" id="relay-test-retry">Retry</button>
+        <button type="button" class="btn primary" id="relay-test-close">Close</button>
+      </div>
+    </div>
+  </dialog>
   <div id="toast" class="toast" hidden></div>
 </body>
 </html>
