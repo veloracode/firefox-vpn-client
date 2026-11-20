@@ -146,13 +146,25 @@ void main() {
     });
 
     test('bento shapes are the extract radii', () {
+      // The Leaf corners are directional: resolved LTR they are the
+      // extract's (36, 36, 36, 12); resolved RTL the small corner
+      // mirrors to the start (right) side.
       expect(
-        bentoModuleRadius(BentoCorner.leaf),
+        bentoModuleRadius(BentoCorner.leaf).resolve(TextDirection.ltr),
         const BorderRadius.only(
           topLeft: Radius.circular(36),
           topRight: Radius.circular(36),
           bottomRight: Radius.circular(36),
           bottomLeft: Radius.circular(12),
+        ),
+      );
+      expect(
+        bentoModuleRadius(BentoCorner.leaf).resolve(TextDirection.rtl),
+        const BorderRadius.only(
+          topLeft: Radius.circular(36),
+          topRight: Radius.circular(36),
+          bottomRight: Radius.circular(12),
+          bottomLeft: Radius.circular(36),
         ),
       );
       expect(bentoModuleRadius(BentoCorner.round), BorderRadius.circular(36));

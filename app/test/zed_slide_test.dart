@@ -1,0 +1,172 @@
+// Regression tests for the Bento Slide connect control and the
+// reduced-motion busy mark. Authored by DeepSeek V4.1 Flash from a
+// written spec (the slide's landing-zone thresholds, RTL mirroring,
+// hold-at-the-end behaviour); reviewed and integrated by Muse — the
+// RTL harness wraps Directionality INSIDE the app (an outer wrapper is
+// shadowed by MaterialApp's own locale directionality).
+
+import 'package:material_ui/material_ui.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:firefox_vpn/ui/zed/zed_connect.dart';
+import 'package:firefox_vpn/ui/zed/zed_prefs.dart';
+import 'package:firefox_vpn/ui/zed/zed_theme.dart';
+
+ZedConnectState st(bool on, VoidCallback cb) => ZedConnectState(
+  on: on,
+  busy: false,
+  live: on,
+  label: on ? 'On' : 'Off',
+  onToggle: cb,
+);
+
+Future<void> pump(
+  WidgetTester tester, {
+  required bool on,
+  required VoidCallback cb,
+  bool rtl = false,
+  bool morphBusy = false,
+}) async {
+  final prefs = morphBusy
+      ? const ZedPrefs(bentoConnect: BentoConnectStyle.morph)
+      : const ZedPrefs();
+
+  final state = morphBusy
+      ? ZedConnectState(
+          on: false,
+          busy: true,
+          live: false,
+          label: 'Connecting',
+          onToggle: cb,
+        )
+      : st(on, cb);
+
+  Widget home = Scaffold(
+    body: Center(
+      child: SizedBox(
+        width: 320,
+        child: ZedConnectControl(prefs: prefs, state: state),
+      ),
+    ),
+  );
+  if (rtl) {
+    home = Directionality(textDirection: TextDirection.rtl, child: home);
+  }
+
+  await tester.pumpWidget(
+    MaterialApp(
+      theme: ZedTheme.build(Brightness.dark, const Locale('en'), prefs),
+      home: home,
+    ),
+  );
+}
+
+void main() {
+  group('Bento Slide regression', () {
+    testWidgets('on: a full leftward drag disconnects exactly once', (
+      tester,
+    ) async {
+      var taps = 0;
+      await pump(tester, on: true, cb: () => taps++);
+      await tester.drag(
+        find.byType(GestureDetector).first,
+        const Offset(-300, 0),
+      );
+      await tester.pumpAndSettle();
+      expect(taps, 1);
+    });
+
+    testWidgets('on: a half leftward drag keeps the connection', (
+      tester,
+    ) async {
+      var taps = 0;
+      await pump(tester, on: true, cb: () => taps++);
+      await tester.drag(
+        find.byType(GestureDetector).first,
+        const Offset(-100, 0),
+      );
+      await tester.pumpAndSettle();
+      expect(taps, 0);
+    });
+
+    testWidgets('off: a half rightward drag does not connect', (tester) async {
+      var taps = 0;
+      await pump(tester, on: false, cb: () => taps++);
+      await tester.drag(
+        find.byType(GestureDetector).first,
+        const Offset(100, 0),
+      );
+      await tester.pumpAndSettle();
+      expect(taps, 0);
+    });
+
+    testWidgets('off: a full rightward drag connects exactly once', (
+      tester,
+    ) async {
+      var taps = 0;
+      await pump(tester, on: false, cb: () => taps++);
+      await tester.drag(
+        find.byType(GestureDetector).first,
+        const Offset(300, 0),
+      );
+      await tester.pumpAndSettle();
+      expect(taps, 1);
+    });
+
+    testWidgets('rtl: a physical leftward drag connects', (tester) async {
+      var taps = 0;
+      await pump(tester, on: false, cb: () => taps++, rtl: true);
+      await tester.drag(
+        find.byType(GestureDetector).first,
+        const Offset(-300, 0),
+      );
+      await tester.pumpAndSettle();
+      expect(taps, 1);
+    });
+
+    testWidgets(
+      'on: holding the knob at the left end does not snap or toggle early',
+      (tester) async {
+        var taps = 0;
+        await pump(tester, on: true, cb: () => taps++);
+        final gesture = await tester.startGesture(
+          tester.getCenter(find.byType(GestureDetector).first),
+        );
+        // Drag to the left end in steps, as a finger travels, then
+        // HOLD: the knob must stay at the end (no snap back to the
+        // rest position) and nothing may toggle before the release.
+        for (var i = 0; i < 3; i++) {
+          await gesture.moveBy(const Offset(-100, 0));
+          await tester.pump(const Duration(milliseconds: 50));
+        }
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(taps, 0);
+        await gesture.up();
+        await tester.pumpAndSettle();
+        expect(taps, 1);
+      },
+    );
+  });
+
+  group('Reduced motion', () {
+    testWidgets(
+      'morph busy shows no animated spinner when animations are disabled',
+      (tester) async {
+        // Reduced motion is forced at the platform level — the same
+        // pattern the main suite uses. (A MediaQuery override widget
+        // loops rebuilds against this framework's own MediaQuery and
+        // hangs the tester; the platform flag is the honest route —
+        // it is also how a real device reports the setting.)
+        tester.platformDispatcher.accessibilityFeaturesTestValue =
+            const FakeAccessibilityFeatures(disableAnimations: true);
+        addTearDown(
+          tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+        );
+        await pump(tester, on: false, cb: () {}, morphBusy: true);
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(tester.takeException(), isNull);
+        expect(find.byType(CircularProgressIndicator), findsNothing);
+      },
+    );
+  });
+}

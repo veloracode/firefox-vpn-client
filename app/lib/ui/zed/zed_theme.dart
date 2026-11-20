@@ -410,25 +410,27 @@ double zedModuleRadius(ZedPrefs prefs) => switch (prefs.design) {
 };
 
 /// Bento's module (tile) shape, exact (§1.5): Leaf is the asymmetric
-/// (36, 36, 36, 12), Round a uniform 36, Soft a uniform 24.
-BorderRadius bentoModuleRadius(BentoCorner corner) => switch (corner) {
-  BentoCorner.leaf => const BorderRadius.only(
-    topLeft: Radius.circular(36),
-    topRight: Radius.circular(36),
-    bottomRight: Radius.circular(36),
-    bottomLeft: Radius.circular(12),
+/// (36, 36, 36, 12), Round a uniform 36, Soft a uniform 24. The Leaf
+/// corners are directional (start/end), so the small corner mirrors
+/// to the start side in RTL instead of staying physical-left.
+BorderRadiusGeometry bentoModuleRadius(BentoCorner corner) => switch (corner) {
+  BentoCorner.leaf => const BorderRadiusDirectional.only(
+    topStart: Radius.circular(36),
+    topEnd: Radius.circular(36),
+    bottomEnd: Radius.circular(36),
+    bottomStart: Radius.circular(12),
   ),
   BentoCorner.round => BorderRadius.circular(36),
   BentoCorner.soft => BorderRadius.circular(24),
 };
 
 /// Bento's hero shape (§1.5): Leaf (34, 34, 34, 12), Round 34, Soft 22.
-BorderRadius bentoHeroRadius(BentoCorner corner) => switch (corner) {
-  BentoCorner.leaf => const BorderRadius.only(
-    topLeft: Radius.circular(34),
-    topRight: Radius.circular(34),
-    bottomRight: Radius.circular(34),
-    bottomLeft: Radius.circular(12),
+BorderRadiusGeometry bentoHeroRadius(BentoCorner corner) => switch (corner) {
+  BentoCorner.leaf => const BorderRadiusDirectional.only(
+    topStart: Radius.circular(34),
+    topEnd: Radius.circular(34),
+    bottomEnd: Radius.circular(34),
+    bottomStart: Radius.circular(12),
   ),
   BentoCorner.round => BorderRadius.circular(34),
   BentoCorner.soft => BorderRadius.circular(22),
@@ -463,8 +465,8 @@ abstract final class ZedTheme {
           onSecondaryContainer: bento.ink,
           tertiary: bento.stage,
           onTertiary: bento.onStage,
-          error: bento.danger,
-          onError: bento.onDanger,
+          error: dark ? bento.danger : const Color(0xFFB3261E),
+          onError: dark ? bento.onDanger : Colors.white,
           errorContainer: bento.danger,
           onErrorContainer: bento.onDanger,
           surface: bento.surface,
