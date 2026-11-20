@@ -271,6 +271,19 @@ class _ShellState extends State<Shell> {
         direction: _pageDirection,
         child: KeyedSubtree(key: ValueKey(page), child: content),
       );
+      // A maximized window: the pages stay as wide as reads well, so
+      // non-home pages are framed to a reading width — but only the
+      // page content is framed; the Glass wallpaper is the scaffold's
+      // background and always keeps the full size.
+      final framed = page == _Page.overview || status == null
+          ? switched
+          : Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 1000),
+                child: switched,
+              ),
+            );
       final pageArea = widget.settings.zed.design == ZedDesign.glass
           ? Stack(
               children: [
@@ -280,10 +293,10 @@ class _ShellState extends State<Shell> {
                     dark: Theme.of(context).brightness == Brightness.dark,
                   ),
                 ),
-                switched,
+                framed,
               ],
             )
-          : switched;
+          : framed;
       void select(int i) => setState(() {
         _page = pages[i];
         _settingsOpening = null;
@@ -341,19 +354,9 @@ class _ShellState extends State<Shell> {
                 trailingAtBottom: true,
                 scrollable: true,
               ),
-              // A maximized window: the pages stay as wide as reads well; the
-              // home page, centered by itself, keeps its colors to the edges.
-              Expanded(
-                child: page == _Page.overview || status == null
-                    ? pageArea
-                    : Align(
-                        alignment: Alignment.topCenter,
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 1000),
-                          child: pageArea,
-                        ),
-                      ),
-              ),
+              // The page area (already framed to a reading width above
+              // for non-home pages; the wallpaper inside it is not).
+              Expanded(child: pageArea),
             ],
           ),
         ),
