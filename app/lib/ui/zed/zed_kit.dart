@@ -62,9 +62,8 @@ class ZedModule extends StatelessWidget {
             side: BorderSide(
               color:
                   tokens?.line ??
-                  Theme.of(
-                    context,
-                  ).colorScheme.outlineVariant.withValues(alpha: 0.4),
+                  Theme.of(context).colorScheme.outlineVariant
+                      .withValues(alpha: 0.4),
             ),
           ),
           child: InkWell(
@@ -117,9 +116,8 @@ class ZedGroup extends StatelessWidget {
             height: 1,
             indent: 16,
             endIndent: 16,
-            color: Theme.of(
-              context,
-            ).colorScheme.outlineVariant.withValues(alpha: 0.5),
+            color: Theme.of(context).colorScheme.outlineVariant
+                .withValues(alpha: 0.5),
           ),
         );
       }
@@ -172,7 +170,9 @@ class ZedRow extends StatelessWidget {
     leading: Icon(icon),
     title: Text(title),
     subtitle: subtitle == null ? null : Text(subtitle!),
-    trailing: trailing ?? (onTap == null ? null : const Icon(Icons.chevron_right_rounded)),
+    trailing:
+        trailing ??
+        (onTap == null ? null : const Icon(Icons.chevron_right_rounded)),
     onTap: onTap,
   );
 }
@@ -327,42 +327,55 @@ class _DockItem extends StatelessWidget {
     final activeBg = activeColor ?? scheme.secondaryContainer;
     final activeFg = activeForeground ?? scheme.onSecondaryContainer;
     final inactiveFg = inactiveForeground ?? scheme.onSurfaceVariant;
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOut,
-        height: itemHeight,
-        padding: EdgeInsets.symmetric(horizontal: selected && showLabel ? 14 : 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? activeBg : Colors.transparent,
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              selected ? selectedIcon : icon,
-              size: selected ? 25 : 22,
-              color: selected ? activeFg : inactiveFg,
+    // One semantics node per destination: the name and the selected
+    // state must reach screen readers even when the design hides the
+    // labels (icon-only dock), and the visible label must not be
+    // announced twice.
+    return Semantics(
+      label: label,
+      button: true,
+      selected: selected,
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          onTap: onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOut,
+            height: itemHeight,
+            padding: EdgeInsets.symmetric(
+              horizontal: selected && showLabel ? 14 : 10,
+              vertical: 8,
             ),
-            if (showLabel) ...[
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
+            decoration: BoxDecoration(
+              color: selected ? activeBg : Colors.transparent,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  selected ? selectedIcon : icon,
+                  size: selected ? 25 : 22,
                   color: selected ? activeFg : inactiveFg,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
                 ),
-              ),
-            ],
-          ],
+                if (showLabel) ...[
+                  const SizedBox(width: 6),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: selected ? activeFg : inactiveFg,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 }
-
 
 /// A press-shrink observed through a [Listener]: pointer events are
 /// watched, never claimed, so an inner InkWell or button still gets
@@ -391,8 +404,7 @@ class _PressScaleState extends State<_PressScale> {
     if (!wasDown) setState(() {});
   }
 
-  void _handlePointerUp(PointerUpEvent event) =>
-      _releasePointer(event.pointer);
+  void _handlePointerUp(PointerUpEvent event) => _releasePointer(event.pointer);
 
   void _handlePointerCancel(PointerCancelEvent event) =>
       _releasePointer(event.pointer);
