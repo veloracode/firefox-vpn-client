@@ -192,7 +192,11 @@ class _SlideConnectState extends State<_SlideConnect> {
           // tap; the slide is the deliberate gesture on top of it.
           onTap: s.onToggle,
           onHorizontalDragUpdate: (d) {
-            setState(() => _drag = (frac + d.delta.dx / travel).clamp(0, 1));
+            // travel is 0 when the control is narrower than the knob;
+            // dividing by it would poison the drag fraction with NaN.
+            if (travel > 0) {
+              setState(() => _drag = (frac + d.delta.dx / travel).clamp(0, 1));
+            }
           },
           onHorizontalDragEnd: (_) {
             final target = s.on ? _drag < 0.28 : _drag > 0.72;

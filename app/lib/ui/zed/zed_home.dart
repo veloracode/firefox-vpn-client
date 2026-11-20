@@ -156,9 +156,27 @@ class _ElapsedState extends State<_Elapsed> {
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
-    });
+    _sync();
+  }
+
+  @override
+  void didUpdateWidget(_Elapsed old) {
+    super.didUpdateWidget(old);
+    _sync();
+  }
+
+  /// Ticks only while a session start exists to count from; with no
+  /// session the widget renders nothing and must not rebuild every
+  /// second for no reason.
+  void _sync() {
+    if (widget.since != null && _timer == null) {
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted) setState(() {});
+      });
+    } else if (widget.since == null) {
+      _timer?.cancel();
+      _timer = null;
+    }
   }
 
   @override
