@@ -587,7 +587,14 @@ abstract final class ZedTheme {
       dynamicSchemeVariant: DynamicSchemeVariant.tonalSpot,
     );
     if (amoled && dark) {
-      return (scheme, Colors.black, const Color(0xFF0A0A0A));
+      // The scheme itself must carry the AMOLED surface too: the
+      // scaffold/card tuple alone leaves Material surfaces and the
+      // dark rail (which blends scheme.surface) on the seeded colour.
+      return (
+        scheme.copyWith(surface: const Color(0xFF0A0A0A)),
+        Colors.black,
+        const Color(0xFF0A0A0A),
+      );
     }
     return (
       scheme,

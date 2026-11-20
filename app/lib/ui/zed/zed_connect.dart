@@ -431,6 +431,12 @@ class _HoldConnectState extends State<_HoldConnect>
   );
   Timer? _timer;
 
+  /// The pointer performing the hold, if any. A Listener hears EVERY
+  /// pointer: without tracking, a second finger would start a second
+  /// timer (a double toggle) and the first finger's release would
+  /// cancel the second's hold.
+  int? _pointer;
+
   @override
   void dispose() {
     _timer?.cancel();
@@ -438,12 +444,35 @@ class _HoldConnectState extends State<_HoldConnect>
     super.dispose();
   }
 
-  void _start() {
+  @override
+  void didUpdateWidget(_HoldConnect old) {
+    super.didUpdateWidget(old);
+    // If the power state itself flipped mid-hold, the press belongs
+    // to a state that no longer exists; completing it would act on
+    // the new state unasked. (Mere rebuilds with an equal state —
+    // the homes rebuild the snapshot often — must NOT cancel.)
+    if (old.state.on != widget.state.on) {
+      _pointer = null;
+      _cancel();
+    }
+  }
+
+  void _start(int pointer) {
+    if (_pointer != null) return;
+    _pointer = pointer;
     _c.forward(from: 0);
+    _timer?.cancel();
     _timer = Timer(const Duration(milliseconds: 650), () {
+      _pointer = null;
       widget.state.onToggle();
       _c.reset();
     });
+  }
+
+  void _end(int pointer) {
+    if (pointer != _pointer) return;
+    _pointer = null;
+    _cancel();
   }
 
   void _cancel() {
@@ -457,9 +486,9 @@ class _HoldConnectState extends State<_HoldConnect>
     final color = _stateColor(context, s);
     return Listener(
       behavior: HitTestBehavior.opaque,
-      onPointerDown: (_) => _start(),
-      onPointerUp: (_) => _cancel(),
-      onPointerCancel: (_) => _cancel(),
+      onPointerDown: (e) => _start(e.pointer),
+      onPointerUp: (e) => _end(e.pointer),
+      onPointerCancel: (e) => _end(e.pointer),
       child: SizedBox(
         width: 120,
         height: 120,

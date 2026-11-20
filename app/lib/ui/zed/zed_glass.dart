@@ -57,10 +57,14 @@ abstract final class GlassTokens {
     final hi = Colors.white.withValues(alpha: dark ? 0.58 : 1);
     final mid = Colors.white.withValues(alpha: dark ? 0.07 : 0.28);
     final lo = Colors.white.withValues(alpha: dark ? 0.26 : 0.80);
+    // The clear stops are white at zero alpha, NOT Colors.transparent
+    // (black at zero alpha): interpolating toward black would drag
+    // the rim's fade through a dark tint.
+    final clear = Colors.white.withValues(alpha: 0);
     return LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
-      colors: [hi, mid, Colors.transparent, Colors.transparent, lo],
+      colors: [hi, mid, clear, clear, lo],
       stops: const [0, 0.28, 0.48, 0.64, 1],
     );
   }
