@@ -329,3 +329,43 @@ func TestParseECHSource(t *testing.T) {
 }
 
 func base64Std(b []byte) string { return base64.StdEncoding.EncodeToString(b) }
+
+// A key lookup that runs out of its own time is a fact about the network,
+// so it is remembered: without that, every later connection pays the same
+// wait again before falling back to no ECH, which cost users seconds on
+// each connect (their logs, 2026-11-15). A lookup the caller gave up on
+// says nothing about the network and is not remembered.
+func TestRelayECHRemembersALookupThatTimedOut(t *testing.T) {
+	for _, c := range []struct {
+		name     string
+		err      error
+		cancel   bool
+		attempts int
+	}{
+		{"timed out", context.DeadlineExceeded, false, 1},
+		{"caller gave up", context.Canceled, true, 2},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			e, err := newECHDialer(testRelayName, config.Network{APIRelayECH: config.RelayECHOn}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			asked := 0
+			e.lookup = func(context.Context, string) ([]byte, time.Duration, error) {
+				asked++
+				return nil, 0, c.err
+			}
+			for i := 0; i < 2; i++ {
+				ctx, cancel := context.WithCancel(context.Background())
+				if c.cancel {
+					cancel()
+				}
+				_, _ = e.currentKey(ctx)
+				cancel()
+			}
+			if asked != c.attempts {
+				t.Fatalf("looked the key up %d times, want %d", asked, c.attempts)
+			}
+		})
+	}
+}

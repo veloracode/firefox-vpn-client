@@ -333,6 +333,12 @@ abstract class AppLocalizations {
   /// **'Each Firefox Account has {size} of data a month. You can add several: when one runs out, the app moves to the next one by itself.'**
   String accountsGuide(String size);
 
+  /// No description provided for @accountsGuideUnlimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Firefox Accounts have unlimited data at the moment.'**
+  String get accountsGuideUnlimited;
+
   /// No description provided for @accountsOrderNote.
   ///
   /// In en, this message translates to:
@@ -368,6 +374,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t measure the servers\' delay. Check your internet.'**
   String get delayTestFailed;
+
+  /// No description provided for @delayFromLastTest.
+  ///
+  /// In en, this message translates to:
+  /// **'From the last test'**
+  String get delayFromLastTest;
 
   /// No description provided for @createAccountTitle.
   ///
@@ -848,6 +860,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Settings'**
   String get settingsTitle;
+
+  /// No description provided for @settingsNoMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing matches that'**
+  String get settingsNoMatch;
 
   /// No description provided for @sectionGeneral.
   ///
@@ -1371,6 +1389,84 @@ abstract class AppLocalizations {
   /// **'The next account takes over when this share of the quota is used.'**
   String get switchThresholdHint;
 
+  /// No description provided for @signInMethod.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in method'**
+  String get signInMethod;
+
+  /// No description provided for @signInMethodBrowser.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with the browser'**
+  String get signInMethodBrowser;
+
+  /// No description provided for @signInMethodApi.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in directly'**
+  String get signInMethodApi;
+
+  /// No description provided for @browserSignInBroken.
+  ///
+  /// In en, this message translates to:
+  /// **'The sign-in page could not be opened.'**
+  String get browserSignInBroken;
+
+  /// No description provided for @browserSignInBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Mozilla did not complete the final step of adding the account (HTTP 406).'**
+  String get browserSignInBlocked;
+
+  /// No description provided for @browserSignInFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with email and password'**
+  String get browserSignInFallback;
+
+  /// No description provided for @backupExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Save a backup'**
+  String get backupExport;
+
+  /// No description provided for @backupImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import a backup'**
+  String get backupImport;
+
+  /// No description provided for @backupSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved: {name}'**
+  String backupSaved(String name);
+
+  /// No description provided for @backupImportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add these accounts?'**
+  String get backupImportTitle;
+
+  /// No description provided for @backupAccountExists.
+  ///
+  /// In en, this message translates to:
+  /// **'Already added; it signs in from the file'**
+  String get backupAccountExists;
+
+  /// No description provided for @backupImportAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get backupImportAction;
+
+  /// No description provided for @backupImported.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 account added} other{{count} accounts added}}'**
+  String backupImported(int count);
+
   /// No description provided for @sectionDns.
   ///
   /// In en, this message translates to:
@@ -1431,11 +1527,71 @@ abstract class AppLocalizations {
   /// **'HTTP/3 (QUIC)'**
   String get transportH3;
 
+  /// No description provided for @ipVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'IP version'**
+  String get ipVersion;
+
+  /// No description provided for @ipVersionAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto (IPv4, then IPv6)'**
+  String get ipVersionAuto;
+
+  /// No description provided for @ipVersionDual.
+  ///
+  /// In en, this message translates to:
+  /// **'Both at once (dual-stack)'**
+  String get ipVersionDual;
+
+  /// No description provided for @ipVersionV6First.
+  ///
+  /// In en, this message translates to:
+  /// **'IPv6 first, then IPv4'**
+  String get ipVersionV6First;
+
+  /// No description provided for @ipVersionV4.
+  ///
+  /// In en, this message translates to:
+  /// **'IPv4 only'**
+  String get ipVersionV4;
+
+  /// No description provided for @ipVersionV6.
+  ///
+  /// In en, this message translates to:
+  /// **'IPv6 only'**
+  String get ipVersionV6;
+
+  /// No description provided for @tunMtu.
+  ///
+  /// In en, this message translates to:
+  /// **'MTU'**
+  String get tunMtu;
+
+  /// No description provided for @tunMtuHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The VPN interface\'s packet size, 1280 to 9000. Empty: automatic.'**
+  String get tunMtuHint;
+
+  /// No description provided for @tunMtuInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'A number from 1280 to 9000, or empty'**
+  String get tunMtuInvalid;
+
   /// No description provided for @transportH2.
   ///
   /// In en, this message translates to:
   /// **'HTTP/2 (TCP)'**
   String get transportH2;
+
+  /// No description provided for @transportH1.
+  ///
+  /// In en, this message translates to:
+  /// **'HTTP/1.1 (TLS)'**
+  String get transportH1;
 
   /// No description provided for @directRules.
   ///
@@ -1581,6 +1737,18 @@ abstract class AppLocalizations {
   /// **'TLS fragmentation'**
   String get tlsFragment;
 
+  /// No description provided for @tlsFragmentAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get tlsFragmentAuto;
+
+  /// No description provided for @tlsFragmentAutoHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tries other methods if the normal connection fails.'**
+  String get tlsFragmentAutoHint;
+
   /// No description provided for @tlsFragmentOff.
   ///
   /// In en, this message translates to:
@@ -1635,11 +1803,35 @@ abstract class AppLocalizations {
   /// **'If Mozilla is blocked'**
   String get sectionBypass;
 
+  /// No description provided for @sharedRelay.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared relay'**
+  String get sharedRelay;
+
+  /// No description provided for @sharedRelayHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the app\'s shared relays if Mozilla blocks your region. An enabled personal relay takes priority.'**
+  String get sharedRelayHint;
+
+  /// No description provided for @personalRelay.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal relay'**
+  String get personalRelay;
+
   /// No description provided for @apiRelay.
   ///
   /// In en, this message translates to:
   /// **'Relay server'**
   String get apiRelay;
+
+  /// No description provided for @apiRelayUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the relay server'**
+  String get apiRelayUse;
 
   /// No description provided for @apiRelayHint.
   ///
@@ -1785,6 +1977,12 @@ abstract class AppLocalizations {
   /// **'Show speed in the notification'**
   String get speedInNotification;
 
+  /// No description provided for @showAppModeSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick VPN mode switch'**
+  String get showAppModeSwitch;
+
   /// No description provided for @liveTraffic.
   ///
   /// In en, this message translates to:
@@ -1893,6 +2091,12 @@ abstract class AppLocalizations {
   /// **'Version {version} is available.'**
   String updateAvailable(String version);
 
+  /// No description provided for @updateRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please update to version {version}. This update is required.'**
+  String updateRequired(String version);
+
   /// No description provided for @download.
   ///
   /// In en, this message translates to:
@@ -1904,6 +2108,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not check for updates: {error}'**
   String updateCheckFailed(String error);
+
+  /// The update check could not reach GitHub (no connection, a timeout, or a refused TLS handshake).
+  ///
+  /// In en, this message translates to:
+  /// **'Could not reach GitHub. Check your internet connection and try again.'**
+  String get updateCheckNoNetwork;
 
   /// No description provided for @updateNow.
   ///
@@ -1982,6 +2192,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Connect on startup'**
   String get connectOnStartup;
+
+  /// No description provided for @autostartShowsWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the app\'s window'**
+  String get autostartShowsWindow;
 
   /// No description provided for @proxyServiceActive.
   ///
@@ -2079,11 +2295,71 @@ abstract class AppLocalizations {
   /// **'Data used'**
   String get dataUsedTitle;
 
+  /// No description provided for @monthlyData.
+  ///
+  /// In en, this message translates to:
+  /// **'Data'**
+  String get monthlyData;
+
   /// No description provided for @bypassApps.
   ///
   /// In en, this message translates to:
   /// **'Per-app proxy'**
   String get bypassApps;
+
+  /// No description provided for @appClipboardImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import from Clipboard'**
+  String get appClipboardImport;
+
+  /// No description provided for @appClipboardExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Export to Clipboard'**
+  String get appClipboardExport;
+
+  /// No description provided for @appClipboardUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t access the clipboard.'**
+  String get appClipboardUnavailable;
+
+  /// No description provided for @appClipboardNoMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'No installed apps match the package names in the clipboard.'**
+  String get appClipboardNoMatches;
+
+  /// No description provided for @appClipboardMerge.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge'**
+  String get appClipboardMerge;
+
+  /// No description provided for @appClipboardReplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace'**
+  String get appClipboardReplace;
+
+  /// No description provided for @appClipboardImportPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Found 1 installed app.} other{Found {count} installed apps.}} Add the matches to the current selection or replace it?'**
+  String appClipboardImportPrompt(int count);
+
+  /// No description provided for @appClipboardImported.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Imported 1 app.} other{Imported {count} apps.}}'**
+  String appClipboardImported(int count);
+
+  /// No description provided for @appClipboardExported.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Copied 1 package name.} other{Copied {count} package names.}}'**
+  String appClipboardExported(int count);
 
   /// No description provided for @connectRetrying.
   ///
@@ -2228,6 +2504,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Only the selected apps go through the VPN; the others connect directly.'**
   String get appModeIncludeHint;
+
+  /// No description provided for @modeAllApps.
+  ///
+  /// In en, this message translates to:
+  /// **'All apps'**
+  String get modeAllApps;
+
+  /// No description provided for @modeAllAppsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'All apps go through the VPN'**
+  String get modeAllAppsHint;
+
+  /// No description provided for @modeSelectedApps.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected apps'**
+  String get modeSelectedApps;
+
+  /// No description provided for @modeSelectedAppsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the selected apps'**
+  String get modeSelectedAppsHint;
+
+  /// No description provided for @selectedAppsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected apps  {count}'**
+  String selectedAppsCount(String count);
+
+  /// No description provided for @allTrafficThroughVpn.
+  ///
+  /// In en, this message translates to:
+  /// **'All of the phone\'s traffic goes through the VPN.'**
+  String get allTrafficThroughVpn;
 
   /// No description provided for @fromRegionList.
   ///
@@ -3012,15 +3324,56 @@ abstract class AppLocalizations {
   /// No description provided for @zedDownload.
   ///
   /// In en, this message translates to:
-  /// **'Download'**
+  /// **'Download speed'**
   String get zedDownload;
 
   /// No description provided for @zedUpload.
   ///
   /// In en, this message translates to:
-  /// **'Upload'**
+  /// **'Upload speed'**
   String get zedUpload;
 
+  /// No description provided for @testRelay.
+  ///
+  /// In en, this message translates to:
+  /// **'Test relay health'**
+  String get testRelay;
+
+  /// No description provided for @relayTestTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Relay health test'**
+  String get relayTestTitle;
+
+  /// No description provided for @relayTestHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Checks only the relay. No Mozilla request or account information is sent.'**
+  String get relayTestHint;
+
+  /// No description provided for @relayTestPassed.
+  ///
+  /// In en, this message translates to:
+  /// **'Relay is ready'**
+  String get relayTestPassed;
+
+  /// No description provided for @relayTestFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Relay health could not be confirmed'**
+  String get relayTestFailed;
+
+  /// No description provided for @relayTestCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy report'**
+  String get relayTestCopy;
+
+  /// No description provided for @relayTestInterrupted.
+  ///
+  /// In en, this message translates to:
+  /// **'The test ended before a complete result was received.'**
+  String get relayTestInterrupted;
 }
 
 class _AppLocalizationsDelegate

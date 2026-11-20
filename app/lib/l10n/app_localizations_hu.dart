@@ -150,6 +150,10 @@ class AppLocalizationsHu extends AppLocalizations {
   }
 
   @override
+  String get accountsGuideUnlimited =>
+      'A Firefox-fiókok jelenleg korlátlan adatmennyiséget kapnak.';
+
+  @override
   String accountsOrderNote(int percent) {
     return 'A lista sorrendjében: mindegyik $percent%-ig, az utolsó az adatkerete elfogyásáig.';
   }
@@ -172,6 +176,9 @@ class AppLocalizationsHu extends AppLocalizations {
   @override
   String get delayTestFailed =>
       'Nem sikerült megmérni a szerverek késleltetését. Ellenőrizze az internetet.';
+
+  @override
+  String get delayFromLastTest => 'Az előző mérésből';
 
   @override
   String get createAccountTitle => 'Nincs Firefox Accountja?';
@@ -452,6 +459,9 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get settingsTitle => 'Beállítások';
+
+  @override
+  String get settingsNoMatch => 'Nincs találat';
 
   @override
   String get sectionGeneral => 'Általános';
@@ -741,6 +751,56 @@ class AppLocalizationsHu extends AppLocalizations {
       'A következő fiók akkor veszi át, amikor az adatkeret ekkora része elfogyott.';
 
   @override
+  String get signInMethod => 'Bejelentkezési mód';
+
+  @override
+  String get signInMethodBrowser => 'Bejelentkezés böngészővel';
+
+  @override
+  String get signInMethodApi => 'Közvetlen bejelentkezés';
+
+  @override
+  String get browserSignInBroken => 'A bejelentkezési oldal nem nyitható meg.';
+
+  @override
+  String get browserSignInBlocked =>
+      'A Mozilla nem fejezte be a fiók hozzáadásának utolsó lépését (HTTP 406).';
+
+  @override
+  String get browserSignInFallback => 'Bejelentkezés e-maillel és jelszóval';
+
+  @override
+  String get backupExport => 'Biztonsági mentés készítése';
+
+  @override
+  String get backupImport => 'Biztonsági mentés importálása';
+
+  @override
+  String backupSaved(String name) {
+    return 'Mentve: $name';
+  }
+
+  @override
+  String get backupImportTitle => 'Hozzáadja ezeket a fiókokat?';
+
+  @override
+  String get backupAccountExists =>
+      'Már hozzá van adva; a bejelentkezést a fájlból kapja';
+
+  @override
+  String get backupImportAction => 'Hozzáadás';
+
+  @override
+  String backupImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count fiók hozzáadva',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get sectionDns => 'DNS';
 
   @override
@@ -772,7 +832,38 @@ class AppLocalizationsHu extends AppLocalizations {
   String get transportH3 => 'HTTP/3 (QUIC)';
 
   @override
+  String get ipVersion => 'IP-verzió';
+
+  @override
+  String get ipVersionAuto => 'Automatikus (előbb IPv4, aztán IPv6)';
+
+  @override
+  String get ipVersionDual => 'Mindkettő egyszerre (dual-stack)';
+
+  @override
+  String get ipVersionV6First => 'Előbb IPv6, aztán IPv4';
+
+  @override
+  String get ipVersionV4 => 'Csak IPv4';
+
+  @override
+  String get ipVersionV6 => 'Csak IPv6';
+
+  @override
+  String get tunMtu => 'MTU';
+
+  @override
+  String get tunMtuHint =>
+      'A VPN-interfész csomagmérete, 1280 és 9000 között. Üres: automatikus.';
+
+  @override
+  String get tunMtuInvalid => 'Egy szám 1280 és 9000 között, vagy üres';
+
+  @override
   String get transportH2 => 'HTTP/2 (TCP)';
+
+  @override
+  String get transportH1 => 'HTTP/1.1 (TLS)';
 
   @override
   String get directRules => 'Közvetlen';
@@ -854,6 +945,13 @@ class AppLocalizationsHu extends AppLocalizations {
   String get tlsFragment => 'TLS-fragmentálás';
 
   @override
+  String get tlsFragmentAuto => 'Automatikus';
+
+  @override
+  String get tlsFragmentAutoHint =>
+      'Más módszereket próbál ki, ha a szokásos kapcsolat sikertelen.';
+
+  @override
   String get tlsFragmentOff => 'Kikapcsolva';
 
   @override
@@ -884,7 +982,20 @@ class AppLocalizationsHu extends AppLocalizations {
   String get sectionBypass => 'Ha a Mozilla le van tiltva';
 
   @override
+  String get sharedRelay => 'Megosztott átjátszó';
+
+  @override
+  String get sharedRelayHint =>
+      'Az alkalmazás megosztott átjátszóinak használata, ha a Mozilla blokkolja a régiót. Az engedélyezett saját átjátszó elsőbbséget élvez.';
+
+  @override
+  String get personalRelay => 'Saját átjátszó';
+
+  @override
   String get apiRelay => 'Közvetítő szerver';
+
+  @override
+  String get apiRelayUse => 'A továbbítószerver használata';
 
   @override
   String get apiRelayHint =>
@@ -968,6 +1079,9 @@ class AppLocalizationsHu extends AppLocalizations {
   String get speedInNotification => 'Sebesség megjelenítése az értesítésben';
 
   @override
+  String get showAppModeSwitch => 'Gyors VPN-módváltás';
+
+  @override
   String get liveTraffic => 'Élő forgalom';
 
   @override
@@ -1029,12 +1143,21 @@ class AppLocalizationsHu extends AppLocalizations {
   }
 
   @override
+  String updateRequired(String version) {
+    return 'Frissíts a(z) $version verzióra. Ez a frissítés szükséges.';
+  }
+
+  @override
   String get download => 'Letöltés';
 
   @override
   String updateCheckFailed(String error) {
     return 'Nem sikerült frissítéseket keresni: $error';
   }
+
+  @override
+  String get updateCheckNoNetwork =>
+      'A GitHub nem érhető el. Ellenőrizze az internetkapcsolatot, és próbálja újra.';
 
   @override
   String get updateNow => 'Frissítés';
@@ -1086,6 +1209,9 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get connectOnStartup => 'Csatlakozás rendszerindításkor';
+
+  @override
+  String get autostartShowsWindow => 'Az alkalmazás ablakának megjelenítése';
 
   @override
   String get proxyServiceActive => 'A proxyszolgáltatás aktív';
@@ -1142,7 +1268,60 @@ class AppLocalizationsHu extends AppLocalizations {
   String get dataUsedTitle => 'Felhasznált adat';
 
   @override
+  String get monthlyData => 'Adat';
+
+  @override
   String get bypassApps => 'Alkalmazásonkénti proxy';
+
+  @override
+  String get appClipboardImport => 'Importálás a vágólapról';
+
+  @override
+  String get appClipboardExport => 'Exportálás a vágólapra';
+
+  @override
+  String get appClipboardUnavailable => 'Nem sikerült elérni a vágólapot.';
+
+  @override
+  String get appClipboardNoMatches =>
+      'Egyetlen telepített alkalmazás sem egyezik a vágólapon lévő csomagnevekkel.';
+
+  @override
+  String get appClipboardMerge => 'Egyesítés';
+
+  @override
+  String get appClipboardReplace => 'Csere';
+
+  @override
+  String appClipboardImportPrompt(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count telepített alkalmazás egyezik. Hozzáadja őket a jelenlegi kijelöléshez, vagy lecseréli a kijelölést?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String appClipboardImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count alkalmazás importálva.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String appClipboardExported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count csomagnév másolva.',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get connectRetrying =>
@@ -1235,6 +1414,26 @@ class AppLocalizationsHu extends AppLocalizations {
   @override
   String get appModeIncludeHint =>
       'Csak a kijelölt alkalmazások mennek a VPN-en át; a többiek közvetlenül csatlakoznak.';
+
+  @override
+  String get modeAllApps => 'Minden alkalmazás';
+
+  @override
+  String get modeAllAppsHint => 'Minden alkalmazás a VPN-en megy';
+
+  @override
+  String get modeSelectedApps => 'Kiválasztott alkalmazások';
+
+  @override
+  String get modeSelectedAppsHint => 'Csak a kiválasztott alkalmazások';
+
+  @override
+  String selectedAppsCount(String count) {
+    return 'Kiválasztott alkalmazások  $count';
+  }
+
+  @override
+  String get allTrafficThroughVpn => 'A telefon teljes forgalma a VPN-en megy.';
 
   @override
   String fromRegionList(String region) {
@@ -1702,4 +1901,26 @@ class AppLocalizationsHu extends AppLocalizations {
   @override
   String get zedUpload => 'Upload';
 
+  @override
+  String get testRelay => 'Átjátszó ellenőrzése';
+
+  @override
+  String get relayTestTitle => 'Átjátszó állapotvizsgálata';
+
+  @override
+  String get relayTestHint =>
+      'Csak az átjátszót ellenőrzi. Nem küld Mozilla-kérést vagy fiókadatokat.';
+
+  @override
+  String get relayTestPassed => 'Az átjátszó kész';
+
+  @override
+  String get relayTestFailed => 'Az átjátszó állapota nem igazolható';
+
+  @override
+  String get relayTestCopy => 'Jelentés másolása';
+
+  @override
+  String get relayTestInterrupted =>
+      'A teszt a teljes eredmény beérkezése előtt véget ért.';
 }

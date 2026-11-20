@@ -55,6 +55,13 @@ type SOCKSServer struct {
 	handshakeTimeout time.Duration
 	idleTimeout      time.Duration
 	connSlots        chan struct{}
+	// failures collapses the identical warnings one outage produces, so the
+	// log shows the reason once with a count instead of once per connection.
+	failures repeatedFailures
+	// rejections does the same for clients refused at the connection limit:
+	// a browser whose connections pile up on a stalled session retries in a
+	// burst, hundreds within a second.
+	rejections repeatedFailures
 }
 
 func NewSOCKSServer(upstream tunnelOpener, handshakeTimeout, idleTimeout time.Duration, maxConns int) *SOCKSServer {
@@ -93,9 +100,20 @@ func (s *SOCKSServer) handleConn(conn net.Conn) {
 	start := time.Now()
 	clientAddr := logx.Addr(conn.RemoteAddr())
 	if !s.acquireConnSlot() {
-		logx.Warn("client rejected: connection limit reached client=%s", clientAddr)
+		logx.Debug("client rejected: connection limit reached client=%s", clientAddr)
+		if log, held := s.rejections.note("connection limit reached"); log {
+			more := ""
+			if held > 0 {
+				more = fmt.Sprintf(" (and %d more clients were refused before)", held)
+			}
+			logx.Warn("client rejected: connection limit reached limit=%d client=%s%s", cap(s.connSlots), clientAddr, more)
+		}
 		_ = conn.Close()
 		return
+	}
+	// A client getting in again closes the account for the burst.
+	if _, held := s.rejections.settled(); held > 0 {
+		logx.Info("clients are accepted again; %d more were refused at the connection limit", held)
 	}
 	defer s.releaseConnSlot()
 	defer conn.Close()

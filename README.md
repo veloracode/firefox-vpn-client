@@ -41,7 +41,11 @@ For **Android, Windows, macOS, and Linux**; completely free, with no ads.
 
 🔀 Smart routing (split tunneling): choose the sites and apps that skip the VPN
 
-🧱 If Mozilla is blocked: TLS fragmentation, upstream SOCKS5 proxy, and a relay server
+🧱 If your network blocks the connection: TLS fragmentation, upstream SOCKS5 proxy, and a [relay server](docs/relay/README.md)
+
+💾 Backup and import: your accounts and settings in one file, for another device or a server
+
+⚙️ Advanced connection options: IPv4, IPv6, or dual-stack, and a custom MTU
 
 🔒 Encrypted DNS (DNS over HTTPS)
 
@@ -75,6 +79,7 @@ For **Android, Windows, macOS, and Linux**; completely free, with no ads.
 - **Android:** if you are not sure, take **Universal**; it installs on every phone. **ARMv8** is for most of today's phones and is smaller.
 - **Windows:** **Setup** is a normal installer; **Portable** needs no install and runs from any folder.
 - **Linux:** **App** for a Linux desktop (with a graphical environment); **Core** for a server (without a graphical environment, with a web panel).
+- **A server, in Docker:** the core image from the same release tag. See [Docker](#docker).
 
 ## 💻 Install and update on Linux and macOS
 
@@ -129,6 +134,19 @@ $ sudo firefox-vpn
 ## OpenWrt routers
 
 To install on an OpenWrt router, see the [OpenWrt guide](docs/OPENWRT.md).
+
+## Docker
+
+The Linux core (the proxy and the web panel) is also a container image. A release tag `vX.Y.Z`, the same tag as the downloads above, publishes `ghcr.io/<owner>/<repository>:<version>`, plus the `v` form, the major and minor, and `latest`. The owner and repository are the GitHub repository that runs the workflow. The example uses the upstream name.
+
+```bash
+docker run -d --name firefox-vpn --restart unless-stopped \
+  -p 10820:10820 -p 127.0.0.1:10810:10810 \
+  -v firefox-vpn:/var/lib/firefox-vpn \
+  ghcr.io/armanlife/firefox-vpn-client:latest
+```
+
+The first start prints a panel login and a proxy login. Accounts and settings stay in the `firefox-vpn` volume. See the [Docker guide](docs/DOCKER.md).
 
 ## Known limitations
 

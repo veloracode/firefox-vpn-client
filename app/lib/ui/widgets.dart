@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../app_info.dart';
@@ -24,6 +24,23 @@ const firefoxAccountSignUpUrl = 'https://accounts.firefox.com/signup';
 const firefoxAccountSetPasswordUrl =
     'https://accounts.firefox.com/reset_password/';
 
+/// The program's logo, its tile (assets/logo.png, made by
+/// tool/app_icons.py), [size] logical pixels square.
+class AppLogo extends StatelessWidget {
+  const AppLogo({super.key, required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Image.asset(
+    'assets/logo.png',
+    width: size,
+    height: size,
+    filterQuality: FilterQuality.medium,
+    excludeFromSemantics: true,
+  );
+}
+
 /// Status colors that read in both themes.
 abstract final class StatusColors {
   static const good = Color(0xFF22A06B);
@@ -44,6 +61,12 @@ class PhaseLook {
   final String hint;
 
   static PhaseLook of(AppLocalizations l, CoreStatus s) {
+    if (s.connectPending) {
+      return PhaseLook(l.stateConnecting, StatusColors.busy, '');
+    }
+    if (s.connectFailure.isNotEmpty) {
+      return PhaseLook(l.stateOff, StatusColors.idle, '');
+    }
     final message = stateText(l, s.state);
     return switch (s.state.phase) {
       // Connected in either mode on the computer (Proxy or System proxy).
@@ -454,10 +477,13 @@ const languageNames = {
   'bn': 'বাংলা',
 };
 
-/// The bundled font for a language: Vazirmatn for the Arabic script
-/// (Persian, Arabic); null for the system font.
-String? languageFont(String code) =>
-    const {'fa', 'ar'}.contains(code) ? 'Vazirmatn' : null;
+/// Bundled UI fonts for English and the Arabic script; other languages
+/// keep the platform typography and its script-specific fallbacks.
+String? languageFont(String code) => switch (code) {
+  'en' => 'Inter',
+  'fa' || 'ar' => 'Vazirmatn',
+  _ => null,
+};
 
 /// A title or label in its own language's font.
 TextStyle? languageStyle(String code) => switch (languageFont(code)) {
@@ -569,16 +595,25 @@ Color quotaColor(double usedPercent, double thresholdPercent) {
 
 /// A usage bar with the account-switch threshold marked.
 class QuotaBar extends StatelessWidget {
-  const QuotaBar({super.key, required this.percent, this.threshold = 0});
+  const QuotaBar({
+    super.key,
+    required this.percent,
+    this.threshold = 0,
+    this.unlimited = false,
+  });
 
   final double percent;
   final double threshold;
 
+  /// An account with no limit: the bar is full and in the accent colour, and
+  /// the threshold marker is left off, since there is nothing to run out of.
+  final bool unlimited;
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final value = (percent / 100).clamp(0.0, 1.0);
-    final color = quotaColor(percent, threshold);
+    final value = unlimited ? 1.0 : (percent / 100).clamp(0.0, 1.0);
+    final color = unlimited ? scheme.primary : quotaColor(percent, threshold);
     return SizedBox(
       height: 8,
       child: LayoutBuilder(
@@ -595,7 +630,7 @@ class QuotaBar extends StatelessWidget {
                 ),
               ),
             ),
-            if (threshold > 0 && threshold < 100)
+            if (!unlimited && threshold > 0 && threshold < 100)
               PositionedDirectional(
                 start: box.maxWidth * threshold / 100 - 1,
                 top: -3,
@@ -681,7 +716,15 @@ void homePowerPressed(
   final on = engineOn(status);
   runShowingErrors(context, () async {
     await core.setOn(!on);
-    if (!on) unawaited(core.runTest().catchError((_) {}));
+    // Upstream 1.0.14's gating (_testAfterPowerOn): the core handles the
+    // initial connection while an explicit attempt is pending, so only
+    // test once the switch has actually taken effect.
+    if (!on) {
+      final now = core.status;
+      if (now != null && now.proxyOn && !now.connectPending) {
+        unawaited(core.runTest().catchError((_) {}));
+      }
+    }
   });
 }
 
@@ -785,6 +828,11 @@ class LabeledSwitch extends StatelessWidget {
 /// only.
 Future<void> openLink(BuildContext context, String url) async {
   if (await openUrl(url) || !context.mounted) return;
+  await showLink(context, url);
+}
+
+/// Shows a readable address when no system handler can open it.
+Future<void> showLink(BuildContext context, String url) async {
   final l = AppLocalizations.of(context);
   final theme = Theme.of(context);
   await showDialog<void>(

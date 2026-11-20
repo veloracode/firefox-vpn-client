@@ -1,15 +1,24 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
+
+import 'ui/zed/zed_prefs.dart';
+
+export 'ui/zed/zed_prefs.dart' show ZedPrefs, ZedDesign;
 
 /// What the window's close button does.
 enum CloseAction { ask, tray, quit }
 
-/// The home and accounts pages' design: the phone's three designs
-/// (Pixel, Portal, Old), FoxyVPN's phone look (the big connect button),
-/// or the classic pages this app shipped with.
-enum UiDesign { foxy, classic, pixel, portal, old }
+/// The app's design: the four ZedSecure designs (Bento is the default,
+/// then Pixel, Old, Glass), over the one settings model in
+/// [ZedPrefs]. Stored settings from before the Zed rebuild map onto
+/// these on load (see [AppSettings.load]): the old Foxy and Classic
+/// looks become Bento, the old Portal look becomes Glass.
+enum UiDesign { bento, pixel, old, glass }
+/// How a new account signs in: with the email and password form or through
+/// the in-app browser on supported platforms.
+enum SignInMethod { api, browser }
 
 /// The app's own preferences (language, theme, close button), kept in
 /// `app-settings.json` in the data folder beside the core's files. The VPN
@@ -25,10 +34,16 @@ class AppSettings extends ChangeNotifier {
   ThemeMode themeMode = ThemeMode.system;
   CloseAction closeAction = CloseAction.ask;
 
-  /// The home and accounts design. A bare settings object (a test, a
-  /// preview) starts classic; [AppSettings.load] — how the app itself
-  /// starts — starts pixel until the user picks otherwise.
-  UiDesign uiDesign = UiDesign.classic;
+  /// The current design. A bare settings object (a test, a preview)
+  /// starts on Bento, ZedSecure's default; [AppSettings.load] — how the
+  /// app itself starts — does the same until the user picks otherwise.
+  UiDesign uiDesign = UiDesign.bento;
+
+  /// The whole design-preference model (per-design blocks: Bento
+  /// palette/connect, Glass material/wallpaper/tint/connect, Pixel/Old
+  /// accents, nav and transition styles). [uiDesign] is its [ZedPrefs]
+  /// design, kept in step by [update].
+  ZedPrefs zed = const ZedPrefs();
 
   /// The phone designs' door animation (the morphing, turning connect
   /// core). On by default: the full motion, as the designs intend.
@@ -40,9 +55,22 @@ class AppSettings extends ChangeNotifier {
   /// True until the user finished the welcome page.
   bool firstRun = false;
 
+  /// Android's first-run routing suggestion, prepared before the welcome
+  /// page opens. Empty means no region; null keeps desktop suggestions.
+  /// This is derived locally for this run and is not saved as a preference.
+  String? firstRunRegion;
+
   /// Shows the public IP (the address websites see). Off by default: the
   /// location is shown by its country either way.
   bool showPublicIp = false;
+
+  /// Android: the per-app mode switch on the home screen (all apps,
+  /// selected apps, proxy). Off by default: most people never change it,
+  /// and it takes the room the location and quota cards want.
+  bool showAppModeSwitch = false;
+
+  /// How a new account signs in (the accounts page's row).
+  SignInMethod signInMethod = SignInMethod.api;
 
   /// When the user closed the "account running out" notice; it stays away
   /// for a day after.
@@ -56,10 +84,19 @@ class AppSettings extends ChangeNotifier {
   DateTime? updateCheckedAt;
   String updateVersion = '';
   String updateUrl = '';
+  Map<String, Object?> updateDetails = const {};
+  List<Map<String, Object?>> announcementCache = const [];
+  Map<String, int> announcementSeen = const {};
+  Map<String, int> announcementAcknowledged = const {};
+  Future<void> _saveTail = Future.value();
 
   /// Starts the app in the tray when the user signs in to Windows;
   /// off unless the user turned it on.
   bool autostart = false;
+
+  /// Whether a start with the computer ([autostart]) opens the window, or
+  /// waits in the tray as it always has.
+  bool autostartShowsWindow = false;
 
   /// Connects by itself when started with the computer ([autostart]); off
   /// until the user turns it on. The core decides how (Daemon.AutoConnect).
@@ -137,6 +174,18 @@ class AppSettings extends ChangeNotifier {
   /// The core's routing regions (`routing.region`); empty is none.
   static const regions = ['ir', 'cn', 'ru', 'af', 'tr', 'id', 'br', ''];
 
+  /// Prefer the current network country, then the SIM's country, then the
+  /// system country. A known unsupported country means no regional bypass:
+  /// an Iranian SIM roaming in another country must not imply Iran.
+  static String regionForCountries(Iterable<String?> countries) {
+    for (final value in countries) {
+      final country = (value ?? '').trim().toLowerCase();
+      if (!RegExp(r'^[a-z]{2}$').hasMatch(country)) continue;
+      return regions.contains(country) ? country : '';
+    }
+    return '';
+  }
+
   Locale? get locale => language.isEmpty ? null : localeOf(language);
 
   /// The routing region most users of [language] want: Persian is Iran,
@@ -164,9 +213,9 @@ class AppSettings extends ChangeNotifier {
     final s = AppSettings(
       file: File('$dataDir${Platform.pathSeparator}app-settings.json'),
     );
-    // The app's design until the settings file says otherwise: the
-    // phone's Pixel design.
-    s.uiDesign = UiDesign.pixel;
+    // The app's design until the settings file says otherwise: Bento,
+    // ZedSecure's default.
+    s.uiDesign = UiDesign.bento;
     try {
       final j = jsonDecode(await s.file!.readAsString());
       if (j is Map<String, Object?>) {
@@ -174,8 +223,23 @@ class AppSettings extends ChangeNotifier {
             when supportedLanguages.contains(l)) {
           s.language = l;
         }
-        s.uiDesign =
-            UiDesign.values.asNameMap()[j['ui_design']] ?? UiDesign.pixel;
+        // The design block, when a Zed-rebuild settings file wrote one;
+        // its design wins. Otherwise the legacy ui_design name maps:
+        // foxy/classic → bento, portal → glass, pixel/old keep meaning.
+        if (j['zed'] case final Map<String, Object?> zedJson) {
+          s.zed = ZedPrefs.fromJson(zedJson);
+          s.uiDesign = UiDesign.values.byName(s.zed.design.name);
+        } else {
+          s.uiDesign = switch (j['ui_design']) {
+            'pixel' => UiDesign.pixel,
+            'old' => UiDesign.old,
+            'glass' || 'portal' => UiDesign.glass,
+            _ => UiDesign.bento,
+          };
+          s.zed = ZedPrefs(
+            design: ZedDesign.values.byName(s.uiDesign.name),
+          );
+        }
         // Home animations are on until the user turns them off: only
         // an explicit false disables them.
         s.animationsEnabled = j['animations_enabled'] != false;
@@ -185,9 +249,27 @@ class AppSettings extends ChangeNotifier {
             CloseAction.values.asNameMap()[j['close']] ?? CloseAction.ask;
         s.firstRun = j['welcome_done'] != true;
         s.showPublicIp = j['show_public_ip'] == true;
+        s.showAppModeSwitch = j['show_app_mode_switch'] == true;
+        s.signInMethod =
+            SignInMethod.values.asNameMap()[j['signin_method']] ??
+            s.signInMethod;
         if (j['dismissed_update'] case final String v) s.dismissedUpdate = v;
         if (j['update_version'] case final String v) s.updateVersion = v;
         if (j['update_url'] case final String v) s.updateUrl = v;
+        if (j['update_details'] case final Map<String, Object?> v) {
+          s.updateDetails = v;
+        }
+        if (j['announcement_cache'] case final List<Object?> v) {
+          s.announcementCache = v.whereType<Map<String, Object?>>().toList();
+        }
+        Map<String, int> history(Object? v) => v is Map<String, Object?>
+            ? {
+                for (final e in v.entries)
+                  if (e.value is int) e.key: e.value! as int,
+              }
+            : {};
+        s.announcementSeen = history(j['announcement_seen']);
+        s.announcementAcknowledged = history(j['announcement_acknowledged']);
         s.updateCheckedAt = switch (j['update_checked_at']) {
           final String t => DateTime.tryParse(t),
           _ => null,
@@ -196,9 +278,12 @@ class AppSettings extends ChangeNotifier {
           final String t => DateTime.tryParse(t),
           _ => null,
         };
-        // Start on boot is off until the user turns it on: only an
-        // explicit true enables it.
+        // Fork rule (kept over upstream's newer defaults): start on boot
+        // is off until the user turns it on: only an explicit true
+        // enables it. Upstream 1.0.19 defaults autostart ON
+        // (`!= false`); the fork never autostarts by default.
         s.autostart = j['autostart'] == true;
+        s.autostartShowsWindow = j['autostart_shows_window'] == true;
         // One-time reset (2.4.6): a persisted auto_connect from an older
         // version could turn the proxy on at every launch. Until the user
         // turns it on again under this version, it stays off.
@@ -224,15 +309,23 @@ class AppSettings extends ChangeNotifier {
     ThemeMode? themeMode,
     CloseAction? closeAction,
     UiDesign? uiDesign,
+    ZedPrefs? zed,
     bool? animationsEnabled,
+    SignInMethod? signInMethod,
     bool? firstRun,
     bool? showPublicIp,
+    bool? showAppModeSwitch,
     DateTime? lowQuotaDismissedAt,
     String? dismissedUpdate,
     DateTime? updateCheckedAt,
     String? updateVersion,
     String? updateUrl,
+    Map<String, Object?>? updateDetails,
+    List<Map<String, Object?>>? announcementCache,
+    Map<String, int>? announcementSeen,
+    Map<String, int>? announcementAcknowledged,
     bool? autostart,
+    bool? autostartShowsWindow,
     bool? autoConnect,
     bool? udpNotice,
     Set<String>? hiddenConnectionColumns,
@@ -241,21 +334,41 @@ class AppSettings extends ChangeNotifier {
         hiddenConnectionColumns ?? this.hiddenConnectionColumns;
     this.udpNotice = udpNotice ?? this.udpNotice;
     this.autostart = autostart ?? this.autostart;
+    this.autostartShowsWindow =
+        autostartShowsWindow ?? this.autostartShowsWindow;
     this.autoConnect = autoConnect ?? this.autoConnect;
     this.showPublicIp = showPublicIp ?? this.showPublicIp;
+    this.showAppModeSwitch = showAppModeSwitch ?? this.showAppModeSwitch;
     this.lowQuotaDismissedAt = lowQuotaDismissedAt ?? this.lowQuotaDismissedAt;
     this.dismissedUpdate = dismissedUpdate ?? this.dismissedUpdate;
     this.updateCheckedAt = updateCheckedAt ?? this.updateCheckedAt;
     this.updateVersion = updateVersion ?? this.updateVersion;
     this.updateUrl = updateUrl ?? this.updateUrl;
+    this.updateDetails = updateDetails ?? this.updateDetails;
+    this.announcementCache = announcementCache ?? this.announcementCache;
+    this.announcementSeen = announcementSeen ?? this.announcementSeen;
+    this.announcementAcknowledged =
+        announcementAcknowledged ?? this.announcementAcknowledged;
     this.firstRun = firstRun ?? this.firstRun;
     this.language = language ?? this.language;
     this.themeMode = themeMode ?? this.themeMode;
     this.closeAction = closeAction ?? this.closeAction;
-    this.uiDesign = uiDesign ?? this.uiDesign;
+    // The design and its preference block move together: a bare design
+    // change keeps the block (switching only its design), and a block
+    // change moves the design with it.
+    if (zed != null) {
+      this.zed = zed;
+      this.uiDesign = UiDesign.values.byName(zed.design.name);
+    } else if (uiDesign != null) {
+      this.uiDesign = uiDesign;
+      this.zed = this.zed.copyWith(
+        design: ZedDesign.values.byName(uiDesign.name),
+      );
+    }
     this.animationsEnabled = animationsEnabled ?? this.animationsEnabled;
+    this.signInMethod = signInMethod ?? this.signInMethod;
     notifyListeners();
-    _save();
+    _saveTail = _saveTail.then((_) => _save());
   }
 
   /// Serializes [_save] calls: settings updates can arrive back to back,
@@ -284,15 +397,23 @@ class AppSettings extends ChangeNotifier {
           'theme': themeMode.name,
           'close': closeAction.name,
           'ui_design': uiDesign.name,
+          'zed': zed.toJson(),
           'animations_enabled': animationsEnabled,
+          'signin_method': signInMethod.name,
           'welcome_done': !firstRun,
           'show_public_ip': showPublicIp,
+          'show_app_mode_switch': showAppModeSwitch,
           'low_quota_dismissed_at': lowQuotaDismissedAt?.toIso8601String(),
           'dismissed_update': dismissedUpdate,
           'update_checked_at': updateCheckedAt?.toIso8601String(),
           'update_version': updateVersion,
           'update_url': updateUrl,
+          'update_details': updateDetails,
+          'announcement_cache': announcementCache,
+          'announcement_seen': announcementSeen,
+          'announcement_acknowledged': announcementAcknowledged,
           'autostart': autostart,
+          'autostart_shows_window': autostartShowsWindow,
           'auto_connect': autoConnect,
           'auto_connect_default_off_v246': true,
           'udp_notice': udpNotice,

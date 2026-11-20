@@ -3,7 +3,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 
 import '../app_settings.dart';
@@ -14,10 +14,11 @@ import '../core/models.dart';
 import '../core/ports.dart';
 import '../l10n/app_localizations.dart';
 import '../platform.dart';
+import 'browser_signin.dart';
+import 'bypass_apps_page.dart';
 import 'connection_mode.dart';
 import 'format.dart';
 import 'port_dialog.dart';
-import 'signin_dialog.dart';
 import 'widgets.dart';
 
 /// The home page: the switch, the state, where the traffic goes, and the
@@ -80,7 +81,7 @@ class OverviewPage extends StatelessWidget {
 }
 
 /// Opens the connection settings under "Mozilla's servers are blocked":
-/// HTTP/2 or HTTP/3, one of which a network may let through.
+/// HTTP/2, HTTP/3, or HTTP/1.1, one of which a network may let through.
 class _ConnectionSettingsButton extends StatelessWidget {
   const _ConnectionSettingsButton({required this.onPressed, this.label});
 
@@ -242,16 +243,24 @@ class _ProblemBox extends StatelessWidget {
 void _openAccounts(
   BuildContext context,
   CoreController core,
+  AppSettings settings,
   VoidCallback? onOpenAccounts,
 ) {
   if (onOpenAccounts != null) {
     onOpenAccounts();
   } else {
-    showSignInDialog(context, core);
+    startAddAccount(context, core, settings);
   }
 }
 
-/// The phone home's colors, light or dark with the app's theme.
+/// The core handles the initial connection while an explicit attempt is pending.
+void _testAfterPowerOn(CoreController core) {
+  final status = core.status;
+  if (status != null && status.proxyOn && !status.connectPending) {
+    unawaited(core.runTest().catchError((_) {}));
+  }
+}
+
 /// The computer's home: the phone's look with the computer's logic. The
 /// button turns the proxy on or off (off closes its port and gives Windows
 /// its own proxy setting back); the mode chooses who uses it: Proxy, apps
@@ -344,10 +353,14 @@ class _DesktopHome extends StatelessWidget {
 
   bool get _running => status.state.phase == Phase.running;
 
-  /// The proxy runs but no test since it started passed.
-  bool get _confirming => _running && !connectionLive(status, core.lastTest);
+  /// The core is connecting, or the proxy still needs a passing test.
+  bool get _confirming =>
+      status.connectPending ||
+      (status.proxyOn && _running && !status.confirmedBy(core.lastTest));
 
   Color _accent(_HomePalette p) => switch (status.state.phase) {
+    _ when status.connectPending => p.busy,
+    _ when !status.proxyOn => p.idle,
     Phase.error => p.error,
     Phase.running when _confirming => p.busy,
     Phase.running => p.connected,
@@ -360,16 +373,19 @@ class _DesktopHome extends StatelessWidget {
     final theme = Theme.of(context);
     final look = PhaseLook.of(l, status);
     final proxy = status.proxy;
-    final on = engineOn(status);
+    final on = status.proxyOn;
     final confirming = _confirming;
+    final test = status.isCurrentTest(core.lastTest) ? core.lastTest : null;
+    final noNetwork = !status.connectPending && status.noNetwork && on;
     final failing =
+        !status.connectPending &&
         confirming &&
-        ((proxy?.wakeError.isNotEmpty ?? false) || core.lastTest?.ok == false);
+        ((proxy?.wakeError.isNotEmpty ?? false) || test?.ok == false);
     // The real reason; a long press or hover shows the core's own text.
-    final failure = failing ? failureText(l, proxy, core.lastTest) : null;
+    final failure = failing ? failureText(l, proxy, test) : null;
     // The last connect was given up: why, until the next one.
     final gaveUp = !on && status.connectFailure.isNotEmpty;
-    final connected = connectionLive(status, core.lastTest);
+    final connected = on && _running && !confirming;
     final accent = _accent(p);
     final ip = !showIp
         ? ''
@@ -378,6 +394,125 @@ class _DesktopHome extends StatelessWidget {
         : status.exit?.ipv6 ?? '';
     final place = homeLocation(l, status, connected: connected);
     final mismatch = exitMismatchText(l, status);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Center(
+          child: _PowerOrb(
+            palette: p,
+            on: on,
+            accent: accent,
+            busy: core.switchingProxy,
+            connecting: confirming || status.state.phase == Phase.starting,
+            tooltip: on ? l.tapToDisconnect : l.tapToConnect,
+            // The one power behavior every home shares; no account yet:
+            // the accounts page, which explains them.
+            onPressed: () => homePowerPressed(
+              context,
+              core,
+              onNoAccounts: () =>
+                  _openAccounts(context, core, settings, onOpenAccounts),
+            ),
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          confirming
+              ? l.stateConnecting
+              : connected
+              ? l.stateConnected
+              : look.label,
+          textAlign: TextAlign.center,
+          style: theme.textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+            color: on ? accent : p.text,
+          ),
+        ),
+        const SizedBox(height: 8),
+        _HomeStack(
+          core: core,
+          status: status,
+          settings: settings,
+          palette: p,
+          connected: connected,
+          failure: failure,
+          look: look,
+          on: on,
+          failing: failing,
+          noNetwork: noNetwork,
+          gaveUp: gaveUp,
+          ip: ip,
+          mismatch: mismatch,
+          place: place,
+          accent: accent,
+          onOpenServers: onOpenServers,
+          onOpenAccounts: onOpenAccounts,
+          onOpenConnection: onOpenConnection,
+          onOpenUpstreamProxy: onOpenUpstreamProxy,
+        ),
+      ],
+    );
+  }
+}
+
+/// The desktop home's functional stack — everything under the hero:
+/// the blocked-port action, the connection-mode selector and its hint,
+/// the TUN note, the update/UDP/notices/low-quota pieces, and the
+/// place + data cards. Extracted so the Zed design homes render the
+/// very same stack (same widgets, same behaviour) under their own
+/// heroes; the classic home above uses it unchanged.
+class _HomeStack extends StatelessWidget {
+  const _HomeStack({
+    required this.core,
+    required this.status,
+    required this.settings,
+    required this.palette,
+    required this.connected,
+    required this.failure,
+    required this.look,
+    required this.on,
+    required this.failing,
+    required this.noNetwork,
+    required this.gaveUp,
+    required this.ip,
+    required this.mismatch,
+    required this.place,
+    required this.accent,
+    this.onOpenServers,
+    this.onOpenAccounts,
+    this.onOpenConnection,
+    this.onOpenUpstreamProxy,
+  });
+
+  final CoreController core;
+  final CoreStatus status;
+  final AppSettings settings;
+  final _HomePalette palette;
+  final bool connected;
+  final ({String text, String detail, String code})? failure;
+
+  /// The hero's state look and the derivations its information pieces
+  /// need (the problem box, the connected pills, the notes).
+  final PhaseLook look;
+  final bool on;
+  final bool failing;
+  final bool noNetwork;
+  final bool gaveUp;
+  final String ip;
+  final String? mismatch;
+  final HomePlace place;
+  final Color accent;
+  final VoidCallback? onOpenServers;
+  final VoidCallback? onOpenAccounts;
+  final VoidCallback? onOpenConnection;
+  final VoidCallback? onOpenUpstreamProxy;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final p = palette;
+    final failure = this.failure;
     final cards = [
       _PlaceCard(
         palette: p,
@@ -396,36 +531,6 @@ class _DesktopHome extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Center(
-          child: _PowerOrb(
-            palette: p,
-            on: on,
-            accent: accent,
-            busy: core.switchingProxy,
-            tooltip: on ? l.tapToDisconnect : l.tapToConnect,
-            // The one power behavior every home shares; no account yet:
-            // the accounts page, which explains them.
-            onPressed: () => homePowerPressed(
-              context,
-              core,
-              onNoAccounts: () => _openAccounts(context, core, onOpenAccounts),
-            ),
-          ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          confirming
-              ? l.stateConnecting
-              : connected
-              ? l.stateConnected
-              : look.label,
-          textAlign: TextAlign.center,
-          style: theme.textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w800,
-            color: on ? accent : p.text,
-          ),
-        ),
-        const SizedBox(height: 8),
         if (connected)
           Wrap(
             alignment: WrapAlignment.center,
@@ -449,23 +554,23 @@ class _DesktopHome extends StatelessWidget {
                 ),
             ],
           )
-        else if (failing || (status.noNetwork && on) || gaveUp)
+        else if (failing || noNetwork || gaveUp)
           // Not connecting stands out from the ordinary hints.
           _ProblemBox(
-            text: status.noNetwork && on
+            text: noNetwork
                 ? l.noNetwork
                 : failure != null
                 ? failure.text
                 : failureCodeText(l, status.connectFailure),
             color: p.error,
             icon: Icons.error_outline_rounded,
-            tooltip: status.noNetwork ? '' : failure?.detail ?? '',
+            tooltip: noNetwork ? '' : failure?.detail ?? '',
           )
         else
           // A start failure's hint is general; the core's reason is on
           // hover or a long press.
           Tooltip(
-            message: status.state.phase == Phase.error
+            message: !status.connectPending && status.state.phase == Phase.error
                 ? status.state.message
                 : '',
             child: Text(
@@ -498,7 +603,7 @@ class _DesktopHome extends StatelessWidget {
         if (isLocationRefused(failure?.code ?? '') ||
             (gaveUp && isLocationRefused(status.connectFailure)))
           _RecommendedLocationButton(core: core),
-        if (connected && mismatch != null) _ExitMismatchNote(text: mismatch),
+        if (connected && mismatch != null) _ExitMismatchNote(text: mismatch!),
         if (status.systemProxySet && status.systemProxyTakenBy != null)
           _SystemProxyTakenNote(core: core, by: status.systemProxyTakenBy!),
         if (status.state.proxyPortBlocked) ...[
@@ -592,6 +697,93 @@ class _DesktopHome extends StatelessWidget {
   }
 }
 
+/// The functional stack for the Zed design homes: the same widgets the
+/// classic desktop home shows under its hero, with the derivations
+/// (connected / confirming / failure / place / accent) computed the
+/// same way. The Zed homes supply their own hero and connect control;
+/// nothing functional is dropped.
+class HomeFunctionStack extends StatelessWidget {
+  const HomeFunctionStack({
+    super.key,
+    required this.core,
+    required this.settings,
+    this.onOpenServers,
+    this.onOpenAccounts,
+    this.onOpenConnection,
+    this.onOpenUpstreamProxy,
+  });
+
+  final CoreController core;
+  final AppSettings settings;
+  final VoidCallback? onOpenServers;
+  final VoidCallback? onOpenAccounts;
+  final VoidCallback? onOpenConnection;
+  final VoidCallback? onOpenUpstreamProxy;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = core.status;
+    if (status == null) return const SizedBox.shrink();
+    final l = AppLocalizations.of(context);
+    final p = Theme.of(context).brightness == Brightness.dark
+        ? _HomePalette.night
+        : _HomePalette.day;
+    final on = status.proxyOn;
+    final running = status.state.phase == Phase.running;
+    final confirming =
+        status.connectPending ||
+        (status.proxyOn && running && !status.confirmedBy(core.lastTest));
+    final connected = on && running && !confirming;
+    final proxy = status.proxy;
+    final test = status.isCurrentTest(core.lastTest) ? core.lastTest : null;
+    final failing =
+        !status.connectPending &&
+        confirming &&
+        ((proxy?.wakeError.isNotEmpty ?? false) || test?.ok == false);
+    final failure = failing ? failureText(l, proxy, test) : null;
+    final place = homeLocation(l, status, connected: connected);
+    final look = PhaseLook.of(l, status);
+    final noNetwork = !status.connectPending && status.noNetwork && on;
+    final gaveUp = !on && status.connectFailure.isNotEmpty;
+    final ip = !settings.showPublicIp
+        ? ''
+        : status.exit?.ipv4.isNotEmpty == true
+        ? status.exit!.ipv4
+        : status.exit?.ipv6 ?? '';
+    final mismatch = exitMismatchText(l, status);
+    final accent = switch (status.state.phase) {
+      _ when status.connectPending => p.busy,
+      _ when !status.proxyOn => p.idle,
+      Phase.error => p.error,
+      Phase.running when confirming => p.busy,
+      Phase.running => p.connected,
+      Phase.starting => p.busy,
+      _ => p.idle,
+    };
+    return _HomeStack(
+      core: core,
+      status: status,
+      settings: settings,
+      palette: p,
+      connected: connected,
+      failure: failure,
+      look: look,
+      on: on,
+      failing: failing,
+      noNetwork: noNetwork,
+      gaveUp: gaveUp,
+      ip: ip,
+      mismatch: mismatch,
+      place: place,
+      accent: accent,
+      onOpenServers: onOpenServers,
+      onOpenAccounts: onOpenAccounts,
+      onOpenConnection: onOpenConnection,
+      onOpenUpstreamProxy: onOpenUpstreamProxy,
+    );
+  }
+}
+
 /// A small frosted pill on the home background.
 class _HomePill extends StatelessWidget {
   const _HomePill({required this.palette, required this.child});
@@ -650,6 +842,185 @@ class _UpstreamProxyPill extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// A connection mode in [_ModeSwitch]; an empty tooltip shows none.
+typedef _Mode = ({String value, IconData icon, String label, String tooltip});
+
+/// The connection modes as one rounded track with no lines between them:
+/// the chosen mode sits on a pill that slides to the one tapped. The modes
+/// are equally wide (the widest one's width), and the whole track shrinks
+/// to fit a narrow window. A tap on the chosen mode changes nothing.
+class _ModeSwitch extends StatelessWidget {
+  const _ModeSwitch({
+    required this.palette,
+    required this.accent,
+    required this.modes,
+    required this.selected,
+    required this.onSelected,
+    this.onTapSelected,
+  });
+
+  final _HomePalette palette;
+  final Color accent;
+  final List<_Mode> modes;
+  final String selected;
+
+  /// Null while a change is under way.
+  final ValueChanged<String>? onSelected;
+
+  /// Called when the already-chosen mode is tapped (e.g. to open its settings).
+  final ValueChanged<String>? onTapSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = palette;
+    final theme = Theme.of(context);
+    final n = modes.length;
+    final index = modes.indexWhere((m) => m.value == selected);
+    final still = MediaQuery.of(context).disableAnimations;
+    final onSelected = this.onSelected;
+    Widget option(_Mode m) {
+      final chosen = m.value == selected;
+      final color = chosen ? p.text : p.muted;
+      Widget child = InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: onSelected == null
+            ? null
+            : chosen
+                ? (onTapSelected != null ? () => onTapSelected!(m.value) : null)
+                : () => onSelected(m.value),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(m.icon, size: 18, color: color),
+              const SizedBox(width: 8),
+              Text(
+                m.label,
+                maxLines: 1,
+                softWrap: false,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: color,
+                  fontWeight: chosen ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      if (m.tooltip.isNotEmpty) {
+        child = Tooltip(message: m.tooltip, child: child);
+      }
+      return Semantics(
+        button: true,
+        selected: chosen,
+        enabled: onSelected != null,
+        child: child,
+      );
+    }
+
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: AnimatedOpacity(
+        opacity: onSelected == null ? 0.6 : 1,
+        duration: const Duration(milliseconds: 150),
+        child: DecoratedBox(
+          decoration: ShapeDecoration(
+            color: p.card,
+            shape: StadiumBorder(side: BorderSide(color: p.cardBorder)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            // The row is as wide as its widest mode times their number
+            // (each mode Expanded under IntrinsicWidth), so the pill is one
+            // mode wide wherever it is.
+            child: IntrinsicWidth(
+              child: Stack(
+                children: [
+                  if (index >= 0)
+                    Positioned.fill(
+                      child: AnimatedAlign(
+                        alignment: AlignmentDirectional(
+                          n == 1 ? 0 : -1 + 2 * index / (n - 1),
+                          0,
+                        ),
+                        duration: still
+                            ? Duration.zero
+                            : const Duration(milliseconds: 240),
+                        curve: Curves.easeOutCubic,
+                        child: FractionallySizedBox(
+                          widthFactor: 1 / n,
+                          heightFactor: 1,
+                          child: DecoratedBox(
+                            decoration: ShapeDecoration(
+                              color: accent.withValues(alpha: 0.2),
+                              shape: StadiumBorder(
+                                side: BorderSide(
+                                  color: accent.withValues(alpha: 0.35),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  // A line between two modes, so each reads as a button of
+                  // its own; none beside the pill, which marks its mode.
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: Row(
+                        children: [
+                          for (var i = 0; i < n; i++)
+                            Expanded(
+                              child: Align(
+                                alignment: AlignmentDirectional.centerEnd,
+                                child: i == n - 1
+                                    ? null
+                                    : AnimatedOpacity(
+                                        opacity: i == index || i + 1 == index
+                                            ? 0
+                                            : 1,
+                                        duration: still
+                                            ? Duration.zero
+                                            : const Duration(milliseconds: 180),
+                                        child: Container(
+                                          width: 1.2,
+                                          height: 22,
+                                          decoration: BoxDecoration(
+                                            color: p.muted.withValues(
+                                              alpha: 0.45,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              1,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Material(
+                    type: MaterialType.transparency,
+                    child: Row(
+                      children: [
+                        for (final m in modes) Expanded(child: option(m)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Where the traffic goes: the flag and the country, under how the
@@ -839,8 +1210,16 @@ class _PhoneHome extends StatelessWidget {
   final VoidCallback? onOpenConnection;
   final VoidCallback? onOpenUpstreamProxy;
 
+  // Fork fix (from the 1.0.9 pass, re-applied on 1.0.19): on a computer
+  // the phone-home orb switches the system proxy AND powers the engine;
+  // the getter was lost when upstream rewrote this region.
+  bool get _switchSystemProxy =>
+      status.systemProxySupported &&
+      !status.connectPending &&
+      status.connectFailure.isEmpty;
+
   Future<void> _toggle(bool on) async {
-    if (status.systemProxySupported) {
+    if (_switchSystemProxy) {
       await core.setSystemProxy(on ? 'clear' : 'set');
       // The mode alone connects nothing: the system proxy is applied only
       // while the engine runs, so the orb powers the engine too, as every
@@ -851,7 +1230,44 @@ class _PhoneHome extends StatelessWidget {
     } else {
       await core.setOn(!on);
     }
-    if (!on) unawaited(core.runTest().catchError((_) {}));
+    if (!on) _testAfterPowerOn(core);
+  }
+
+  void _openBypassApps(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const BypassAppsPage(),
+      ),
+    ).then((_) async {
+      try {
+        final r = await AndroidCore.appRouting();
+        AndroidCore.appRoutingMode.value =
+            (r.onlyChosen || r.bypass.isNotEmpty) ? 'selected' : 'all';
+        AndroidCore.selectedAppsCount.value = r.chosenCount;
+      } catch (_) {}
+    });
+  }
+
+  Future<void> _openPortSettings(
+    BuildContext context,
+    CoreStatus status,
+  ) async {
+    final port = await showPortDialog(
+      context,
+      taken: status.state.address,
+    );
+    if (port != null && context.mounted) {
+      await runShowingErrors(
+        context,
+        () => core.setProxyPort(port),
+      );
+    }
+  }
+
+  void _openAllAppsSettings() {
+    if (onOpenConnection != null) {
+      onOpenConnection!();
+    }
   }
 
   @override
@@ -889,41 +1305,54 @@ class _PhoneHome extends StatelessWidget {
     final theme = Theme.of(context);
     final look = PhaseLook.of(l, status);
     final running = status.state.phase == Phase.running;
+    // Connecting, or connected but still waiting on a passing test: the
+    // same orange state the label shows, so the ring moves with it.
+    final connecting =
+        status.connectPending ||
+        status.state.phase == Phase.starting ||
+        (status.proxyOn && running && !status.confirmedBy(core.lastTest));
     final canSwitch = status.systemProxySupported;
     final width = box.maxWidth;
-    // A wide, low screen (a TV, 960 x 540): a smaller switch and the two
-    // cards side by side, so that all of it shows without scrolling.
-    final short = box.maxHeight < 560 && width >= 600;
+    // Not enough height for the switch at its full size: it shrinks and
+    // the spacing tightens, so the location and the quota still show
+    // without scrolling. A window pinned to the side of a screen is as
+    // short as a TV is (960 x 540), and narrower.
+    final short = box.maxHeight < 700;
+    // The two cards fit beside each other only when the width is there;
+    // narrower, each would be too narrow for its own name and would break
+    // the words. They stay one above the other then, which the smaller
+    // switch has made room for.
+    final sideBySide = short && width >= 600;
     // On a tablet the content keeps about a phone's width in the middle (the
     // colors still reach the edges), and the problem boxes their own limit.
     // Both as padding, since IntrinsicHeight measures through padding but
     // not through a width limit.
-    final side = math.max(20.0, (width - (short ? 720 : 560)) / 2);
+    final side = math.max(20.0, (width - (sideBySide ? 720 : 560)) / 2);
     final boxSide = math.max(0.0, (width - 2 * side - _problemBoxWidth) / 2);
     Widget problem(Widget box) => Padding(
       padding: EdgeInsets.symmetric(horizontal: boxSide),
       child: box,
     );
-    // A computer's narrow window: on while the system proxy or TUN mode
-    // carries the apps.
-    final on = canSwitch
-        ? status.systemProxySet || status.tunMode
-        : status.state.phase != Phase.off;
+    final on = status.proxyOn;
     final proxy = status.proxy;
     // The phone's VPN is "Connecting", in orange, until a test confirms it
     // works (the controller tests again meanwhile): with no internet it
     // does not claim to be connected.
     final confirming =
-        on && running && !canSwitch && !status.confirmedBy(core.lastTest);
+        status.connectPending ||
+        (on && running && !canSwitch && !status.confirmedBy(core.lastTest));
+    final test = status.isCurrentTest(core.lastTest) ? core.lastTest : null;
+    final noNetwork = !status.connectPending && status.noNetwork && on;
     final failing =
+        !status.connectPending &&
         confirming &&
-        ((proxy?.wakeError.isNotEmpty ?? false) || core.lastTest?.ok == false);
+        ((proxy?.wakeError.isNotEmpty ?? false) || test?.ok == false);
     // The real reason; a long press or hover shows the core's own text.
-    final failure = failing ? failureText(l, proxy, core.lastTest) : null;
+    final failure = failing ? failureText(l, proxy, test) : null;
     // The last connect was given up: why, until the next one.
     final gaveUp = !on && status.connectFailure.isNotEmpty;
     final connected =
-        running && (status.computerUsesVpn || !canSwitch) && !confirming;
+        on && running && (status.computerUsesVpn || !canSwitch) && !confirming;
     final ip = !showIp
         ? ''
         : status.exit?.ipv4.isNotEmpty == true
@@ -993,11 +1422,12 @@ class _PhoneHome extends StatelessWidget {
                   on: on,
                   accent: accent,
                   busy: core.switchingProxy,
+                  connecting: connecting,
                   tooltip: press,
                   // No account yet: the accounts page, which explains
                   // them and links to Mozilla's sign-up.
                   onPressed: () => status.totalAccounts == 0
-                      ? _openAccounts(context, core, onOpenAccounts)
+                      ? _openAccounts(context, core, settings, onOpenAccounts)
                       : runShowingErrors(context, () => _toggle(on)),
                 ),
               ),
@@ -1036,25 +1466,27 @@ class _PhoneHome extends StatelessWidget {
                       ),
                   ],
                 )
-              else if (failing || (status.noNetwork && on) || gaveUp)
+              else if (failing || noNetwork || gaveUp)
                 // Not connecting stands out from the ordinary hints.
                 problem(
                   _ProblemBox(
-                    text: status.noNetwork && on
+                    text: noNetwork
                         ? l.noNetwork
                         : failure != null
                         ? failure.text
                         : failureCodeText(l, status.connectFailure),
                     color: p.error,
                     icon: Icons.error_outline_rounded,
-                    tooltip: status.noNetwork ? '' : failure?.detail ?? '',
+                    tooltip: noNetwork ? '' : failure?.detail ?? '',
                   ),
                 )
               else
                 // A start failure's hint is general; the core's reason is
                 // on a long press.
                 Tooltip(
-                  message: status.state.phase == Phase.error
+                  message:
+                      !status.connectPending &&
+                          status.state.phase == Phase.error
                       ? status.state.message
                       : '',
                   child: Text(
@@ -1144,6 +1576,266 @@ class _PhoneHome extends StatelessWidget {
                 Center(child: _LanChip(port: portOf(proxy.listen) ?? 10810)),
               ],
               const Spacer(),
+              if (settings.showAppModeSwitch && Platform.isAndroid) ...[
+                ListenableBuilder(
+                  listenable: Listenable.merge([
+                    AndroidCore.mode,
+                    AndroidCore.appRoutingMode,
+                    AndroidCore.selectedAppsCount,
+                  ]),
+                  builder: (context, _) {
+                    final mode = AndroidCore.mode.value;
+                    final routing = AndroidCore.appRoutingMode.value;
+                    final selected = mode == 'proxy' ? 'proxy' : routing;
+                    final port = portOf(proxy?.listen ?? '') ??
+                        portOf(status.state.address) ??
+                        10810;
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Center(
+                          child: _ModeSwitch(
+                            palette: p,
+                            accent: accent,
+                            selected: selected,
+                            onSelected: core.switchingProxy
+                                ? null
+                                : (newMode) async {
+                                    if (newMode == 'proxy') {
+                                      await runShowingErrors(
+                                        context,
+                                        () => AndroidCore.setMode('proxy'),
+                                      );
+                                    } else if (newMode == 'selected') {
+                                      if (AndroidCore.mode.value != 'vpn') {
+                                        await runShowingErrors(
+                                          context,
+                                          () => AndroidCore.setMode('vpn'),
+                                        );
+                                      }
+                                      await AndroidCore.setRoutingEnabled(true);
+                                      AndroidCore.appRoutingMode.value =
+                                          'selected';
+                                      try {
+                                        final r =
+                                            await AndroidCore.appRouting();
+                                        AndroidCore.selectedAppsCount.value =
+                                            r.chosenCount;
+                                      } catch (_) {}
+                                    } else if (newMode == 'all') {
+                                      if (AndroidCore.mode.value != 'vpn') {
+                                        await runShowingErrors(
+                                          context,
+                                          () => AndroidCore.setMode('vpn'),
+                                        );
+                                      }
+                                      await AndroidCore.setRoutingEnabled(
+                                        false,
+                                      );
+                                      AndroidCore.appRoutingMode.value = 'all';
+                                    }
+                                  },
+                            onTapSelected: (modeValue) {
+                              if (modeValue == 'proxy') {
+                                _openPortSettings(context, status);
+                              } else if (modeValue == 'all') {
+                                _openAllAppsSettings();
+                              }
+                            },
+                            modes: [
+                              (
+                                value: 'all',
+                                icon: Icons.public_rounded,
+                                label: l.modeAllApps,
+                                tooltip: l.modeAllAppsHint,
+                              ),
+                              (
+                                value: 'selected',
+                                icon: Icons.apps_rounded,
+                                label: l.modeSelectedApps,
+                                tooltip: l.modeSelectedAppsHint,
+                              ),
+                              (
+                                value: 'proxy',
+                                icon: Icons.settings_ethernet_rounded,
+                                label: l.modeProxy,
+                                tooltip: '${l.proxyPort}: $port',
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        if (selected == 'proxy')
+                          Center(
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () => _openPortSettings(context, status),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 6,
+                                ),
+                                decoration: ShapeDecoration(
+                                  color: p.card,
+                                  shape: StadiumBorder(
+                                    side: BorderSide(color: p.cardBorder),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.tune_rounded,
+                                      size: 14,
+                                      color: accent,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '${l.proxyPort}: $port',
+                                      style:
+                                          theme.textTheme.bodySmall?.copyWith(
+                                        color: p.text,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Icon(
+                                      Icons.edit_outlined,
+                                      size: 13,
+                                      color: p.muted,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          )
+                        else if (selected == 'selected')
+                          Center(
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () => _openBypassApps(context),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 6,
+                                ),
+                                decoration: ShapeDecoration(
+                                  color: p.card,
+                                  shape: StadiumBorder(
+                                    side: BorderSide(color: p.cardBorder),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.apps_rounded,
+                                      size: 14,
+                                      color: accent,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      l.selectedAppsCount(
+                                        '${AndroidCore.selectedAppsCount.value}',
+                                      ),
+                                      style:
+                                          theme.textTheme.bodySmall?.copyWith(
+                                        color: p.text,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Icon(
+                                      Icons.chevron_left_rounded,
+                                      size: 16,
+                                      color: p.muted,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          Center(
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: _openAllAppsSettings,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                child: Text(
+                                  l.allTrafficThroughVpn,
+                                  textAlign: TextAlign.center,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: p.muted,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+              ] else if (settings.showAppModeSwitch &&
+                  (status.systemProxySupported || status.tunSupported)) ...[
+                Center(
+                  child: _ModeSwitch(
+                    palette: p,
+                    accent: accent,
+                    selected: connectionModeShown(status),
+                    onSelected: core.switchingProxy || core.installingTun
+                        ? null
+                        : (mode) => chooseConnectionMode(context, core, mode),
+                    modes: [
+                      (
+                        value: 'clear',
+                        icon: Icons.settings_ethernet_rounded,
+                        label: l.modeProxy,
+                        tooltip: running && proxy != null
+                            ? '${l.proxyServiceActive} · ${proxy.listen}'
+                            : '',
+                      ),
+                      if (status.systemProxySupported)
+                        (
+                          value: 'set',
+                          icon: Icons.computer_rounded,
+                          label: l.systemProxy,
+                          tooltip: '',
+                        ),
+                      if (status.tunSupported)
+                        (
+                          value: 'tun',
+                          icon: Icons.vpn_lock_rounded,
+                          label: l.modeTun,
+                          tooltip: '',
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  connectionModeHint(
+                    l,
+                    status,
+                    installing: core.installingTun,
+                    windows: defaultTargetPlatform == TargetPlatform.windows,
+                  ),
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall?.copyWith(color: p.muted),
+                ),
+                TunNote(
+                  core: core,
+                  box: (text, tooltip) => _ProblemBox(
+                    text: text,
+                    color: StatusColors.busy,
+                    icon: Icons.warning_amber_rounded,
+                    tooltip: tooltip,
+                  ),
+                ),
+              ],
               SizedBox(height: short ? 12 : 20),
               _UpdateNotice(core: core, settings: settings, palette: p),
               _UdpNotice(status: status, settings: settings, palette: p),
@@ -1155,7 +1847,7 @@ class _PhoneHome extends StatelessWidget {
                 connected: connected,
                 palette: p,
               ),
-              if (short)
+              if (sideBySide)
                 IntrinsicHeight(
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1290,6 +1982,9 @@ class _HomeDelay extends StatelessWidget {
     final l = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final test = core.lastTest;
+    // The core settles a figure taken during the apps' rush before it
+    // reports one (proxy.settledResponseMS), so what arrives here is
+    // already the figure that holds and is shown as it is.
     final (text, color) = switch (test) {
       null => (l.testConnection, palette.muted),
       final t when !t.ok => (l.testFailed, palette.error),
@@ -1346,6 +2041,7 @@ class _PowerOrb extends StatelessWidget {
     required this.on,
     required this.accent,
     required this.busy,
+    this.connecting = false,
     required this.tooltip,
     required this.onPressed,
   });
@@ -1358,6 +2054,10 @@ class _PowerOrb extends StatelessWidget {
   final bool on;
   final Color accent;
   final bool busy;
+
+  /// The core is connecting, which can take a while. The ring moves so the
+  /// wait reads as expected progress rather than a stuck button.
+  final bool connecting;
   final String tooltip;
   final VoidCallback onPressed;
 
@@ -1376,18 +2076,18 @@ class _PowerOrb extends StatelessWidget {
           alignment: Alignment.center,
           clipBehavior: Clip.none,
           children: [
-            // Contour lines reaching past the button's area.
+            // Contour lines reaching past the button's area. While
+            // connecting they turn, very slowly: see _DriftingContours.
             Positioned(
               left: -reach,
               top: -reach,
               right: -reach,
               bottom: -reach,
               child: IgnorePointer(
-                child: CustomPaint(
-                  painter: _Contours(
-                    color: accent,
-                    alpha: p.dark ? 0.16 : 0.22,
-                  ),
+                child: _DriftingContours(
+                  drifting: busy || connecting,
+                  color: accent,
+                  alpha: p.dark ? 0.16 : 0.22,
                 ),
               ),
             ),
@@ -1415,11 +2115,10 @@ class _PowerOrb extends StatelessWidget {
                 ),
               ),
             ),
-            if (busy)
-              SizedBox.square(
-                dimension: ring,
-                child: CircularProgressIndicator(strokeWidth: 2, color: accent),
-              ),
+            // Connecting can take a while when Mozilla is slow to answer,
+            // so the ring keeps moving to show the wait is expected and
+            // something is still happening.
+            if (busy || connecting) _ConnectingRing(size: ring, color: accent),
             AnimatedContainer(
               duration: const Duration(milliseconds: 400),
               width: disc,
@@ -1472,6 +2171,192 @@ class _PowerOrb extends StatelessWidget {
   }
 }
 
+/// The moving ring shown while the core connects: an arc travelling around
+/// the switch with the outline breathing behind it, so a wait of half a
+/// minute reads as work in progress instead of a button that did nothing.
+///
+/// Kept deliberately cheap. It is the only thing that animates: a widget of
+/// its own, so the switch's gradients and shadows are built once and not
+/// touched again; a [RepaintBoundary], so its frames repaint nothing else;
+/// and strokes only, since a blur or a shadow is what makes an animation
+/// expensive. The ticker exists only while this widget does, so a connected
+/// or idle app animates nothing at all.
+class _ConnectingRing extends StatefulWidget {
+  const _ConnectingRing({required this.size, required this.color});
+
+  final double size;
+  final Color color;
+
+  @override
+  State<_ConnectingRing> createState() => _ConnectingRingState();
+}
+
+class _ConnectingRingState extends State<_ConnectingRing>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _turn = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1500),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _turn.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // With the system's animations off, the ring is drawn once and stands
+    // still: the state is still visible, nothing keeps waking the screen.
+    final still = MediaQuery.of(context).disableAnimations;
+    if (still && _turn.isAnimating) {
+      _turn.stop();
+    } else if (!still && !_turn.isAnimating) {
+      _turn.repeat();
+    }
+    return RepaintBoundary(
+      child: SizedBox.square(
+        dimension: widget.size,
+        child: CustomPaint(
+          painter: _ConnectingArc(_turn, widget.color, still: still),
+        ),
+      ),
+    );
+  }
+}
+
+class _ConnectingArc extends CustomPainter {
+  // The controller drives the repaints, so build is not run per frame.
+  _ConnectingArc(this.turn, this.color, {this.still = false})
+    : super(repaint: turn);
+
+  final Animation<double> turn;
+  final Color color;
+
+  /// Animations are off: one frame, at a resting position.
+  final bool still;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final t = still ? 0.0 : turn.value;
+    final center = size.center(Offset.zero);
+    final radius = size.width / 2;
+    final circle = Rect.fromCircle(center: center, radius: radius);
+
+    // Only this arc is drawn. A ring here would sit on the switch's own
+    // outline and add its colour to it, which made the whole circle read as
+    // a solid orange band.
+    //
+    // The head goes round at a steady rate while the tail falls back and
+    // catches up, so the arc stretches and gathers instead of speeding up
+    // and slowing down, which looked like a stutter.
+    const short = math.pi / 7;
+    const long = math.pi * 0.85;
+    final head = 2 * math.pi * t - math.pi / 2;
+    final grow = 0.5 - 0.5 * math.cos(2 * math.pi * t);
+    final sweep = still ? math.pi / 3 : short + (long - short) * grow;
+    final start = head - sweep;
+
+    // Fades along its length rather than ending flat: the head is the
+    // brightest point and the eye follows it. It also puts less colour on
+    // screen than an arc of one strength.
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round
+      ..shader = SweepGradient(
+        startAngle: 0,
+        endAngle: sweep,
+        colors: [color.withValues(alpha: 0), color.withValues(alpha: 0.95)],
+        transform: GradientRotation(start),
+      ).createShader(circle);
+    canvas.drawArc(circle, start, sweep, false, paint);
+
+    // A dot at the head, which gives the motion something to lead with.
+    canvas.drawCircle(
+      center + Offset(math.cos(head), math.sin(head)) * radius,
+      2.4,
+      Paint()..color = color,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_ConnectingArc old) =>
+      old.color != color || old.still != still;
+}
+
+/// The contour lines, turning very slowly while the core connects.
+///
+/// Painting them is not cheap: seven closed paths of 120 segments, each
+/// point from three trigonometric calls, which is some 3,400 of them for
+/// one frame. Repainting that sixty times a second to make it move would
+/// cost far more than the whole switch.
+///
+/// So it is never repainted. The lines are drawn once into a
+/// [RepaintBoundary] layer, and [RotationTransition] turns that finished
+/// layer: the work per frame is one matrix on the GPU, with no Dart and no
+/// rasterizing. A turn takes twenty-odd seconds, so a connect shows well
+/// under one: enough to notice if you look, not enough to pull the eye off
+/// the travelling arc, which is what should carry it.
+class _DriftingContours extends StatefulWidget {
+  const _DriftingContours({
+    required this.drifting,
+    required this.color,
+    required this.alpha,
+  });
+
+  final bool drifting;
+  final Color color;
+  final double alpha;
+
+  @override
+  State<_DriftingContours> createState() => _DriftingContoursState();
+}
+
+class _DriftingContoursState extends State<_DriftingContours>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _drift = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 22),
+  );
+
+  @override
+  void dispose() {
+    _drift.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Still with the system's animations off, and whenever the core is not
+    // connecting, so a settled app turns nothing.
+    final run = widget.drifting && !MediaQuery.of(context).disableAnimations;
+    if (run && !_drift.isAnimating) {
+      _drift.repeat();
+    } else if (!run && _drift.isAnimating) {
+      _drift.stop();
+    }
+    // The boundary is inside the rotation: the lines rasterize once and the
+    // transform reuses that layer. The other way round would repaint them.
+    return RotationTransition(
+      turns: _drift,
+      child: RepaintBoundary(
+        child: CustomPaint(
+          painter: _Contours(color: widget.color, alpha: widget.alpha),
+        ),
+      ),
+    );
+  }
+}
+
+/// How many times the contour lines have been painted. Drawing them costs
+/// some 3,400 trigonometric calls, so they must be rasterized once and then
+/// only transformed. A [RepaintBoundary] put on the wrong side of the
+/// rotation in [_DriftingContours] would still look right while making this
+/// climb on every frame, which is what the test watching it catches.
+@visibleForTesting
+int debugContourPaints = 0;
+
 /// Wavy closed lines around the center, like the contours of a map, fading
 /// outwards.
 class _Contours extends CustomPainter {
@@ -1482,6 +2367,7 @@ class _Contours extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    debugContourPaints++;
     final center = size.center(Offset.zero);
     final paint = Paint()
       ..style = PaintingStyle.stroke
@@ -1536,7 +2422,52 @@ class _HomeData extends StatelessWidget {
     final a = status.activeAccount;
     final usage = a?.usage;
     Widget body;
-    if (a == null || usage == null || usage.unlimited) {
+    if (a != null && usage != null && usage.unlimited) {
+      // The same shape as a quota that has a limit, so the card keeps its
+      // height and its weight on the page: the ring is simply full, with the
+      // sign for "no limit" in the middle instead of a percentage.
+      body = Row(
+        children: [
+          SizedBox.square(
+            dimension: _homeCardContent(compact),
+            child: CustomPaint(
+              painter: _QuotaRing(
+                value: 1,
+                color: theme.colorScheme.primary,
+                track: p.text.withValues(alpha: 0.08),
+              ),
+              child: Center(
+                child: Icon(
+                  Icons.all_inclusive_rounded,
+                  size: compact ? 20 : 26,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l.monthlyData, style: muted),
+                Text(
+                  l.unlimited,
+                  style:
+                      (compact
+                              ? theme.textTheme.titleSmall
+                              : theme.textTheme.titleMedium)
+                          ?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: p.text,
+                          ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    } else if (a == null || usage == null) {
       body = Row(
         children: [
           Icon(
@@ -1548,11 +2479,7 @@ class _HomeData extends StatelessWidget {
           const SizedBox(width: 14),
           Expanded(
             child: Text(
-              a == null
-                  ? l.noActiveAccount
-                  : usage == null
-                  ? l.quotaNotRead
-                  : l.unlimited,
+              a == null ? l.noActiveAccount : l.quotaNotRead,
               style: theme.textTheme.titleMedium?.copyWith(color: p.text),
             ),
           ),
@@ -1831,8 +2758,11 @@ class _UpdateNotice extends StatelessWidget {
     builder: (context, _) {
       final l = AppLocalizations.of(context);
       final update = core.status?.update;
+      final release = Updates.available.value;
       final last = update?.last;
-      if (last != null && !Updates.resultSeen.value) {
+      if (last != null &&
+          !Updates.resultSeen.value &&
+          release?.mandatory != true) {
         return _UpdateBanner(
           palette: palette,
           icon: last.ok ? Icons.check_circle_rounded : Icons.history_rounded,
@@ -1842,16 +2772,21 @@ class _UpdateNotice extends StatelessWidget {
           onClose: () => Updates.resultSeen.value = true,
         );
       }
-      final release = Updates.available.value;
-      if (release == null || release.version == settings.dismissedUpdate) {
+      if (release == null ||
+          (!release.mandatory && release.version == settings.dismissedUpdate)) {
         return const SizedBox.shrink();
       }
-      void dismiss() => settings.update(dismissedUpdate: release.version);
+      final VoidCallback? dismiss = release.mandatory
+          ? null
+          : () => settings.update(dismissedUpdate: release.version);
       if (update == null) {
         return _UpdateBanner(
           palette: palette,
           icon: Icons.system_update_rounded,
-          text: l.updateAvailable(release.version),
+          text: release.mandatory
+              ? l.updateRequired(release.version)
+              : l.updateAvailable(release.version),
+          problem: release.mandatory,
           action: release.url.isEmpty
               ? null
               : (
@@ -1895,7 +2830,10 @@ class _UpdateNotice extends StatelessWidget {
       return _UpdateBanner(
         palette: palette,
         icon: Icons.system_update_rounded,
-        text: mine && update.ready
+        problem: release.mandatory,
+        text: release.mandatory
+            ? l.updateRequired(release.version)
+            : mine && update.ready
             ? l.updateReady(release.version)
             : l.updateAvailable(release.version),
         action: (
@@ -2351,7 +3289,8 @@ class _LowQuotaNoticeState extends State<_LowQuotaNotice> {
               Align(
                 alignment: AlignmentDirectional.centerEnd,
                 child: TextButton.icon(
-                  onPressed: () => showSignInDialog(context, widget.core),
+                  onPressed: () =>
+                      startAddAccount(context, widget.core, widget.settings),
                   icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
                   label: Text(l.addAccount),
                 ),

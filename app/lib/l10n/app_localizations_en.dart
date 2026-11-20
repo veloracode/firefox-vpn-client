@@ -151,6 +151,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get accountsGuideUnlimited =>
+      'Firefox Accounts have unlimited data at the moment.';
+
+  @override
   String accountsOrderNote(int percent) {
     return 'In the order of this list: each up to $percent%, the last one until its data runs out.';
   }
@@ -172,6 +176,9 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get delayTestFailed =>
       'Couldn\'t measure the servers\' delay. Check your internet.';
+
+  @override
+  String get delayFromLastTest => 'From the last test';
 
   @override
   String get createAccountTitle => 'Don\'t have a Firefox Account?';
@@ -447,6 +454,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsTitle => 'Settings';
+
+  @override
+  String get settingsNoMatch => 'Nothing matches that';
 
   @override
   String get sectionGeneral => 'General';
@@ -737,6 +747,56 @@ class AppLocalizationsEn extends AppLocalizations {
       'The next account takes over when this share of the quota is used.';
 
   @override
+  String get signInMethod => 'Sign-in method';
+
+  @override
+  String get signInMethodBrowser => 'Sign in with the browser';
+
+  @override
+  String get signInMethodApi => 'Sign in directly';
+
+  @override
+  String get browserSignInBroken => 'The sign-in page could not be opened.';
+
+  @override
+  String get browserSignInBlocked =>
+      'Mozilla did not complete the final step of adding the account (HTTP 406).';
+
+  @override
+  String get browserSignInFallback => 'Sign in with email and password';
+
+  @override
+  String get backupExport => 'Save a backup';
+
+  @override
+  String get backupImport => 'Import a backup';
+
+  @override
+  String backupSaved(String name) {
+    return 'Saved: $name';
+  }
+
+  @override
+  String get backupImportTitle => 'Add these accounts?';
+
+  @override
+  String get backupAccountExists => 'Already added; it signs in from the file';
+
+  @override
+  String get backupImportAction => 'Add';
+
+  @override
+  String backupImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count accounts added',
+      one: '1 account added',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get sectionDns => 'DNS';
 
   @override
@@ -768,7 +828,38 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transportH3 => 'HTTP/3 (QUIC)';
 
   @override
+  String get ipVersion => 'IP version';
+
+  @override
+  String get ipVersionAuto => 'Auto (IPv4, then IPv6)';
+
+  @override
+  String get ipVersionDual => 'Both at once (dual-stack)';
+
+  @override
+  String get ipVersionV6First => 'IPv6 first, then IPv4';
+
+  @override
+  String get ipVersionV4 => 'IPv4 only';
+
+  @override
+  String get ipVersionV6 => 'IPv6 only';
+
+  @override
+  String get tunMtu => 'MTU';
+
+  @override
+  String get tunMtuHint =>
+      'The VPN interface\'s packet size, 1280 to 9000. Empty: automatic.';
+
+  @override
+  String get tunMtuInvalid => 'A number from 1280 to 9000, or empty';
+
+  @override
   String get transportH2 => 'HTTP/2 (TCP)';
+
+  @override
+  String get transportH1 => 'HTTP/1.1 (TLS)';
 
   @override
   String get directRules => 'Direct';
@@ -850,6 +941,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tlsFragment => 'TLS fragmentation';
 
   @override
+  String get tlsFragmentAuto => 'Automatic';
+
+  @override
+  String get tlsFragmentAutoHint =>
+      'Tries other methods if the normal connection fails.';
+
+  @override
   String get tlsFragmentOff => 'Off';
 
   @override
@@ -880,7 +978,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sectionBypass => 'If Mozilla is blocked';
 
   @override
+  String get sharedRelay => 'Shared relay';
+
+  @override
+  String get sharedRelayHint =>
+      'Use the app\'s shared relays if Mozilla blocks your region. An enabled personal relay takes priority.';
+
+  @override
+  String get personalRelay => 'Personal relay';
+
+  @override
   String get apiRelay => 'Relay server';
+
+  @override
+  String get apiRelayUse => 'Use the relay server';
 
   @override
   String get apiRelayHint =>
@@ -962,6 +1073,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get speedInNotification => 'Show speed in the notification';
 
   @override
+  String get showAppModeSwitch => 'Quick VPN mode switch';
+
+  @override
   String get liveTraffic => 'Live traffic';
 
   @override
@@ -1023,12 +1137,21 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String updateRequired(String version) {
+    return 'Please update to version $version. This update is required.';
+  }
+
+  @override
   String get download => 'Download';
 
   @override
   String updateCheckFailed(String error) {
     return 'Could not check for updates: $error';
   }
+
+  @override
+  String get updateCheckNoNetwork =>
+      'Could not reach GitHub. Check your internet connection and try again.';
 
   @override
   String get updateNow => 'Update';
@@ -1080,6 +1203,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get connectOnStartup => 'Connect on startup';
+
+  @override
+  String get autostartShowsWindow => 'Show the app\'s window';
 
   @override
   String get proxyServiceActive => 'Proxy service active';
@@ -1135,7 +1261,62 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dataUsedTitle => 'Data used';
 
   @override
+  String get monthlyData => 'Data';
+
+  @override
   String get bypassApps => 'Per-app proxy';
+
+  @override
+  String get appClipboardImport => 'Import from Clipboard';
+
+  @override
+  String get appClipboardExport => 'Export to Clipboard';
+
+  @override
+  String get appClipboardUnavailable => 'Couldn\'t access the clipboard.';
+
+  @override
+  String get appClipboardNoMatches =>
+      'No installed apps match the package names in the clipboard.';
+
+  @override
+  String get appClipboardMerge => 'Merge';
+
+  @override
+  String get appClipboardReplace => 'Replace';
+
+  @override
+  String appClipboardImportPrompt(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Found $count installed apps.',
+      one: 'Found 1 installed app.',
+    );
+    return '$_temp0 Add the matches to the current selection or replace it?';
+  }
+
+  @override
+  String appClipboardImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Imported $count apps.',
+      one: 'Imported 1 app.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String appClipboardExported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Copied $count package names.',
+      one: 'Copied 1 package name.',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get connectRetrying => 'Couldn\'t connect. Check your internet.';
@@ -1224,6 +1405,27 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get appModeIncludeHint =>
       'Only the selected apps go through the VPN; the others connect directly.';
+
+  @override
+  String get modeAllApps => 'All apps';
+
+  @override
+  String get modeAllAppsHint => 'All apps go through the VPN';
+
+  @override
+  String get modeSelectedApps => 'Selected apps';
+
+  @override
+  String get modeSelectedAppsHint => 'Only the selected apps';
+
+  @override
+  String selectedAppsCount(String count) {
+    return 'Selected apps  $count';
+  }
+
+  @override
+  String get allTrafficThroughVpn =>
+      'All of the phone\'s traffic goes through the VPN.';
 
   @override
   String fromRegionList(String region) {
@@ -1685,9 +1887,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String get zedSpeedLive => 'Live';
 
   @override
-  String get zedDownload => 'Download';
+  String get zedDownload => 'Download speed';
 
   @override
-  String get zedUpload => 'Upload';
+  String get zedUpload => 'Upload speed';
 
+  @override
+  String get testRelay => 'Test relay health';
+
+  @override
+  String get relayTestTitle => 'Relay health test';
+
+  @override
+  String get relayTestHint =>
+      'Checks only the relay. No Mozilla request or account information is sent.';
+
+  @override
+  String get relayTestPassed => 'Relay is ready';
+
+  @override
+  String get relayTestFailed => 'Relay health could not be confirmed';
+
+  @override
+  String get relayTestCopy => 'Copy report';
+
+  @override
+  String get relayTestInterrupted =>
+      'The test ended before a complete result was received.';
 }

@@ -67,3 +67,6 @@ __pycache__/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# The release workflow's core builds for the container image.
+/docker-prebuilt/

@@ -71,8 +71,8 @@ static void my_application_activate(GApplication* application) {
   gtk_window_set_default_size(window, 820, 680);
   // The smallest window the pages are laid out for.
   GdkGeometry geometry = {};
-  geometry.min_width = 720;
-  geometry.min_height = 560;
+  geometry.min_width = 400;
+  geometry.min_height = 480;
   gtk_window_set_geometry_hints(window, nullptr, &geometry, GDK_HINT_MIN_SIZE);
 
   g_autoptr(FlDartProject) project = fl_dart_project_new();

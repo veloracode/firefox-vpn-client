@@ -20,6 +20,24 @@ if (-not $env:ANDROID_HOME) { $env:ANDROID_HOME = "$env:LOCALAPPDATA\Android\Sdk
 $ndk = (Select-String -Path "$root\app\android\app\build.gradle.kts" -Pattern 'ndkVersion\s*=\s*"([^"]+)"').Matches[0].Groups[1].Value
 if (-not $env:ANDROID_NDK_HOME) { $env:ANDROID_NDK_HOME = "$env:ANDROID_HOME\ndk\$ndk" }
 if (-not $env:JAVA_HOME) { $env:JAVA_HOME = "$env:ProgramFiles\Android\Android Studio\jbr" }
+
+# Gradle reads no HTTP_PROXY/HTTPS_PROXY: it only honours the JVM's own
+# system properties. Hand it the proxy the rest of the machine already uses,
+# so a build downloads the way every other tool here does. Without those
+# variables nothing is added and Gradle connects directly, as before.
+$proxy = if ($env:HTTPS_PROXY) { $env:HTTPS_PROXY } else { $env:HTTP_PROXY }
+if ($proxy) {
+    try {
+        $u = [uri]$proxy
+        $port = if ($u.Port -gt 0) { $u.Port } else { 8080 }
+        $opts = "-Dhttp.proxyHost=$($u.Host) -Dhttp.proxyPort=$port" +
+                " -Dhttps.proxyHost=$($u.Host) -Dhttps.proxyPort=$port"
+        $env:GRADLE_OPTS = if ($env:GRADLE_OPTS) { "$env:GRADLE_OPTS $opts" } else { $opts }
+        Write-Host "Gradle will use the proxy $($u.Host):$port"
+    } catch {
+        Write-Warning "HTTPS_PROXY/HTTP_PROXY is not an address Gradle can use: $proxy"
+    }
+}
 $env:PATH = "$(go env GOPATH)\bin;$env:JAVA_HOME\bin;$env:PATH"
 # gomobile tidies a module of its own, where a Go older than go.mod's would
 # switch to the newest patch release and download it (proxy.golang.org
@@ -34,13 +52,54 @@ if (-not $env:GOTOOLCHAIN) {
 
 $ldflags = "-s -w -X github.com/armanlife/firefox-vpn-client/core/internal/version.Current=$version"
 
+# Optional local build settings (scripts\build-local.ps1), for a machine
+# that is set up to add its own. Without that file the ordinary library is
+# built, which is what this repository's sources make on their own.
+$local = @{ Tags = @(); Ldflags = ''; Module = ''; Dir = '' }
+if (Test-Path "$PSScriptRoot\build-local.ps1") {
+    $local = & "$PSScriptRoot\build-local.ps1"
+}
+$ldflags += $local.Ldflags
+
 Push-Location "$root\core"
+# gomobile builds from a temporary module of its own, so a workspace file
+# cannot reach a local module the way a desktop build does: gomobile's
+# generated package is not a workspace member. A replace, added for this
+# build only and always taken out again, links it instead. go.mod and
+# go.sum are restored in the finally below even if the build throws or is
+# interrupted.
+$goMod = "$root\core\go.mod"
+$goSum = "$root\core\go.sum"
+$keepMod = Get-Content $goMod -Raw
+$keepSum = Get-Content $goSum -Raw
 try {
-    gomobile bind -target=android -androidapi 24 -trimpath `
-        -ldflags $ldflags `
-        -o ..\app\android\app\libs\core.aar ./mobile
+    if ($local.Tags.Count -gt 0 -and $local.Dir) {
+        # Both edits stay quoted: PowerShell otherwise splits the argument
+        # at the @ and go mod edit reports "need path@version".
+        go mod edit "-require=$($local.Module)@v0.0.0"
+        go mod edit "-replace=$($local.Module)@v0.0.0=$($local.Dir)"
+        $env:GOWORK = 'off'
+        # gomobile runs go mod tidy, which must not look a replaced local
+        # module up on the module proxy or the checksum database.
+        $env:GOPRIVATE = $local.Module
+        $env:GOFLAGS = '-mod=mod'
+        gomobile bind -target=android -androidapi 24 -trimpath -tags ($local.Tags -join ',') `
+            -ldflags $ldflags `
+            -o ..\app\android\app\libs\core.aar ./mobile
+    } else {
+        gomobile bind -target=android -androidapi 24 -trimpath `
+            -ldflags $ldflags `
+            -o ..\app\android\app\libs\core.aar ./mobile
+    }
     if ($LASTEXITCODE -ne 0) { throw 'gomobile bind failed' }
-} finally { Pop-Location }
+} finally {
+    Set-Content -Path $goMod -Value $keepMod -NoNewline
+    Set-Content -Path $goSum -Value $keepSum -NoNewline
+    Remove-Item Env:\GOWORK -ErrorAction SilentlyContinue
+    Remove-Item Env:\GOPRIVATE -ErrorAction SilentlyContinue
+    Remove-Item Env:\GOFLAGS -ErrorAction SilentlyContinue
+    Pop-Location
+}
 
 Push-Location "$root\app"
 try {

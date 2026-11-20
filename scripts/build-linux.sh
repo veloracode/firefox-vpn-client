@@ -42,6 +42,23 @@ fi
 goflags="-s -w -X $module/internal/version.Current=$version"
 [ -z "$public" ] || goflags="$goflags -X $module/internal/signing.Key=$public"
 
+# Optional local build settings (scripts/build-local.sh), for a machine or a
+# runner put together with its own build profile; absent, as in a plain
+# checkout, this builds the ordinary public client. It sets local_tags and
+# local_ldflags, which the core's build below uses. The TUN service does
+# not use the seam, so its own build keeps the plain goflags.
+local_tags=''
+local_ldflags=''
+if [ -f "$root/scripts/build-local.sh" ]; then
+  # shellcheck source=/dev/null
+  . "$root/scripts/build-local.sh"
+fi
+core_goflags="$goflags$local_ldflags"
+# Used unquoted below on purpose: tags are comma-separated and never contain
+# spaces, so this is one argument pair or nothing at all.
+core_tags=''
+[ -z "$local_tags" ] || core_tags="-tags $local_tags"
+
 (cd "$root/app" && flutter pub get && flutter build linux --release --no-pub --dart-define=APP_VERSION="$version")
 
 stage="$(mktemp -d)"
@@ -52,7 +69,7 @@ if [ -n "${CORE:-}" ]; then
   install -D -m 0755 "$CORE" "$app/core/firefox-vpn-core"
 else
   (cd "$root/core" && CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go build -trimpath \
-    -ldflags "$goflags" -o "$app/core/firefox-vpn-core" ./cmd/firefox-vpn-core)
+    $core_tags -ldflags "$core_goflags" -o "$app/core/firefox-vpn-core" ./cmd/firefox-vpn-core)
 fi
 (cd "$root/core" && CGO_ENABLED=0 GOOS=linux GOARCH="$arch" go build -tags with_gvisor -trimpath \
   -ldflags "$goflags" -o "$app/core/firefox-vpn-tun" ./cmd/firefox-vpn-tun)

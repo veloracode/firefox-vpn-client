@@ -1,7 +1,6 @@
 import 'dart:io';
 
-import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../app_settings.dart';
 import '../core/android_core.dart';
@@ -10,73 +9,26 @@ import '../core/core_controller.dart';
 import '../core/models.dart';
 import '../l10n/app_localizations.dart';
 import 'about_page.dart';
+import 'announcement_panel.dart';
 import 'accounts_page.dart';
 import 'focus_ring.dart';
 import 'format.dart';
-import 'foxy_accounts_page.dart';
-import 'foxy_overview_page.dart';
 import 'logs_page.dart';
 import 'mobile_shell.dart';
-import 'overview_page.dart';
 import 'port_dialog.dart';
 import 'servers_page.dart';
 import 'settings_page.dart';
 import 'welcome_page.dart';
 import 'widgets.dart';
-import 'zed_old_home.dart';
-import 'zed_pixel_home.dart';
-import 'zed_portal_home.dart';
+import 'zed/zed_glass.dart';
+import 'zed/zed_home.dart';
+import 'zed/zed_motion.dart';
+import 'zed/zed_theme.dart';
 
-ThemeData _theme(Brightness brightness, Locale locale) {
-  final scheme = ColorScheme.fromSeed(
-    seedColor: const Color(0xFF5B5BD6),
-    brightness: brightness,
-  );
-  final dark = brightness == Brightness.dark;
-  // Vazirmatn for Persian and Arabic; the system font (Segoe UI)
-  // otherwise. Styles set here name it too, or they would fall back to the
-  // system font.
-  final font = languageFont(locale.languageCode);
-  return ThemeData(
-    colorScheme: scheme,
-    fontFamily: font,
-    scaffoldBackgroundColor: dark
-        ? const Color(0xFF111218)
-        : const Color(0xFFF5F5FA),
-    cardTheme: CardThemeData(
-      elevation: 0,
-      color: dark ? const Color(0xFF1A1B23) : Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.4)),
-      ),
-    ),
-    navigationRailTheme: NavigationRailThemeData(
-      backgroundColor: dark ? const Color(0xFF15161D) : const Color(0xFFECECF4),
-      // The menu's names semi-bold, the open page's bold.
-      selectedLabelTextStyle: TextStyle(
-        fontFamily: font,
-        fontSize: 15.5,
-        fontWeight: FontWeight.w700,
-        color: scheme.onSurface,
-      ),
-      unselectedLabelTextStyle: TextStyle(
-        fontFamily: font,
-        fontSize: 15.5,
-        fontWeight: FontWeight.w600,
-        color: scheme.onSurfaceVariant,
-      ),
-      selectedIconTheme: IconThemeData(
-        size: 24,
-        color: scheme.onSecondaryContainer,
-      ),
-      unselectedIconTheme: IconThemeData(
-        size: 24,
-        color: scheme.onSurfaceVariant,
-      ),
-    ),
-  );
-}
+/// The app's theme is the Zed design system's: four designs over the
+/// one settings model (see zed/zed_theme.dart).
+ThemeData _theme(Brightness brightness, Locale locale, ZedPrefs prefs) =>
+    ZedTheme.build(brightness, locale, prefs);
 
 class VpnApp extends StatelessWidget {
   const VpnApp({
@@ -90,6 +42,11 @@ class VpnApp extends StatelessWidget {
   final AppSettings settings;
   final GlobalKey<NavigatorState>? navigatorKey;
 
+  static const localizationsDelegates = [
+    AppLocalizations.delegate,
+    ...GlobalMaterialLocalizations.delegates,
+  ];
+
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: settings,
@@ -101,12 +58,7 @@ class VpnApp extends StatelessWidget {
       supportedLocales: AppLocalizations.supportedLocales,
       localeListResolutionCallback: (locales, _) =>
           AppSettings.localeOf(AppSettings.languageForList(locales)),
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
+      localizationsDelegates: localizationsDelegates,
       // The theme depends on the resolved language for its font.
       builder: (context, child) {
         final locale = Localizations.localeOf(context);
@@ -117,7 +69,11 @@ class VpnApp extends StatelessWidget {
             MediaQuery.platformBrightnessOf(context) == Brightness.dark,
         };
         return Theme(
-          data: _theme(dark ? Brightness.dark : Brightness.light, locale),
+          data: _theme(
+            dark ? Brightness.dark : Brightness.light,
+            locale,
+            settings.zed,
+          ),
           // A clear ring around what a remote or the keyboard chose.
           child: FocusRing(
             atStart: Platform.isAndroid && AndroidCore.isTv,
@@ -148,6 +104,26 @@ class _ShellState extends State<Shell> {
   /// The settings section the home page opened (Connection), until another
   /// page is chosen.
   SettingsSection? _settingsOpening;
+
+  @override
+  void initState() {
+    super.initState();
+    AndroidCore.homeRequests.addListener(_openHome);
+  }
+
+  void _openHome() {
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    setState(() {
+      _page = _Page.overview;
+      _settingsOpening = null;
+    });
+  }
+
+  @override
+  void dispose() {
+    AndroidCore.homeRequests.removeListener(_openHome);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
@@ -219,50 +195,17 @@ class _ShellState extends State<Shell> {
             child: status == null
                 ? _NoCore(core: core)
                 : switch (page) {
-                    // Its cards open the pages beside it. The design is
-                    // the user's (Settings, General): the phone's three
-                    // designs, FoxyVPN's pages, or the classic ones, for
-                    // the home; the accounts follow but for classic.
-                    _Page.overview => switch (widget.settings.uiDesign) {
-                      UiDesign.pixel => ZedPixelHome(
+                    // The home is the current Zed design's kit (Bento,
+                    // Pixel, Old, Glass — see zed/zed_home.dart); its
+                    // modules open the pages beside it. The accounts
+                    // page follows the same rule as before the rebuild:
+                    // the plain Material page for Old, the rich page
+                    // for the other designs.
+                    _Page.overview => ZedHome(
+                      args: (
                         core: core,
                         settings: widget.settings,
-                        onOpenServers: () =>
-                            setState(() => _page = _Page.servers),
-                        onOpenAccounts: () =>
-                            setState(() => _page = _Page.accounts),
-                      ),
-                      UiDesign.portal => ZedPortalHome(
-                        core: core,
-                        settings: widget.settings,
-                        onOpenServers: () =>
-                            setState(() => _page = _Page.servers),
-                        onOpenAccounts: () =>
-                            setState(() => _page = _Page.accounts),
-                      ),
-                      UiDesign.old => ZedOldHome(
-                        core: core,
-                        settings: widget.settings,
-                        onOpenServers: () =>
-                            setState(() => _page = _Page.servers),
-                        onOpenAccounts: () =>
-                            setState(() => _page = _Page.accounts),
-                      ),
-                      UiDesign.foxy => FoxyOverviewPage(
-                        core: core,
-                        settings: widget.settings,
-                        onOpenServers: () =>
-                            setState(() => _page = _Page.servers),
-                        onOpenAccounts: () =>
-                            setState(() => _page = _Page.accounts),
-                        onOpenConnection: () => setState(() {
-                          _page = _Page.settings;
-                          _settingsOpening = SettingsSection.connection;
-                        }),
-                      ),
-                      UiDesign.classic => OverviewPage(
-                        core: core,
-                        settings: widget.settings,
+                        phone: false,
                         onOpenServers: () =>
                             setState(() => _page = _Page.servers),
                         onOpenAccounts: () =>
@@ -276,15 +219,19 @@ class _ShellState extends State<Shell> {
                           _settingsOpening = SettingsSection.upstreamProxy;
                         }),
                       ),
-                    },
+                    ),
                     _Page.servers => ServersPage(
                       core: core,
                       settings: widget.settings,
                     ),
-                    _Page.accounts =>
-                      widget.settings.uiDesign == UiDesign.classic
-                          ? AccountsPage(core: core)
-                          : FoxyAccountsPage(core: core),
+                    // One accounts page for every design: the complete
+                    // one (quota bars, switching, the backup menu). The
+                    // previous reskin's accounts page dropped the backup
+                    // menu; nothing is dropped in this rebuild.
+                    _Page.accounts => AccountsPage(
+                      core: core,
+                      settings: widget.settings,
+                    ),
                     _Page.settings => SettingsPage(
                       key: ValueKey(_settingsOpening),
                       core: core,
@@ -301,6 +248,29 @@ class _ShellState extends State<Shell> {
           ),
         ],
       );
+      // The page area goes through the motion system; the rail stays
+      // OUTSIDE the transition (the MainScaffold rule). Glass paints
+      // its wallpaper behind the page area here — the wallpaper belongs
+      // to the scaffold, never to a page.
+      final switched = ZedPageSwitcher(
+        prefs: widget.settings.zed,
+        reduceMotion: !widget.settings.animationsEnabled ||
+              MediaQuery.disableAnimationsOf(context),
+        child: KeyedSubtree(key: ValueKey(page), child: content),
+      );
+      final pageArea = widget.settings.zed.design == ZedDesign.glass
+          ? Stack(
+              children: [
+                Positioned.fill(
+                  child: GlassWallpaperView(
+                    prefs: widget.settings.zed,
+                    dark: Theme.of(context).brightness == Brightness.dark,
+                  ),
+                ),
+                switched,
+              ],
+            )
+          : switched;
       void select(int i) => setState(() {
         _page = pages[i];
         _settingsOpening = null;
@@ -319,54 +289,60 @@ class _ShellState extends State<Shell> {
         );
       }
       return Scaffold(
-        body: Row(
-          children: [
-            NavigationRail(
-              selectedIndex: pages.indexOf(page),
-              onDestinationSelected: select,
-              // Icons with their names beside them.
-              extended: true,
-              minExtendedWidth: 190,
-              leading: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-                child: Row(
-                  children: [
-                    Text(
-                      l.appTitle,
-                      style: Theme.of(context).textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ),
-              ),
-              destinations: [
-                for (final (icon, selected, label) in items)
-                  NavigationRailDestination(
-                    icon: icon,
-                    selectedIcon: selected,
-                    label: Text(label),
-                  ),
-              ],
-              // The traffic at the bottom of the menu; in a short window the
-              // pages above it scroll rather than run under it.
-              trailing: _TrafficPanel(traffic: status?.traffic),
-              trailingAtBottom: true,
-              scrollable: true,
-            ),
-            // A maximized window: the pages stay as wide as reads well; the
-            // home page, centered by itself, keeps its colors to the edges.
-            Expanded(
-              child: page == _Page.overview || status == null
-                  ? content
-                  : Align(
-                      alignment: Alignment.topCenter,
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 1000),
-                        child: content,
+        body: AnnouncementOverlay(
+          settings: widget.settings,
+          onOpenUpdates: () => setState(() => _page = _Page.about),
+          child: Row(
+            children: [
+              NavigationRail(
+                selectedIndex: pages.indexOf(page),
+                onDestinationSelected: select,
+                // Icons with their names beside them.
+                extended: true,
+                minExtendedWidth: 190,
+                leading: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                  child: Row(
+                    children: [
+                      const AppLogo(size: 34),
+                      const SizedBox(width: 10),
+                      Text(
+                        l.appTitle,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w600),
                       ),
+                    ],
+                  ),
+                ),
+                destinations: [
+                  for (final (icon, selected, label) in items)
+                    NavigationRailDestination(
+                      icon: icon,
+                      selectedIcon: selected,
+                      label: Text(label),
                     ),
-            ),
-          ],
+                ],
+                // The traffic at the bottom of the menu; in a short window the
+                // pages above it scroll rather than run under it.
+                trailing: _TrafficPanel(traffic: status?.traffic),
+                trailingAtBottom: true,
+                scrollable: true,
+              ),
+              // A maximized window: the pages stay as wide as reads well; the
+              // home page, centered by itself, keeps its colors to the edges.
+              Expanded(
+                child: page == _Page.overview || status == null
+                    ? pageArea
+                    : Align(
+                        alignment: Alignment.topCenter,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 1000),
+                          child: pageArea,
+                        ),
+                      ),
+              ),
+            ],
+          ),
         ),
       );
     },

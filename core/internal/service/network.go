@@ -15,6 +15,8 @@ import (
 
 	"github.com/armanlife/firefox-vpn-client/core/internal/config"
 	"github.com/armanlife/firefox-vpn-client/core/internal/controlplane"
+	"github.com/armanlife/firefox-vpn-client/core/internal/evasion"
+	"github.com/armanlife/firefox-vpn-client/core/internal/guardian"
 	"github.com/armanlife/firefox-vpn-client/core/internal/hellosplit"
 	"github.com/armanlife/firefox-vpn-client/core/internal/logx"
 	"github.com/armanlife/firefox-vpn-client/core/internal/resolver"
@@ -57,8 +59,8 @@ func configureDNS(cfg config.DNS) error {
 }
 
 // configureAPIRelay sends the control-plane requests through the user's
-// relay at n.APIRelay when they cannot go directly (relayFallback); empty
-// sends them directly only. Only the Firefox Accounts, Guardian,
+// relay at n.APIRelay when they cannot go directly (relayFallback). Shared
+// Guardian recovery has its own switch. Only the Firefox Accounts, Guardian,
 // server-list, geo-file, and flag requests are affected; the VPN traffic
 // keeps talking to Mozilla's proxy directly. n.APIRelayECH hides the
 // relay's name with Encrypted Client Hello (echDialer).
@@ -71,7 +73,30 @@ func configureAPIRelay(n config.Network) error {
 	if proxyAddress != "" {
 		logx.Info("connections to Mozilla and the control plane go through the upstream proxy=%s", proxyAddress)
 	}
-	raw := strings.TrimSpace(n.APIRelay)
+	raw := strings.TrimSpace(n.APIRelayInUse())
+	if raw != "" {
+		if err := config.ValidateRelay(raw); err != nil {
+			return err
+		}
+	}
+	// An enabled personal relay takes precedence. Turning it off must not
+	// disable the independently configured shared Guardian-only fallback.
+	guardian.SetRegionRecovery(nil)
+	// A build that cannot authorize a pooled request must not even fetch the
+	// node list: it would never be served. Only an official build can, so a
+	// copy assembled from this repository alone simply goes without.
+	if n.SharedRelayInUse() && evasion.Authorize(http.MethodGet, "health") != nil &&
+		(controlplane.UsesDefaultTransport() || controlplane.Transport() == apiRelayTransport) {
+		pool := newAutomaticRelays(n)
+		guardian.SetRegionRecovery(func(req *http.Request) (*http.Response, error) {
+			// A custom route may be installed after daemon configuration.
+			// Its responses must never escape through an automatic relay.
+			if !controlplane.UsesDefaultTransport() {
+				return nil, nil
+			}
+			return pool.recover(req)
+		})
+	}
 	if raw == "" {
 		// Only a relay this function set is taken away: another transport
 		// (a test's fixture) stays, so starting a daemon never sends a
@@ -81,9 +106,6 @@ func configureAPIRelay(n config.Network) error {
 		}
 		apiRelayTransport = nil
 		return nil
-	}
-	if err := config.ValidateRelay(raw); err != nil {
-		return err
 	}
 	relay, _ := url.Parse(raw)
 	dialer := resolverDialer{timeout: apiRelayDialTimeout}
@@ -98,6 +120,9 @@ func configureAPIRelay(n config.Network) error {
 			return err
 		}
 		base.DialTLSContext = d.DialTLSContext
+		if !d.require {
+			base.DialTLSContext = boundedRelayTLS(d, relayTLSAttemptWait/2)
+		}
 		ech = config.RelayECHOn
 		if d.require {
 			ech = config.RelayECHRequire
@@ -105,7 +130,7 @@ func configureAPIRelay(n config.Network) error {
 	}
 	transport := &relayFallback{
 		direct: controlplane.QuickTransport(directWait),
-		relay:  &relayTransport{relay: relay, base: base},
+		relay:  &relayTransport{relay: relay, base: newRelayTLSFallback(base, n, relay.Hostname(), dialer.DialContext, nil)},
 	}
 	controlplane.SetTransport(transport)
 	apiRelayTransport = transport
@@ -140,7 +165,13 @@ type relayFallback struct {
 	network    string
 }
 
+// AllowsRenewalTunnel keeps the configured API relay available as a fallback.
+func (*relayFallback) AllowsRenewalTunnel() bool { return true }
+
 func (t *relayFallback) RoundTrip(req *http.Request) (*http.Response, error) {
+	if guardian.UsesTokenRoutes(req) {
+		return guardian.DoTokenRoutes(req, t.tryGuardianRelay)
+	}
 	first, second := http.RoundTripper(t.direct), http.RoundTripper(t.relay)
 	if t.relayFirst() {
 		first, second = second, first
@@ -163,6 +194,11 @@ func (t *relayFallback) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, fmt.Errorf("%w; %s: %w", err, t.relay.relay.Host, retryErr)
 	}
 	return retry, retryErr
+}
+
+func (t *relayFallback) tryGuardianRelay(req *http.Request) (*http.Response, error) {
+	resp, _, err := t.try(t.relay, req)
+	return resp, err
 }
 
 // try sends req through rt. why is set when another way may be tried: the
@@ -230,7 +266,7 @@ var apiRelayTransport http.RoundTripper
 // and the method, headers, and body as they are; the relay forwards it and
 // answers with the target's response. The response keeps the original
 // request, so cookies and redirects resolve against the target. A relay
-// that refuses (scripts/relay set X-Relay-Error) is an error that names
+// that refuses (docs/relay sets X-Relay-Error) is an error that names
 // the relay.
 type relayTransport struct {
 	relay *url.URL

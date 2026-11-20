@@ -1,9 +1,9 @@
-import 'dart:typed_data';
-
-import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../core/android_core.dart';
 import '../l10n/app_localizations.dart';
+import 'format.dart';
 import 'widgets.dart';
 
 /// Android, per-app proxy (v2rayN's words): bypass the selected apps, or
@@ -64,18 +64,91 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
 
   void _save() => AndroidCore.setAppRouting(_routing!, apply: false);
 
+  void _notify(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+      );
+  }
+
+  Future<void> _importApps() async {
+    final routing = _routing!;
+    final l = AppLocalizations.of(context);
+    final String? text;
+    try {
+      text = (await Clipboard.getData(Clipboard.kTextPlain))?.text;
+    } on PlatformException {
+      if (mounted) _notify(l.appClipboardUnavailable);
+      return;
+    }
+    if (!mounted) return;
+
+    final installed = _apps!.map((app) => app.package).toSet();
+    final packages = (text ?? '')
+        .split(RegExp(r'[\r\n,]'))
+        .map((package) => package.trim())
+        .where(installed.contains)
+        .toSet();
+    if (packages.isEmpty) {
+      _notify(l.appClipboardNoMatches);
+      return;
+    }
+
+    final merge = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l.appClipboardImport),
+        content: Text(l.appClipboardImportPrompt(packages.length)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(l.cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l.appClipboardReplace),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l.appClipboardMerge),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || merge == null) return;
+    setState(() {
+      routing.importPackages(packages, merge: merge);
+      _sort();
+    });
+    _save();
+    _notify(l.appClipboardImported(packages.length));
+  }
+
+  Future<void> _exportApps() async {
+    final packages = _routing!.chosenPackages;
+    final l = AppLocalizations.of(context);
+    try {
+      await Clipboard.setData(ClipboardData(text: packages.join('\n')));
+    } on PlatformException {
+      if (mounted) _notify(l.appClipboardUnavailable);
+      return;
+    }
+    if (mounted) _notify(l.appClipboardExported(packages.length));
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final routing = _routing;
-    final q = _query.trim().toLowerCase();
+    final q = foldForSearch(_query);
     final apps = [
       for (final a in _apps ?? const <InstalledApp>[])
         if ((a.launcher || _showSystem || routing!.checked(a.package)) &&
             (q.isEmpty ||
-                a.label.toLowerCase().contains(q) ||
-                a.package.toLowerCase().contains(q)))
+                foldForSearch(a.label).contains(q) ||
+                foldForSearch(a.package).contains(q)))
           a,
     ];
     return PopScope(
@@ -83,6 +156,9 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
         // Applied once: the VPN is set up again with the new choice.
         if (didPop && routing != null && routing.key != _initial) {
           AndroidCore.setAppRouting(routing, apply: true);
+          AndroidCore.setRoutingEnabled(true);
+          AndroidCore.appRoutingMode.value = 'selected';
+          AndroidCore.selectedAppsCount.value = routing.chosenCount;
         }
       },
       child: Scaffold(
@@ -95,6 +171,17 @@ class _BypassAppsPageState extends State<BypassAppsPage> {
                   label: l.showSystemApps,
                   checked: _showSystem,
                   onTap: () => setState(() => _showSystem = !_showSystem),
+                ),
+                const PopupMenuDivider(),
+                PopupMenuItem<void>(
+                  enabled: routing != null,
+                  onTap: _importApps,
+                  child: Text(l.appClipboardImport),
+                ),
+                PopupMenuItem<void>(
+                  enabled: (routing?.chosenCount ?? 0) > 0,
+                  onTap: _exportApps,
+                  child: Text(l.appClipboardExport),
                 ),
               ],
             ),

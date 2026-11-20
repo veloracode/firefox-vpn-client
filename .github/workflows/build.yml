@@ -3,25 +3,34 @@
 # core, and publishes them as a GitHub release, each file twice: under a
 # fixed name, which the README's releases/latest/download links fetch, and
 # with the version in its name (Firefox-VPN-1.2.3-Android-arm64-v8a.apk),
-# which the release's own notes and the app's Download button use, so a
-# downloaded file says which version it is. "Run workflow" builds without
-# publishing.
+# which the release notes and older installed apps use during the update
+# manifest transition. "Run workflow" builds without
+# publishing. The same tag publishes the container image
+# (.github/workflows/docker.yml): the Linux core, not the desktop app.
 #
 # Secrets for the Android release key (required for a tag):
 #   ANDROID_KEYSTORE_BASE64    the .jks file, base64-encoded
 #   ANDROID_KEYSTORE_PASSWORD  its password (PKCS12: also the key's)
+#
+# Secrets for the optional build profile (.github/actions/build-profile).
+# Without them every build is the ordinary client, which is what this
+# repository's sources make on their own:
+#   PROFILE_MODULE_REPO        the profile's repository, owner/name
+#   PROFILE_MODULE_KEY         a read-only deploy key for that repository
+#   PROFILE_RELAY_KEY          the key the profile is built with
 name: Build
 
 on:
   push:
     branches: [main]
     tags: ['v*']
-    # A change to the documentation alone (READMEs, docs/, screenshots)
+    # A change to Markdown or documentation images alone
     # runs nothing; GitHub does not apply this filter to tags, so a release
     # always builds.
-    paths-ignore: ['**.md', 'docs/**', 'LICENSE']
+    # Executable relay examples under docs/relay still run the checks.
+    paths-ignore: ['**.md', 'docs/images/**', 'docs/screenshots/**', 'docs/readme/**', 'LICENSE']
   pull_request:
-    paths-ignore: ['**.md', 'docs/**', 'LICENSE']
+    paths-ignore: ['**.md', 'docs/images/**', 'docs/screenshots/**', 'docs/readme/**', 'LICENSE']
   workflow_dispatch:
 
 permissions:
@@ -32,7 +41,7 @@ concurrency:
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 env:
-  FLUTTER_VERSION: 3.47.7
+  FLUTTER_VERSION: 3.50.0
   GOMOBILE_VERSION: v0.0.0-20260908204917-8b95e45f8d3e
 
 jobs:
@@ -97,6 +106,12 @@ jobs:
           # The TUN stack's tests need sing-tun's gVisor stack.
           go vet -tags with_gvisor ./internal/tunstack/
           go test -tags with_gvisor ./internal/tunstack/
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          package-manager-cache: false
+      - name: Relay worker syntax
+        run: node --check docs/relay/cloudflare/worker.js
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -128,6 +143,14 @@ jobs:
           cache: true
       - name: Inno Setup
         run: choco upgrade innosetup -y --no-progress
+      # The optional build profile, when this repository has the secrets for
+      # one; without them this does nothing and the ordinary client is built.
+      - name: Build profile
+        uses: ./.github/actions/build-profile
+        with:
+          repository: ${{ secrets.PROFILE_MODULE_REPO }}
+          ssh-key: ${{ secrets.PROFILE_MODULE_KEY }}
+          key: ${{ secrets.PROFILE_RELAY_KEY }}
       - name: Build
         shell: pwsh
         env:
@@ -135,6 +158,8 @@ jobs:
           # core and the TUN service take only updates it signed; without
           # it they take none.
           FIREFOX_VPN_SIGNING_KEY: ${{ secrets.FIREFOX_VPN_SIGNING_KEY }}
+          # The key the build profile is built with, when there is one.
+          ARMAN_PROFILE_KEY: ${{ secrets.PROFILE_RELAY_KEY }}
         run: ./scripts/build-windows.ps1
       - name: Release names
         shell: pwsh
@@ -189,14 +214,56 @@ jobs:
           fi
           printf '%s' "$KEYSTORE" | base64 -d > app/android/release.jks
           printf 'storeFile=../release.jks\nstorePassword=%s\nkeyAlias=release\nkeyPassword=%s\n' "$PASSWORD" "$PASSWORD" > app/android/key.properties
+      # The optional build profile, when this repository has the secrets for
+      # one; without them this does nothing and the ordinary client is built.
+      - name: Build profile
+        uses: ./.github/actions/build-profile
+        with:
+          repository: ${{ secrets.PROFILE_MODULE_REPO }}
+          ssh-key: ${{ secrets.PROFILE_MODULE_KEY }}
+          key: ${{ secrets.PROFILE_RELAY_KEY }}
       - name: Build
+        env:
+          # The key the build profile is built with, when there is one.
+          ARMAN_PROFILE_KEY: ${{ secrets.PROFILE_RELAY_KEY }}
         run: |
           v='${{ needs.test.outputs.version }}'
           mkdir -p app/android/app/libs
           flags="-s -w -X github.com/armanlife/firefox-vpn-client/core/internal/version.Current=$v"
-          (cd core && gomobile bind -target=android -androidapi 24 -trimpath \
-            -ldflags "$flags" \
-            -o ../app/android/app/libs/core.aar ./mobile)
+          # The build scripts' optional local settings (scripts/build-local.sh,
+          # which the step above puts there when there is a profile). Without
+          # it the ordinary library is built, which is what this repository's
+          # sources make on their own; scripts/build-android.ps1 does the same
+          # for a local build.
+          root="$PWD"
+          local_tags=''
+          local_ldflags=''
+          local_module=''
+          local_dir=''
+          if [ -f scripts/build-local.sh ]; then . scripts/build-local.sh; fi
+          flags="$flags$local_ldflags"
+          if [ -n "$local_tags" ]; then
+            # gomobile builds from a temporary module of its own, so the
+            # workspace file cannot reach a local module the way a desktop
+            # build does: gomobile's generated package is not a workspace
+            # member. A replace, added for this build only and taken out
+            # again, links it instead.
+            (
+              cd core
+              trap 'git checkout -- go.mod go.sum' EXIT
+              go mod edit "-require=$local_module@v0.0.0" "-replace=$local_module@v0.0.0=$local_dir"
+              # gomobile runs go mod tidy, which must not look a replaced
+              # local module up on the module proxy or the checksum database.
+              export GOWORK=off GOPRIVATE="$local_module" GOFLAGS=-mod=mod
+              gomobile bind -target=android -androidapi 24 -trimpath -tags "$local_tags" \
+                -ldflags "$flags" \
+                -o ../app/android/app/libs/core.aar ./mobile
+            )
+          else
+            (cd core && gomobile bind -target=android -androidapi 24 -trimpath \
+              -ldflags "$flags" \
+              -o ../app/android/app/libs/core.aar ./mobile)
+          fi
           cd app
           flutter pub get
           mkdir -p ../out
@@ -225,7 +292,18 @@ jobs:
         with:
           go-version-file: core/go.mod
           cache-dependency-path: core/go.sum
+      # The optional build profile, when this repository has the secrets for
+      # one; without them this does nothing and the ordinary client is built.
+      - name: Build profile
+        uses: ./.github/actions/build-profile
+        with:
+          repository: ${{ secrets.PROFILE_MODULE_REPO }}
+          ssh-key: ${{ secrets.PROFILE_MODULE_KEY }}
+          key: ${{ secrets.PROFILE_RELAY_KEY }}
       - name: Build
+        env:
+          # The key the build profile is built with, when there is one.
+          ARMAN_PROFILE_KEY: ${{ secrets.PROFILE_RELAY_KEY }}
         run: bash scripts/build-linux-core.sh
       - uses: actions/upload-artifact@v7
         with:
@@ -289,11 +367,21 @@ jobs:
           if systemctl is-active --quiet firefox-vpn-tun; then echo "the service still runs"; exit 1; fi
           test ! -e /etc/systemd/system/firefox-vpn-tun.service
           test ! -e /opt/firefox-vpn-tun
+      # The optional build profile, when this repository has the secrets for
+      # one; without them this does nothing and the ordinary client is built.
+      - name: Build profile
+        uses: ./.github/actions/build-profile
+        with:
+          repository: ${{ secrets.PROFILE_MODULE_REPO }}
+          ssh-key: ${{ secrets.PROFILE_MODULE_KEY }}
+          key: ${{ secrets.PROFILE_RELAY_KEY }}
       - name: Build
         env:
           # The key updates are signed with: the core and the TUN service
           # take only updates it signed; without it they take none.
           FIREFOX_VPN_SIGNING_KEY: ${{ secrets.FIREFOX_VPN_SIGNING_KEY }}
+          # The key the build profile is built with, when there is one.
+          ARMAN_PROFILE_KEY: ${{ secrets.PROFILE_RELAY_KEY }}
         run: bash scripts/build-linux.sh
       - name: Release name
         run: |
@@ -360,11 +448,21 @@ jobs:
           if sudo launchctl print system/com.arman.firefoxvpn.tun >/dev/null 2>&1; then echo "the job is still loaded"; exit 1; fi
           test ! -e /Library/LaunchDaemons/com.arman.firefoxvpn.tun.plist
           test ! -e "/Library/Application Support/Firefox VPN TUN"
+      # The optional build profile, when this repository has the secrets for
+      # one; without them this does nothing and the ordinary client is built.
+      - name: Build profile
+        uses: ./.github/actions/build-profile
+        with:
+          repository: ${{ secrets.PROFILE_MODULE_REPO }}
+          ssh-key: ${{ secrets.PROFILE_MODULE_KEY }}
+          key: ${{ secrets.PROFILE_RELAY_KEY }}
       - name: Build
         env:
           # The key updates are signed with: the core and the TUN service
           # take only updates it signed; without it they take none.
           FIREFOX_VPN_SIGNING_KEY: ${{ secrets.FIREFOX_VPN_SIGNING_KEY }}
+          # The key the build profile is built with, when there is one.
+          ARMAN_PROFILE_KEY: ${{ secrets.PROFILE_RELAY_KEY }}
         run: bash scripts/build-macos.sh
       # The app's own update, end to end: the app just built, in
       # /Applications, updates itself to a test release on loopback
@@ -429,7 +527,10 @@ jobs:
           ls
       - name: Checksums
         working-directory: release
-        run: sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+        run: |
+          sha256sum * > SHA256SUMS.txt
+          printf '# Firefox VPN version: %s\n' "${GITHUB_REF_NAME#v}" >> SHA256SUMS.txt
+          cat SHA256SUMS.txt
       # The Windows app installs a new version only when the release key
       # signed this list (core/internal/update): SHA256SUMS.txt.sig.
       - name: Sign the checksums

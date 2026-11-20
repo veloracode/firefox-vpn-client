@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../app_settings.dart';
 import '../core/core_api.dart';
@@ -8,8 +8,9 @@ import '../core/core_controller.dart';
 import '../core/models.dart';
 import '../l10n/app_localizations.dart';
 import 'format.dart';
-import 'signin_dialog.dart';
+import 'browser_signin.dart';
 import 'widgets.dart';
+import 'zed/zed_motion.dart';
 
 /// The server list, one choice in one list: Recommended and Fastest, which
 /// the app picks, then the locations with their real delay. A tap on a row
@@ -93,7 +94,9 @@ class _ServersPageState extends State<ServersPage> {
     });
   }
 
-  Future<void> _test() async {
+  /// [fresh]: the button was pressed, so every location is measured; a
+  /// test the page starts by itself keeps slow locations' last figures.
+  Future<void> _test({bool fresh = false}) async {
     final l = AppLocalizations.of(context);
     final codes = [
       for (final loc in _locations ?? const <Location>[]) loc.code,
@@ -103,7 +106,9 @@ class _ServersPageState extends State<ServersPage> {
       _summary = null;
     });
     try {
-      final result = await _core.call((api) => api.pingLocations(codes));
+      final result = await _core.call(
+        (api) => api.pingLocations(codes, fresh: fresh),
+      );
       final tested = {for (final loc in result.locations) loc.code: loc};
       if (!mounted) return;
       setState(() {
@@ -165,7 +170,9 @@ class _ServersPageState extends State<ServersPage> {
       children: [
         PageTitle(l.navServers),
         if (noAccounts) ...[
-          NoAccountsPanel(onAdd: () => showSignInDialog(context, _core)),
+          NoAccountsPanel(
+            onAdd: () => startAddAccount(context, _core, widget.settings),
+          ),
           const SizedBox(height: 12),
         ],
         _SectionHeader(title: l.autoSection),
@@ -197,7 +204,7 @@ class _ServersPageState extends State<ServersPage> {
           title: l.locationsSection,
           action: TextButton.icon(
             onPressed: !_testing && _locations != null && !noAccounts
-                ? _test
+                ? () => _test(fresh: true)
                 : null,
             icon: _testing
                 ? const SizedBox.square(
@@ -223,15 +230,24 @@ class _ServersPageState extends State<ServersPage> {
         else
           _ChoiceCard(
             children: [
-              for (final loc in countries)
-                _ChoiceRow(
-                  leading: CountryFlag(code: loc.code, width: 36),
-                  title: locationName(l, loc.code, loc.name),
-                  subtitle: _subtitle(loc),
-                  delay: _Delay(location: loc, testing: _testing),
-                  selected: chosen == loc.code.toLowerCase(),
-                  busy: _busy?.toLowerCase() == loc.code.toLowerCase(),
-                  onTap: () => _choose(loc.code),
+              // The design system's one entrance stagger (§25): each
+              // row rises in, delayed by its place in the list.
+              for (var i = 0; i < countries.length; i++)
+                ZedEntrance(
+                  index: i,
+                  child: _ChoiceRow(
+                    leading: CountryFlag(code: countries[i].code, width: 36),
+                    title: locationName(
+                      l,
+                      countries[i].code,
+                      countries[i].name,
+                    ),
+                    subtitle: _subtitle(countries[i]),
+                    delay: _Delay(location: countries[i], testing: _testing),
+                    selected: chosen == countries[i].code.toLowerCase(),
+                    busy: _busy?.toLowerCase() == countries[i].code.toLowerCase(),
+                    onTap: () => _choose(countries[i].code),
+                  ),
                 ),
             ],
           ),
@@ -426,7 +442,8 @@ class _Delay extends StatelessWidget {
         : loc.pingError.isNotEmpty
         ? (l.noAnswer, muted)
         : ('—', muted);
-    return Container(
+    // A figure from an earlier test reads as one: faded, and saying so.
+    final chip = Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
@@ -444,6 +461,11 @@ class _Delay extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
+    );
+    if (testing || !loc.cached) return chip;
+    return Tooltip(
+      message: l.delayFromLastTest,
+      child: Opacity(opacity: 0.5, child: chip),
     );
   }
 }

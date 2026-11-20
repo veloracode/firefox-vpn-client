@@ -45,7 +45,8 @@ class Location {
       recommended = _bool(j['recommended']),
       pingMs = _int(j['ping_ms']),
       // The list names it ping_error; the ping result names it error.
-      pingError = _str(j['ping_error'] ?? j['error']);
+      pingError = _str(j['ping_error'] ?? j['error']),
+      cached = _bool(j['cached']);
 
   final String code;
   final String name;
@@ -56,6 +57,10 @@ class Location {
   /// The last real delay; 0 when not measured or failed.
   final int pingMs;
   final String pingError;
+
+  /// The figure is from an earlier test: the location was slow lately and
+  /// was left out of this one.
+  final bool cached;
 
   bool get answered => pingMs > 0;
 }

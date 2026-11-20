@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../app_info.dart';
 import '../core/core_controller.dart';
@@ -25,6 +25,12 @@ class _AboutPageState extends State<AboutPage> {
   String? _result;
   Release? _release;
 
+  @override
+  void initState() {
+    super.initState();
+    _release = Updates.available.value;
+  }
+
   Future<void> _check() async {
     final l = AppLocalizations.of(context);
     if (githubRepo.isEmpty) {
@@ -38,18 +44,32 @@ class _AboutPageState extends State<AboutPage> {
     });
     try {
       final release = await checkForUpdate(
+        check: UpdateCheck.manual,
         proxy: updateProxy(widget.core.status),
+        onAnnouncements: Updates.receiveAnnouncements,
       );
-      Updates.found(release);
+      Updates.found(release, check: UpdateCheck.manual);
       if (!mounted) return;
       setState(() {
         _release = release;
         _result = release == null
             ? l.upToDate
+            : release.mandatory
+            ? l.updateRequired(release.version)
             : l.updateAvailable(release.version);
       });
     } on Exception catch (e) {
-      if (mounted) setState(() => _result = l.updateCheckFailed('$e'));
+      // No connection, a timeout, or a refused handshake: say so in words,
+      // not as the exception's text.
+      final network =
+          e is SocketException || e is TimeoutException || e is TlsException;
+      if (mounted) {
+        setState(
+          () => _result = network
+              ? l.updateCheckNoNetwork
+              : l.updateCheckFailed('$e'),
+        );
+      }
     } finally {
       if (mounted) setState(() => _checking = false);
     }
@@ -75,6 +95,35 @@ class _AboutPageState extends State<AboutPage> {
               Text(l.appTitle, style: theme.textTheme.titleLarge),
               const SizedBox(height: 4),
               Text(l.unofficialNote, style: muted, textAlign: TextAlign.center),
+              const SizedBox(height: 14),
+              // The maker's badge, in the app itself as the project's
+              // standing rule requires — a name line, not a sentence,
+              // so it is not localized.
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 7,
+                ),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      theme.colorScheme.primaryContainer,
+                      theme.colorScheme.tertiaryContainer,
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.35),
+                  ),
+                ),
+                child: Text(
+                  'Made by arblant & Muse',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.onPrimaryContainer,
+                  ),
+                ),
+              ),
               const SizedBox(height: 20),
               _Line(label: l.appVersionLabel, value: appVersion),
               const Divider(height: 24),

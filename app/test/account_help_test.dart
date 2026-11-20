@@ -1,14 +1,15 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:firefox_vpn/l10n/app_localizations.dart';
 import 'package:firefox_vpn/ui/account_help.dart';
+import 'package:firefox_vpn/ui/app.dart';
 
 void main() {
   Future<void> openDialog(WidgetTester tester, Locale locale) async {
     await tester.pumpWidget(
       MaterialApp(
         locale: locale,
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: VpnApp.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: Builder(
@@ -54,7 +55,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('en'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: VpnApp.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: const Scaffold(body: AccountHelpLinks()),
       ),

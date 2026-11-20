@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 
 import '../app_settings.dart';
@@ -17,7 +17,9 @@ import 'bypass_apps_page.dart';
 import 'connection_mode.dart';
 import 'format.dart';
 import 'port_dialog.dart';
+import 'relay_test_dialog.dart';
 import 'widgets.dart';
+import 'zed/zed_prefs.dart';
 
 /// The program file the user picks in the system's open dialog (title, the
 /// kind of file); tests replace it.
@@ -120,6 +122,100 @@ List<(String, List<SettingsEntry>)> settingsGroups(
     ),
 ];
 
+/// Whether a setting the search found is on this platform at all. The
+/// index is shared, but a computer's settings are not on a phone and the
+/// other way round; these follow the `if (Platform...)` conditions in the
+/// sections' own code.
+bool settingOnThisPlatform(AppLocalizations l, String name) {
+  final computer = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+  final computerOnly = {
+    l.closeBehavior,
+    l.startOnBoot,
+    l.autostartShowsWindow,
+    l.connectOnStartup,
+  };
+  final androidOnly = {
+    l.showAppModeSwitch,
+    l.speedInNotification,
+    l.connectionMode,
+    l.bypassApps,
+  };
+  if (!computer && computerOnly.contains(name)) return false;
+  if (!Platform.isAndroid && androidOnly.contains(name)) return false;
+  return true;
+}
+
+/// A section's name as the list shows it, for saying where a setting that
+/// a search found lives.
+String settingsSectionName(AppLocalizations l, SettingsSection section) {
+  for (final (_, entries) in settingsGroups(l, tun: true)) {
+    for (final (which, _, name) in entries) {
+      if (which == section) return name;
+    }
+  }
+  return l.settingsTitle;
+}
+
+/// Every setting the list's search can find, with the section that holds
+/// it. test/settings_search_test.dart builds the same list from the
+/// sections' own code and fails when the two differ, so a setting added to
+/// a section cannot be left out of the search quietly.
+List<(SettingsSection, String)> settingsIndex(AppLocalizations l) => [
+  (SettingsSection.general, l.autostartShowsWindow),
+  (SettingsSection.general, l.closeBehavior),
+  (SettingsSection.general, l.connectOnStartup),
+  (SettingsSection.general, l.homeAnimations),
+  (SettingsSection.general, l.language),
+  (SettingsSection.general, l.sectionGeneral),
+  (SettingsSection.general, l.showAppModeSwitch),
+  (SettingsSection.general, l.showPublicIp),
+  (SettingsSection.general, l.speedInNotification),
+  (SettingsSection.general, l.startOnBoot),
+  (SettingsSection.general, l.theme),
+  (SettingsSection.general, l.uiDesign),
+  (SettingsSection.connection, l.connectionMode),
+  (SettingsSection.connection, l.ipVersion),
+  (SettingsSection.connection, l.listenAddress),
+  (SettingsSection.connection, l.localProxy),
+  (SettingsSection.connection, l.proxyLogin),
+  (SettingsSection.connection, l.proxyPort),
+  (SettingsSection.connection, l.sectionConnection),
+  (SettingsSection.connection, l.transport),
+  (SettingsSection.connection, l.tunMtu),
+  (SettingsSection.relay, l.apiRelay),
+  (SettingsSection.relay, l.apiRelayUse),
+  (SettingsSection.relay, l.personalRelay),
+  (SettingsSection.relay, l.sharedRelay),
+  (SettingsSection.fragment, l.tlsFragment),
+  (SettingsSection.routing, l.blockAds),
+  (SettingsSection.routing, l.blockRules),
+  (SettingsSection.routing, l.bypassApps),
+  (SettingsSection.routing, l.directRules),
+  (SettingsSection.routing, l.region),
+  (SettingsSection.routing, l.removeTunService),
+  (SettingsSection.routing, l.resolveDomains),
+  (SettingsSection.routing, l.routingDirect),
+  (SettingsSection.routing, l.routingLists),
+  (SettingsSection.routing, l.ruleSyntaxTitle),
+  (SettingsSection.routing, l.rulesTitle),
+  (SettingsSection.routing, l.sectionRouting),
+  (SettingsSection.routing, l.testDestination),
+  (SettingsSection.tun, l.sectionTun),
+  (SettingsSection.tun, l.tunPrograms),
+  (SettingsSection.tun, l.udpNoticeSetting),
+  (SettingsSection.dns, l.dnsCustom),
+  (SettingsSection.dns, l.dnsFallback),
+  (SettingsSection.dns, l.dnsPreset),
+  (SettingsSection.dns, l.sectionDns),
+  (SettingsSection.advanced, l.addProgram),
+  (SettingsSection.advanced, l.appPort),
+  (SettingsSection.advanced, l.listSource),
+  (SettingsSection.advanced, l.removeTunService),
+  (SettingsSection.advanced, l.updateLists),
+  (SettingsSection.advanced, l.upstreamProxy),
+  (SettingsSection.advanced, l.webDashboard),
+];
+
 /// A group in a list of settings: its title over a card of its rows.
 class SettingsGroup extends StatelessWidget {
   const SettingsGroup({super.key, required this.title, required this.tiles});
@@ -163,6 +259,11 @@ class _SettingsPageState extends State<SettingsPage> {
   /// The section shown; null for the list of sections.
   late SettingsSection? _open = widget.section ?? widget.opening;
 
+  /// What was typed in the list's search field, already folded for
+  /// matching ([_fold]); empty means the whole list is shown.
+  String _query = '';
+  final _search = TextEditingController();
+
   /// The core's config.json as raw JSON; null until read.
   Map<String, Object?>? _config;
   bool _saving = false;
@@ -174,6 +275,12 @@ class _SettingsPageState extends State<SettingsPage> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -280,10 +387,11 @@ class _SettingsPageState extends State<SettingsPage> {
     if (mounted) _toast(AppLocalizations.of(context).saved);
   }
 
-  /// Changes the language, then offers the routing most of its speakers
-  /// want (Persian: Iran, Chinese: China, Russian: Russia).
+  /// Android changes only the UI language. Desktop also offers the routing
+  /// most of its speakers want (Persian: Iran, Chinese: China, Russian: Russia).
   Future<void> _pickLanguage(String language) async {
     widget.settings.update(language: language);
+    if (Platform.isAndroid) return;
     final region = AppSettings.regionForLanguage(language);
     if (region == null ||
         (_bool(['routing', 'enabled']) &&
@@ -356,19 +464,99 @@ class _SettingsPageState extends State<SettingsPage> {
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: onTap,
               );
+          // A section is shown when its name matches what was typed; an
+          // empty search shows them all.
+          bool matches(String name) =>
+              _query.isEmpty || foldForSearch(name).contains(_query);
+          final shown = [
+            for (final (title, entries) in groups)
+              (
+                title,
+                [
+                  for (final entry in entries)
+                    if (matches(entry.$3)) entry,
+                ],
+                onOpenLogs != null &&
+                    entries.last.$1 == SettingsSection.advanced &&
+                    matches(l.navLogs),
+              ),
+          ].where((g) => g.$2.isNotEmpty || g.$3).toList();
+          // The settings themselves, when something was typed: the name of
+          // each, under the section that holds it, so one tap opens it.
+          final hits = _query.isEmpty
+              ? const <(SettingsSection, String)>[]
+              : [
+                  for (final entry in settingsIndex(l))
+                    if (foldForSearch(entry.$2).contains(_query) &&
+                        sections.any((e) => e.$1 == entry.$1) &&
+                        settingOnThisPlatform(l, entry.$2) &&
+                        !shown.any(
+                          (g) => g.$2.any((e) => e.$1 == entry.$1 && e.$3 == entry.$2),
+                        ))
+                      entry,
+                ];
+
           return ListView(
             padding: pagePadding(context),
             children: [
               PageTitle(l.settingsTitle),
-              for (final (title, entries) in groups)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: TextField(
+                  controller: _search,
+                  onChanged: (v) => setState(() => _query = foldForSearch(v)),
+                  textInputAction: TextInputAction.search,
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText: l.search,
+                    prefixIcon: const Icon(Icons.search_rounded),
+                    suffixIcon: _search.text.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: MaterialLocalizations.of(context)
+                                .deleteButtonTooltip,
+                            icon: const Icon(Icons.close_rounded),
+                            onPressed: () => setState(() {
+                              _search.clear();
+                              _query = '';
+                            }),
+                          ),
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              if (shown.isEmpty && hits.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 32),
+                  child: Text(
+                    l.settingsNoMatch,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              for (final (title, entries, logs) in shown)
                 SettingsGroup(
                   title: title,
                   tiles: [
                     for (final (section, icon, name) in entries)
                       row(icon, name, () => setState(() => _open = section)),
-                    if (onOpenLogs != null &&
-                        entries.last.$1 == SettingsSection.advanced)
-                      row(Icons.receipt_long_outlined, l.navLogs, onOpenLogs),
+                    if (logs)
+                      row(Icons.receipt_long_outlined, l.navLogs, onOpenLogs!),
+                  ],
+                ),
+              if (hits.isNotEmpty)
+                SettingsGroup(
+                  title: l.settingsTitle,
+                  tiles: [
+                    for (final (section, name) in hits)
+                      ListTile(
+                        leading: const Icon(Icons.chevron_right_rounded),
+                        title: Text(name),
+                        subtitle: Text(settingsSectionName(l, section)),
+                        onTap: () => setState(() => _open = section),
+                      ),
                   ],
                 ),
             ],
@@ -459,13 +647,17 @@ class _SettingsPageState extends State<SettingsPage> {
           value: s.uiDesign,
           onChanged: (v) => s.update(uiDesign: v),
           options: [
+            (UiDesign.bento, 'Bento', null),
             (UiDesign.pixel, l.designPixel, null),
-            (UiDesign.portal, l.designPortal, null),
             (UiDesign.old, l.designOld, null),
-            (UiDesign.foxy, l.designFoxy, null),
-            (UiDesign.classic, l.designClassic, null),
+            (UiDesign.glass, 'Glass', null),
           ],
         ),
+        // The current design's own controls — each design keeps its
+        // block apart from the others (zed/zed_prefs.dart). The design
+        // vocabulary (palette and style names) is ZedSecure's own and
+        // stays in its words, as design names do.
+        ..._zedDesignRows(l, s),
         if (!Platform.isAndroid)
           _Choice<CloseAction>(
             icon: Icons.close_rounded,
@@ -496,6 +688,15 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
         ),
         if (Platform.isAndroid)
+          _Row(
+            icon: Icons.apps_rounded,
+            label: l.showAppModeSwitch,
+            child: Switch(
+              value: s.showAppModeSwitch,
+              onChanged: (v) => s.update(showAppModeSwitch: v),
+            ),
+          ),
+        if (Platform.isAndroid)
           ValueListenableBuilder(
             valueListenable: AndroidCore.showSpeed,
             builder: (context, on, _) => _Row(
@@ -519,11 +720,27 @@ class _SettingsPageState extends State<SettingsPage> {
               onChanged: (v) => s.update(autostart: v),
             ),
           ),
-        // Only with the start at sign-in: dimmed without it.
-        if (Platform.isWindows || Platform.isLinux || Platform.isMacOS)
+        // Only with the start at sign-in: dimmed without it. Both rows are
+        // under the one condition: an `if` covers only the element after it.
+        if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) ...[
           Opacity(
             opacity: s.autostart ? 1 : 0.5,
             child: _Row(
+              under: true,
+              icon: Icons.open_in_new_rounded,
+              label: l.autostartShowsWindow,
+              child: Switch(
+                value: s.autostartShowsWindow,
+                onChanged: s.autostart
+                    ? (v) => s.update(autostartShowsWindow: v)
+                    : null,
+              ),
+            ),
+          ),
+          Opacity(
+            opacity: s.autostart ? 1 : 0.5,
+            child: _Row(
+              under: true,
               icon: Icons.link_rounded,
               label: l.connectOnStartup,
               child: Switch(
@@ -532,6 +749,7 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
           ),
+        ],
       ],
     ),
   );
@@ -552,16 +770,78 @@ class _SettingsPageState extends State<SettingsPage> {
               _Choice<String>(
                 icon: Icons.http_rounded,
                 title: l.transport,
-                value: _str(['proxy', 'transport']) == 'h2' ? 'h2' : 'h3',
+                value: switch (_str(['proxy', 'transport'])) {
+                  'h3' => 'h3',
+                  'h1' => 'h1',
+                  _ => 'h2',
+                },
                 onChanged: _saving
                     ? null
                     : (v) => _save({
                         ['proxy', 'transport']: v,
                       }),
+                // In the order of the protocols; HTTP/2 stays the default.
                 options: [
+                  // A TLS connection per site connection: for networks
+                  // that slow or cut long connections.
+                  ('h1', l.transportH1, null),
                   ('h2', l.transportH2, null),
                   ('h3', l.transportH3, null),
                 ],
+              ),
+              // The connection to Mozilla's servers alone: the sign-in and
+              // the DNS keep their own way.
+              _Choice<String>(
+                icon: Icons.lan_outlined,
+                title: l.ipVersion,
+                value: switch (_str(['proxy', 'ip_version'])) {
+                  final v
+                      when const [
+                        'dual',
+                        'ipv6_first',
+                        'ipv4',
+                        'ipv6',
+                      ].contains(v) =>
+                    v,
+                  _ => 'auto',
+                },
+                onChanged: _saving
+                    ? null
+                    : (v) => _save({
+                        ['proxy', 'ip_version']: v,
+                      }),
+                options: [
+                  ('auto', l.ipVersionAuto, null),
+                  ('dual', l.ipVersionDual, null),
+                  ('ipv6_first', l.ipVersionV6First, null),
+                  ('ipv4', l.ipVersionV4, null),
+                  ('ipv6', l.ipVersionV6, null),
+                ],
+              ),
+              // tun.mtu: the VPN interface's MTU (the phone's VPN, the
+              // computer's TUN); empty keeps each one's own.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                child: _TextSetting(
+                  label: l.tunMtu,
+                  hint: l.tunMtuHint,
+                  // Unset, the field shows this device's own MTU: the
+                  // phone's VPN 1500, the computer's TUN 9000.
+                  value: switch (_get(['tun', 'mtu'])) {
+                    final num n when n > 0 => '${n.toInt()}',
+                    _ => Platform.isAndroid ? '1500' : '9000',
+                  },
+                  validator: (v) {
+                    final n = int.tryParse(v.trim());
+                    return v.trim().isEmpty ||
+                            (n != null && n >= 1280 && n <= 9000)
+                        ? null
+                        : l.tunMtuInvalid;
+                  },
+                  onSave: (v) => _save({
+                    ['tun', 'mtu']: int.tryParse(v.trim()) ?? 0,
+                  }),
+                ),
               ),
               // The phone never sleeps (the core turns it off there).
               if (!Platform.isAndroid) _sleepChoice(l),
@@ -659,24 +939,66 @@ class _SettingsPageState extends State<SettingsPage> {
   /// for the sign-in, accounts, and server list (network.api_relay). The
   /// core hides its name with Encrypted Client Hello by itself where the
   /// relay's name has a key (network.api_relay_ech, config.json only).
-  Widget _bypass(AppLocalizations l) => Panel(
-    title: l.sectionBypass,
-    icon: Icons.shield_outlined,
-    child: _TextSetting(
-      label: l.apiRelay,
-      hint: l.apiRelayHint,
-      value: _str(['network', 'api_relay']),
-      validator: (v) {
-        final u = Uri.tryParse(v.trim());
-        return v.trim().isEmpty ||
-                (u != null && u.scheme == 'https' && u.host.isNotEmpty)
-            ? null
-            : l.apiRelayInvalid;
-      },
-      onSave: (v) => _save({
-        ['network', 'api_relay']: v.trim(),
-      }),
-    ),
+  /// Personal and shared relays have independent switches. A personal
+  /// relay needs an address; shared recovery is available without one.
+  Widget _bypass(AppLocalizations l) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Panel(
+        title: l.sharedRelay,
+        icon: Icons.groups_outlined,
+        trailing: Semantics(
+          label: l.sharedRelay,
+          child: Switch(
+            value: _bool(['network', 'shared_relay_enabled']),
+            onChanged: _saving
+                ? null
+                : (on) => _save({
+                    ['network', 'shared_relay_enabled']: on,
+                  }),
+          ),
+        ),
+        child: Text(
+          l.sharedRelayHint,
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+      ),
+      const SizedBox(height: 16),
+      Panel(
+        title: l.personalRelay,
+        icon: Icons.shield_outlined,
+        trailing: Semantics(
+          label: l.apiRelayUse,
+          child: Switch(
+            value:
+                _bool(['network', 'api_relay_enabled']) &&
+                _str(['network', 'api_relay']).isNotEmpty,
+            onChanged: _saving || _str(['network', 'api_relay']).isEmpty
+                ? null
+                : (on) => _save({
+                    ['network', 'api_relay_enabled']: on,
+                  }),
+          ),
+        ),
+        child: _TextSetting(
+          label: l.apiRelay,
+          hint: l.apiRelayHint,
+          value: _str(['network', 'api_relay']),
+          validator: (v) {
+            final u = Uri.tryParse(v.trim());
+            return v.trim().isEmpty ||
+                    (u != null && u.scheme == 'https' && u.host.isNotEmpty)
+                ? null
+                : l.apiRelayInvalid;
+          },
+          onSave: (v) => _save({
+            ['network', 'api_relay']: v.trim(),
+          }),
+          testLabel: l.testRelay,
+          onTest: (v) => showRelayTestDialog(context, _core, v.trim()),
+        ),
+      ),
+    ],
   );
 
   /// The way to Mozilla through the user's own SOCKS5 proxy, for a network
@@ -706,7 +1028,7 @@ class _SettingsPageState extends State<SettingsPage> {
       title: l.tlsFragment,
       icon: Icons.content_cut_rounded,
       child: RadioGroup<String>(
-        groupValue: mode.isEmpty ? 'off' : mode,
+        groupValue: mode.isEmpty ? 'auto' : mode,
         onChanged: (v) {
           if (v == null || _saving) return;
           _save({
@@ -717,6 +1039,7 @@ class _SettingsPageState extends State<SettingsPage> {
           children: [
             for (final (value, label, hint) in [
               ('off', l.tlsFragmentOff, l.tlsFragmentOffHint),
+              ('auto', l.tlsFragmentAuto, l.tlsFragmentAutoHint),
               (
                 'first-byte',
                 l.tlsFragmentFirstByte,
@@ -1509,6 +1832,7 @@ class _Row extends StatelessWidget {
     this.value,
     this.child,
     this.onTap,
+    this.under = false,
   });
 
   final IconData icon;
@@ -1516,6 +1840,10 @@ class _Row extends StatelessWidget {
   final String? value;
   final Widget? child;
   final VoidCallback? onTap;
+
+  /// Belongs to the row above it: set in from the start edge, so the two
+  /// read as one setting and what it can do.
+  final bool under;
 
   @override
   Widget build(BuildContext context) {
@@ -1525,8 +1853,21 @@ class _Row extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+      child: Container(
+        padding: EdgeInsetsDirectional.fromSTEB(under ? 28 : 4, 10, 4, 10),
+        margin: EdgeInsetsDirectional.only(start: under ? 10 : 0),
+        // A line down the start edge ties the row to the one it belongs to,
+        // which an indent alone leaves to the eye to guess.
+        decoration: under
+            ? BoxDecoration(
+                border: BorderDirectional(
+                  start: BorderSide(
+                    width: 2,
+                    color: theme.colorScheme.primary.withValues(alpha: 0.35),
+                  ),
+                ),
+              )
+            : null,
         child: Row(
           children: [
             Icon(icon, color: muted),
@@ -1766,6 +2107,8 @@ class _TextSetting extends StatefulWidget {
     this.hint,
     this.multiline = false,
     this.validator,
+    this.testLabel,
+    this.onTest,
   });
 
   final String label;
@@ -1774,6 +2117,8 @@ class _TextSetting extends StatefulWidget {
   final String? hint;
   final bool multiline;
   final String? Function(String value)? validator;
+  final String? testLabel;
+  final Future<void> Function(String value)? onTest;
 
   @override
   State<_TextSetting> createState() => _TextSettingState();
@@ -1787,8 +2132,11 @@ class _TextSettingState extends State<_TextSetting> {
   @override
   void didUpdateWidget(_TextSetting old) {
     super.didUpdateWidget(old);
-    // A saved value comes back from the core; keep unsaved typing.
-    if (old.value != widget.value && _controller.text == old.value) {
+    // A saved value comes back from the core; keep unsaved typing. A field
+    // emptied and saved shows what the empty value stands for (MTU: this
+    // device's own).
+    if (old.value != widget.value &&
+        (_controller.text == old.value || _controller.text.trim().isEmpty)) {
       _controller.text = widget.value;
     }
   }
@@ -1844,7 +2192,36 @@ class _TextSettingState extends State<_TextSetting> {
       children: [
         field,
         const SizedBox(height: 8),
-        Align(alignment: AlignmentDirectional.centerEnd, child: button),
+        Row(
+          children: [
+            if (widget.onTest != null)
+              Expanded(
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: OutlinedButton.icon(
+                    onPressed: _saving || _controller.text.trim().isEmpty
+                        ? null
+                        : () {
+                            final error = widget.validator?.call(
+                              _controller.text,
+                            );
+                            setState(() => _error = error);
+                            if (error == null) {
+                              FocusScope.of(context).unfocus();
+                              widget.onTest!(_controller.text);
+                            }
+                          },
+                    icon: const Icon(Icons.health_and_safety_outlined),
+                    label: Text(widget.testLabel ?? ''),
+                  ),
+                ),
+              )
+            else
+              const Spacer(),
+            const SizedBox(width: 8),
+            button,
+          ],
+        ),
       ],
     );
   }
@@ -2825,4 +3202,288 @@ class _DnsResultRow extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Applies a one-tap theme profile (§25): a profile rewrites a whole
+/// block of design fields at once so one tap gives a coherent look.
+ZedPrefs _applyZedProfile(ZedPrefs p, ZedThemeProfile profile) =>
+    switch (profile) {
+      ZedThemeProfile.none => p.copyWith(profile: profile),
+      ZedThemeProfile.aurora => p.copyWith(
+        profile: profile,
+        design: ZedDesign.glass,
+        glassWallpaper: GlassWallpaper.lagoon,
+        glassTint: 0,
+      ),
+      ZedThemeProfile.ember => p.copyWith(
+        profile: profile,
+        design: ZedDesign.bento,
+        bentoPalette: BentoPalette.sunset,
+      ),
+      ZedThemeProfile.midnight => p.copyWith(
+        profile: profile,
+        design: ZedDesign.pixel,
+        pixelAccent: 9,
+        pixelAmoled: true,
+      ),
+      ZedThemeProfile.sakura => p.copyWith(
+        profile: profile,
+        design: ZedDesign.bento,
+        bentoPalette: BentoPalette.pastel,
+      ),
+      ZedThemeProfile.citrus => p.copyWith(
+        profile: profile,
+        design: ZedDesign.bento,
+        bentoPalette: BentoPalette.citrus,
+      ),
+      ZedThemeProfile.mono => p.copyWith(
+        profile: profile,
+        design: ZedDesign.bento,
+        bentoPalette: BentoPalette.mono,
+      ),
+      ZedThemeProfile.neonlime => p.copyWith(
+        profile: profile,
+        design: ZedDesign.bento,
+        bentoPalette: BentoPalette.neon,
+      ),
+      ZedThemeProfile.tokyo => p.copyWith(
+        profile: profile,
+        design: ZedDesign.glass,
+        glassWallpaper: GlassWallpaper.dusk,
+        glassTint: 5,
+      ),
+      ZedThemeProfile.solar => p.copyWith(
+        profile: profile,
+        design: ZedDesign.bento,
+        bentoPalette: BentoPalette.vivid,
+      ),
+      ZedThemeProfile.moss => p.copyWith(
+        profile: profile,
+        design: ZedDesign.bento,
+        bentoPalette: BentoPalette.matcha,
+      ),
+      ZedThemeProfile.clay => p.copyWith(
+        profile: profile,
+        design: ZedDesign.pixel,
+        pixelAccent: 4,
+      ),
+    };
+
+/// The design controls under the design choice in General: the current
+/// design's own block first, then the shared navigation/transition/
+/// profile rows. Every change writes the whole [ZedPrefs] block, so the
+/// other designs' blocks stay exactly as they were (per-design
+/// isolation).
+List<Widget> _zedDesignRows(AppLocalizations l, AppSettings s) {
+  final z = s.zed;
+  void set(ZedPrefs next) => s.update(zed: next);
+  Widget toggle(
+    IconData icon,
+    String label,
+    bool value,
+    ValueChanged<bool> onChanged,
+  ) => _Row(
+    icon: icon,
+    label: label,
+    child: Switch(value: value, onChanged: onChanged),
+  );
+  final rows = <Widget>[];
+  switch (z.design) {
+    case ZedDesign.bento:
+      rows.addAll([
+        _Choice<BentoPalette>(
+          icon: Icons.palette_outlined,
+          title: 'Bento palette',
+          value: z.bentoPalette,
+          onChanged: (v) => set(z.copyWith(bentoPalette: v)),
+          options: [
+            for (final p in BentoPalette.values) (p, p.name, null),
+          ],
+        ),
+        _Choice<BentoCorner>(
+          icon: Icons.rounded_corner,
+          title: 'Bento corners',
+          value: z.bentoCorner,
+          onChanged: (v) => set(z.copyWith(bentoCorner: v)),
+          options: [
+            for (final c in BentoCorner.values) (c, c.name, null),
+          ],
+        ),
+        _Choice<BentoConnectStyle>(
+          icon: Icons.power_settings_new_rounded,
+          title: 'Connect control',
+          value: z.bentoConnect,
+          onChanged: (v) => set(z.copyWith(bentoConnect: v)),
+          options: [
+            for (final c in BentoConnectStyle.values) (c, c.name, null),
+          ],
+        ),
+        _Choice<BentoDockLabels>(
+          icon: Icons.dock_rounded,
+          title: 'Dock labels',
+          value: z.bentoDockLabels,
+          onChanged: (v) => set(z.copyWith(bentoDockLabels: v)),
+          options: [
+            for (final c in BentoDockLabels.values) (c, c.name, null),
+          ],
+        ),
+        toggle(
+          Icons.dark_mode_rounded,
+          'AMOLED',
+          z.bentoAmoled,
+          (v) => set(z.copyWith(bentoAmoled: v)),
+        ),
+      ]);
+    case ZedDesign.glass:
+      rows.addAll([
+        _Choice<GlassMaterial>(
+          icon: Icons.blur_on_rounded,
+          title: 'Glass material',
+          value: z.glassMaterial,
+          onChanged: (v) => set(z.copyWith(glassMaterial: v)),
+          options: [
+            for (final m in GlassMaterial.values) (m, m.name, null),
+          ],
+        ),
+        _Choice<GlassWallpaper>(
+          icon: Icons.wallpaper_rounded,
+          title: 'Wallpaper',
+          value: z.glassWallpaper,
+          onChanged: (v) => set(z.copyWith(glassWallpaper: v)),
+          options: [
+            for (final w in GlassWallpaper.values) (w, w.name, null),
+          ],
+        ),
+        _Choice<int>(
+          icon: Icons.color_lens_outlined,
+          title: 'Glass tint',
+          value: z.glassTint,
+          onChanged: (v) => set(z.copyWith(glassTint: v)),
+          options: [
+            (0, 'Blue', null),
+            (1, 'Green', null),
+            (2, 'Teal', null),
+            (3, 'Orange', null),
+            (4, 'Pink', null),
+            (5, 'Purple', null),
+            (6, 'Red', null),
+            (7, 'Yellow', null),
+            (8, 'Mint', null),
+            (9, 'Indigo', null),
+            (10, 'Brown', null),
+            (11, 'Grey', null),
+          ],
+        ),
+        _Choice<GlassConnectStyle>(
+          icon: Icons.power_settings_new_rounded,
+          title: 'Connect control',
+          value: z.glassConnect,
+          onChanged: (v) => set(z.copyWith(glassConnect: v)),
+          options: [
+            (GlassConnectStyle.z, 'Z', null),
+            (GlassConnectStyle.button, 'Button', null),
+            (GlassConnectStyle.switchStyle, 'Switch', null),
+            (GlassConnectStyle.slider, 'Slider', null),
+          ],
+        ),
+        toggle(Icons.list_rounded, 'Glass lists', z.glassLists,
+            (v) => set(z.copyWith(glassLists: v))),
+        toggle(Icons.compress_rounded, 'Shrink tab bar', z.glassShrinkBar,
+            (v) => set(z.copyWith(glassShrinkBar: v))),
+        toggle(Icons.auto_awesome_rounded, 'Motion highlights',
+            z.glassMotionHighlights,
+            (v) => set(z.copyWith(glassMotionHighlights: v))),
+        toggle(Icons.opacity_rounded, 'Reduce transparency',
+            z.reduceTransparency,
+            (v) => set(z.copyWith(reduceTransparency: v))),
+        toggle(Icons.speed_rounded, 'Show speed', z.glassShowSpeed,
+            (v) => set(z.copyWith(glassShowSpeed: v))),
+        toggle(Icons.timer_outlined, 'Show timer', z.glassShowTimer,
+            (v) => set(z.copyWith(glassShowTimer: v))),
+      ]);
+    case ZedDesign.pixel:
+      rows.addAll([
+        _Choice<int>(
+          icon: Icons.palette_outlined,
+          title: 'Accent',
+          value: z.pixelAccent,
+          onChanged: (v) => set(z.copyWith(pixelAccent: v)),
+          options: [
+            (0, 'Iris', null),
+            (1, 'Ocean', null),
+            (2, 'Teal', null),
+            (3, 'Forest', null),
+            (4, 'Amber', null),
+            (5, 'Rose', null),
+            (6, 'Crimson', null),
+            (7, 'Cyan', null),
+            (8, 'Grape', null),
+            (9, 'Slate', null),
+          ],
+        ),
+        _Choice<PixelConnectStyle>(
+          icon: Icons.power_settings_new_rounded,
+          title: 'Connect control',
+          value: z.pixelConnect,
+          onChanged: (v) => set(z.copyWith(pixelConnect: v)),
+          options: [
+            for (final c in PixelConnectStyle.values)
+              (c, c.name == 'switchStyle' ? 'Switch' : c.name, null),
+          ],
+        ),
+        toggle(Icons.nightlight_round, 'AMOLED', z.pixelAmoled,
+            (v) => set(z.copyWith(pixelAmoled: v))),
+      ]);
+    case ZedDesign.old:
+      rows.addAll([
+        _Choice<PixelConnectStyle>(
+          icon: Icons.power_settings_new_rounded,
+          title: 'Connect control',
+          value: z.oldConnect,
+          onChanged: (v) => set(z.copyWith(oldConnect: v)),
+          options: [
+            for (final c in PixelConnectStyle.values)
+              (c, c.name == 'switchStyle' ? 'Switch' : c.name, null),
+          ],
+        ),
+        toggle(Icons.nightlight_round, 'AMOLED', z.oldAmoled,
+            (v) => set(z.copyWith(oldAmoled: v))),
+      ]);
+  }
+  rows.addAll([
+    _Choice<NavBarStyle>(
+      icon: Icons.dock_rounded,
+      title: 'Navigation bar',
+      value: z.navStyle,
+      onChanged: (v) => set(z.copyWith(navStyle: v)),
+      options: [
+        (NavBarStyle.floatingPill, 'Floating pill', null),
+        (NavBarStyle.fullBar, 'Full bar', null),
+        (NavBarStyle.expressivePill, 'Expressive pill', null),
+        (NavBarStyle.compactDock, 'Compact dock', null),
+        (NavBarStyle.underline, 'Underline', null),
+        (NavBarStyle.minimal, 'Minimal', null),
+        (NavBarStyle.dock, 'Dock', null),
+      ],
+    ),
+    _Choice<ZedTransitionStyle>(
+      icon: Icons.animation_rounded,
+      title: 'Screen transition',
+      value: z.transitionStyle,
+      onChanged: (v) => set(z.copyWith(transitionStyle: v)),
+      options: [
+        for (final t in ZedTransitionStyle.values) (t, t.name, null),
+      ],
+    ),
+    _Choice<ZedThemeProfile>(
+      icon: Icons.style_rounded,
+      title: 'Theme profile',
+      value: z.profile,
+      onChanged: (v) => set(_applyZedProfile(z, v)),
+      options: [
+        for (final p in ZedThemeProfile.values) (p, p.name, null),
+      ],
+    ),
+  ]);
+  return rows;
 }

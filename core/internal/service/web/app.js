@@ -516,7 +516,7 @@ function renderStatus() {
     chips.append(...[
       el("span", { class: "chip copy", title: "Copy the proxy address (SOCKS5 and HTTP)", onclick: () => copyText(s.proxy.listen) }, icon("copy"), "Proxy " + s.proxy.listen),
       s.proxy.login_required ? el("span", { class: "chip ok", title: "Clients need the SOCKS5 username and password" }, icon("lock"), "Login required") : null,
-      el("span", { class: "chip accent", text: s.proxy.transport === "h3" ? "HTTP/3 · QUIC" : "HTTP/2 · TLS" }),
+      el("span", { class: "chip accent", text: { h3: "HTTP/3 · QUIC", h1: "HTTP/1.1 · TLS" }[s.proxy.transport] || "HTTP/2 · TLS" }),
       s.exit ? ipChip(s.exit) : null,
     ].filter(Boolean));
   }
@@ -959,7 +959,6 @@ function renderAccounts() {
       account.active && status === "ready" ? el("span", { class: "chip active", text: "Active" }) : el("span", { class: "chip " + status, text: statusLabel(account, status) }),
       account.email && account.email !== account.name ? el("span", { text: account.email }) : null,
       account.retry_at && account.status !== "ready" ? el("span", { text: `until ${formatTime(account.retry_at)}` }) : null,
-      account.has_password ? el("span", { class: "chip", title: "The password is saved (encrypted). When this account's tokens stop working and cannot be renewed, the program signs in again by itself.", text: "Auto re-login" }) : null,
     );
     const reason = account.reason ? el("div", { class: "account-meta", text: account.reason }) : null;
     const actions = el("div", { class: "account-actions" },
@@ -1264,7 +1263,8 @@ function renderSignIn(view) {
   const submit = $("#signin-submit");
   const form = $("#signin-form");
   // What went wrong shows apart from the instruction, in red.
-  $("#signin-error").textContent = view.error || "";
+  $("#signin-error").textContent = view.step === "working" ? "" : view.error || "";
+  message.style.display = "";
   captcha.hidden = true;
   label.hidden = true;
   submit.hidden = false;
@@ -1288,7 +1288,24 @@ function renderSignIn(view) {
       break;
     case "failed":
     case "cancelled":
-      message.textContent = view.message;
+      // Fastly's bot check refused the sign-in: the way out is the app's
+      // browser sign-in, moved over by its data folder.
+      if (view.error_code === "blocked") {
+        message.replaceChildren(
+          el("span", { text: "Tip: sign in with the browser in the FoxyVPN app, then copy that device's data folder to this machine." }),
+          el("a", {
+            class: "btn primary",
+            style: "margin-top:10px; width:fit-content",
+            href: "https://github.com/armanlife/firefox-vpn-client/blob/main/docs/BROWSER-SIGNIN.md",
+            target: "_blank",
+            rel: "noreferrer",
+            text: "How to do it",
+          }),
+        );
+        message.style.display = "grid";
+      } else {
+        message.textContent = view.message;
+      }
       submit.textContent = "Try again";
       break;
     default:
@@ -1319,6 +1336,74 @@ async function pollSignIn(id) {
 }
 
 $("#add-account").addEventListener("click", () => openSignIn());
+
+// The backup: the data folder as a zip file in the same layout (GET
+// /api/backup), and adding the accounts of one (POST /api/backup/inspect,
+// then /api/backup/import). The settings in a file taken in stay as they
+// are here.
+async function saveBackup() {
+  $("#backup-menu").open = false;
+  try {
+    const response = await fetch("/api/backup", { credentials: "same-origin" });
+    if (response.status === 401) {
+      showLogin();
+      return;
+    }
+    if (!response.ok) {
+      let data = null;
+      try { data = await response.json(); } catch { /* empty body */ }
+      throw new ApiError(response.status, (data && data.error) || response.statusText);
+    }
+    const name = /filename="([^"]+)"/.exec(response.headers.get("Content-Disposition") || "")?.[1] || "Firefox-VPN-backup.zip";
+    const url = URL.createObjectURL(await response.blob());
+    const link = el("a", { href: url, download: name });
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    toast(`Saved ${name}`);
+  } catch (error) {
+    toast(error.message, true);
+  }
+}
+
+function base64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let text = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) text += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(text);
+}
+
+async function importBackup(file) {
+  try {
+    const data = base64(await file.arrayBuffer());
+    const contents = await api("POST", "/api/backup/inspect", { data });
+    const lines = contents.accounts.map((a) => `• ${a.email}${a.exists ? " (already added: it takes the file's sign-in)" : ""}`);
+    if (!confirm(`Add these accounts?\n\n${lines.join("\n")}`)) return;
+    const done = await api("POST", "/api/backup/import", { data });
+    const count = done.added + done.updated;
+    toast(count === 1 ? "1 account added" : `${count} accounts added`);
+    await loadAccounts();
+  } catch (error) {
+    toast(error.message, true);
+  }
+}
+
+$("#backup-save").addEventListener("click", saveBackup);
+$("#backup-import").addEventListener("click", () => {
+  $("#backup-menu").open = false;
+  $("#backup-file").click();
+});
+$("#backup-file").addEventListener("change", (event) => {
+  const file = event.target.files[0];
+  event.target.value = "";
+  if (file) importBackup(file);
+});
+// A click anywhere else closes the menu.
+document.addEventListener("click", (event) => {
+  const menu = $("#backup-menu");
+  if (menu.open && !menu.contains(event.target)) menu.open = false;
+});
 
 $("#signin-form").addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -1567,6 +1652,72 @@ $("#dns-test").addEventListener("click", async (event) => {
     reportError(error);
   }
 });
+
+let relayTestAbort = null;
+let relayTestAddress = "";
+
+async function runRelayTest() {
+  relayTestAbort?.abort();
+  const abort = new AbortController();
+  relayTestAbort = abort;
+  const log = $("#relay-test-log");
+  const summary = $("#relay-test-state");
+  log.textContent = "";
+  summary.textContent = "Testing…";
+  $("#relay-test-retry").disabled = true;
+  let completed = false;
+  const consume = (line) => {
+    if (relayTestAbort !== abort || abort.signal.aborted) return;
+    if (!line.trim()) return;
+    const event = JSON.parse(line);
+    if (event.type === "step") {
+      const s = event.step;
+      log.textContent += `${(s.elapsed_ms / 1000).toFixed(2)}s  ${s.status.toUpperCase()}  [${s.stage}${s.code ? ": " + s.code : ""}] ${s.detail}\n`;
+      log.scrollTop = log.scrollHeight;
+    } else if (event.type === "result") {
+      completed = true;
+      summary.textContent = event.result.ok ? "Relay is ready" : "Relay health could not be confirmed";
+    }
+  };
+  try {
+    const response = await fetch("/api/relay/test", {
+      method: "POST", credentials: "same-origin", signal: abort.signal,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: relayTestAddress, stream: true }),
+    });
+    if (!response.ok) throw new ApiError(response.status, `Relay diagnostics API returned HTTP ${response.status}.`);
+    const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+    let pending = "";
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      pending += value;
+      const lines = pending.split("\n");
+      pending = lines.pop();
+      for (const line of lines) consume(line);
+    }
+    if (pending.trim()) consume(pending);
+    if (!completed) throw new Error("The test ended before a complete result was received.");
+  } catch (error) {
+    if (!abort.signal.aborted) {
+      summary.textContent = "Relay health could not be confirmed";
+      // Input addresses and server-supplied bodies never become diagnostics.
+      log.textContent += "ERROR  " + (error instanceof ApiError ? error.message : "The relay diagnostic connection ended unexpectedly.") + "\n";
+    }
+  } finally {
+    if (relayTestAbort === abort) $("#relay-test-retry").disabled = false;
+  }
+}
+
+$("#relay-test").addEventListener("click", () => {
+  relayTestAddress = $("#f-relay").value.trim();
+  $("#relay-test-dialog").showModal();
+  runRelayTest();
+});
+$("#relay-test-retry").addEventListener("click", runRelayTest);
+$("#relay-test-copy").addEventListener("click", () => copyText($("#relay-test-log").textContent, "Relay health report"));
+$("#relay-test-close").addEventListener("click", () => $("#relay-test-dialog").close());
+$("#relay-test-dialog").addEventListener("close", () => relayTestAbort?.abort());
 
 const INT_FIELDS = ["proxy.upstream_connections", "proxy.max_connections"];
 const FLOAT_FIELDS = ["accounts.switch_threshold_percent"];

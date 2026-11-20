@@ -1,13 +1,14 @@
 import 'dart:io';
 import 'dart:ui';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../app_settings.dart';
 import '../core/android_core.dart';
 import '../core/core_controller.dart';
 import '../l10n/app_localizations.dart';
 import 'widgets.dart';
+import 'zed/zed_theme.dart';
 
 /// The first run: the user picks a language and a country, and the
 /// country's sites go directly (the core's routing region).
@@ -25,7 +26,7 @@ class _WelcomePageState extends State<WelcomePage> {
   late String _language;
   late String _region;
 
-  /// The region follows the language until the user picks one.
+  /// A manual region choice always wins over desktop language suggestions.
   bool _regionPicked = false;
   bool _saving = false;
 
@@ -36,13 +37,15 @@ class _WelcomePageState extends State<WelcomePage> {
     _language = widget.settings.language.isNotEmpty
         ? widget.settings.language
         : AppSettings.languageFor(system);
-    _region = AppSettings.suggestedRegion(_language, system.countryCode);
+    _region =
+        widget.settings.firstRunRegion ??
+        AppSettings.suggestedRegion(_language, system.countryCode);
   }
 
   void _pickLanguage(String language) {
     setState(() {
       _language = language;
-      if (!_regionPicked) {
+      if (widget.settings.firstRunRegion == null && !_regionPicked) {
         _region = AppSettings.regionForLanguage(language) ?? _region;
       }
     });
@@ -145,6 +148,74 @@ class _WelcomePageState extends State<WelcomePage> {
                         ),
                     ],
                   ),
+                  const SizedBox(height: 20),
+                  // "Make it yours": the design step of the first run,
+                  // as in ZedSecure's onboarding — picking a design (and
+                  // a Bento palette) re-themes the app at once, so the
+                  // choice is its own live preview. The design names
+                  // are ZedSecure's own words, as in Settings.
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Text(
+                      l.uiDesign,
+                      style: theme.textTheme.titleSmall,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final (design, label) in [
+                        (UiDesign.bento, 'Bento'),
+                        (UiDesign.pixel, l.designPixel),
+                        (UiDesign.old, l.designOld),
+                        (UiDesign.glass, 'Glass'),
+                      ])
+                        ChoiceChip(
+                          label: Text(label),
+                          selected: widget.settings.uiDesign == design,
+                          onSelected: (_) =>
+                              widget.settings.update(uiDesign: design),
+                        ),
+                    ],
+                  ),
+                  if (widget.settings.zed.design == ZedDesign.bento) ...[
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final entry in bentoPalettes.entries)
+                          Tooltip(
+                            message: entry.key.name,
+                            child: GestureDetector(
+                              onTap: () => widget.settings.update(
+                                zed: widget.settings.zed.copyWith(
+                                  bentoPalette: entry.key,
+                                ),
+                              ),
+                              child: Container(
+                                width: 30,
+                                height: 30,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: entry.value.seed,
+                                  border: Border.all(
+                                    color:
+                                        widget.settings.zed.bentoPalette ==
+                                            entry.key
+                                        ? theme.colorScheme.onSurface
+                                        : Colors.transparent,
+                                    width: 2.5,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 28),
                   FilledButton(
                     // A TV starts on Start: the remote's OK goes on with

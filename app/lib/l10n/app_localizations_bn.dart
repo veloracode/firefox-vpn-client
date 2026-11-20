@@ -150,6 +150,10 @@ class AppLocalizationsBn extends AppLocalizations {
   }
 
   @override
+  String get accountsGuideUnlimited =>
+      'Firefox অ্যাকাউন্টে এখন আনলিমিটেড ডাটা আছে।';
+
+  @override
   String accountsOrderNote(int percent) {
     return 'এই তালিকার ক্রমে: প্রতিটি অ্যাকাউন্ট $percent% পর্যন্ত, শেষটি ডেটা শেষ না হওয়া পর্যন্ত।';
   }
@@ -171,6 +175,9 @@ class AppLocalizationsBn extends AppLocalizations {
   @override
   String get delayTestFailed =>
       'সার্ভারগুলোর বিলম্ব মাপা যায়নি। ইন্টারনেট পরীক্ষা করুন।';
+
+  @override
+  String get delayFromLastTest => 'আগের পরীক্ষা থেকে';
 
   @override
   String get createAccountTitle => 'Firefox Account নেই?';
@@ -447,6 +454,9 @@ class AppLocalizationsBn extends AppLocalizations {
 
   @override
   String get settingsTitle => 'সেটিংস';
+
+  @override
+  String get settingsNoMatch => 'কিছু মেলেনি';
 
   @override
   String get sectionGeneral => 'সাধারণ';
@@ -736,6 +746,55 @@ class AppLocalizationsBn extends AppLocalizations {
       'ডেটার এই অংশ খরচ হলে পরের অ্যাকাউন্টে চলে যায়।';
 
   @override
+  String get signInMethod => 'সাইন-ইন পদ্ধতি';
+
+  @override
+  String get signInMethodBrowser => 'ব্রাউজার দিয়ে সাইন ইন';
+
+  @override
+  String get signInMethodApi => 'সরাসরি সাইন ইন';
+
+  @override
+  String get browserSignInBroken => 'সাইন-ইন পৃষ্ঠা খোলা যায়নি।';
+
+  @override
+  String get browserSignInBlocked =>
+      'Mozilla অ্যাকাউন্ট যোগ করার শেষ ধাপটি সম্পন্ন করেনি (HTTP 406)।';
+
+  @override
+  String get browserSignInFallback => 'ইমেল ও পাসওয়ার্ড দিয়ে সাইন ইন';
+
+  @override
+  String get backupExport => 'ব্যাকআপ সংরক্ষণ করুন';
+
+  @override
+  String get backupImport => 'ব্যাকআপ ইমপোর্ট করুন';
+
+  @override
+  String backupSaved(String name) {
+    return 'সংরক্ষিত: $name';
+  }
+
+  @override
+  String get backupImportTitle => 'এই অ্যাকাউন্টগুলো যোগ করবেন?';
+
+  @override
+  String get backupAccountExists => 'আগে থেকেই আছে; ফাইল থেকে সাইন ইন হবে';
+
+  @override
+  String get backupImportAction => 'যোগ করুন';
+
+  @override
+  String backupImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countটি অ্যাকাউন্ট যোগ হয়েছে',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get sectionDns => 'DNS';
 
   @override
@@ -767,7 +826,38 @@ class AppLocalizationsBn extends AppLocalizations {
   String get transportH3 => 'HTTP/3 (QUIC)';
 
   @override
+  String get ipVersion => 'IP সংস্করণ';
+
+  @override
+  String get ipVersionAuto => 'স্বয়ংক্রিয় (প্রথমে IPv4, পরে IPv6)';
+
+  @override
+  String get ipVersionDual => 'দুটোই একসাথে (dual-stack)';
+
+  @override
+  String get ipVersionV6First => 'প্রথমে IPv6, পরে IPv4';
+
+  @override
+  String get ipVersionV4 => 'শুধু IPv4';
+
+  @override
+  String get ipVersionV6 => 'শুধু IPv6';
+
+  @override
+  String get tunMtu => 'MTU';
+
+  @override
+  String get tunMtuHint =>
+      'VPN ইন্টারফেসের প্যাকেটের আকার, 1280 থেকে 9000। খালি: স্বয়ংক্রিয়।';
+
+  @override
+  String get tunMtuInvalid => '1280 থেকে 9000-এর মধ্যে একটি সংখ্যা, বা খালি';
+
+  @override
   String get transportH2 => 'HTTP/2 (TCP)';
+
+  @override
+  String get transportH1 => 'HTTP/1.1 (TLS)';
 
   @override
   String get directRules => 'সরাসরি';
@@ -848,6 +938,13 @@ class AppLocalizationsBn extends AppLocalizations {
   String get tlsFragment => 'TLS ফ্র্যাগমেন্টেশন';
 
   @override
+  String get tlsFragmentAuto => 'স্বয়ংক্রিয়';
+
+  @override
+  String get tlsFragmentAutoHint =>
+      'স্বাভাবিক সংযোগ ব্যর্থ হলে অন্য পদ্ধতি চেষ্টা করে।';
+
+  @override
   String get tlsFragmentOff => 'বন্ধ';
 
   @override
@@ -877,7 +974,20 @@ class AppLocalizationsBn extends AppLocalizations {
   String get sectionBypass => 'Mozilla অবরুদ্ধ থাকলে';
 
   @override
+  String get sharedRelay => 'শেয়ার করা রিলে';
+
+  @override
+  String get sharedRelayHint =>
+      'Mozilla আপনার অঞ্চল ব্লক করলে অ্যাপের শেয়ার করা রিলে ব্যবহার করুন। চালু থাকা ব্যক্তিগত রিলে অগ্রাধিকার পায়।';
+
+  @override
+  String get personalRelay => 'ব্যক্তিগত রিলে';
+
+  @override
   String get apiRelay => 'রিলে সার্ভার';
+
+  @override
+  String get apiRelayUse => 'রিলে সার্ভার ব্যবহার করুন';
 
   @override
   String get apiRelayHint =>
@@ -958,6 +1068,9 @@ class AppLocalizationsBn extends AppLocalizations {
   String get speedInNotification => 'বিজ্ঞপ্তিতে গতি দেখান';
 
   @override
+  String get showAppModeSwitch => 'দ্রুত VPN মোড পরিবর্তন';
+
+  @override
   String get liveTraffic => 'লাইভ ট্রাফিক';
 
   @override
@@ -1019,12 +1132,21 @@ class AppLocalizationsBn extends AppLocalizations {
   }
 
   @override
+  String updateRequired(String version) {
+    return 'অনুগ্রহ করে $version সংস্করণে আপডেট করুন। এই আপডেটটি প্রয়োজন।';
+  }
+
+  @override
   String get download => 'ডাউনলোড';
 
   @override
   String updateCheckFailed(String error) {
     return 'আপডেট যাচাই করা যায়নি: $error';
   }
+
+  @override
+  String get updateCheckNoNetwork =>
+      'GitHub-এ পৌঁছানো যায়নি। ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন।';
 
   @override
   String get updateNow => 'আপডেট করুন';
@@ -1076,6 +1198,9 @@ class AppLocalizationsBn extends AppLocalizations {
 
   @override
   String get connectOnStartup => 'চালু হলে স্বয়ংক্রিয়ভাবে সংযোগ করুন';
+
+  @override
+  String get autostartShowsWindow => 'অ্যাপের উইন্ডো দেখান';
 
   @override
   String get proxyServiceActive => 'প্রক্সি সার্ভিস চালু আছে';
@@ -1131,7 +1256,60 @@ class AppLocalizationsBn extends AppLocalizations {
   String get dataUsedTitle => 'ব্যবহৃত ডেটা';
 
   @override
+  String get monthlyData => 'ডেটা';
+
+  @override
   String get bypassApps => 'অ্যাপভিত্তিক প্রক্সি';
+
+  @override
+  String get appClipboardImport => 'ক্লিপবোর্ড থেকে আমদানি';
+
+  @override
+  String get appClipboardExport => 'ক্লিপবোর্ডে রপ্তানি';
+
+  @override
+  String get appClipboardUnavailable => 'ক্লিপবোর্ডে অ্যাক্সেস করা যায়নি।';
+
+  @override
+  String get appClipboardNoMatches =>
+      'ক্লিপবোর্ডের প্যাকেজ নামের সঙ্গে ইনস্টল করা কোনো অ্যাপ মেলেনি।';
+
+  @override
+  String get appClipboardMerge => 'একত্র করুন';
+
+  @override
+  String get appClipboardReplace => 'প্রতিস্থাপন করুন';
+
+  @override
+  String appClipboardImportPrompt(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'ইনস্টল করা $countটি অ্যাপ মিলেছে। সেগুলো বর্তমান নির্বাচনে যোগ করবেন, নাকি নির্বাচন প্রতিস্থাপন করবেন?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String appClipboardImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countটি অ্যাপ আমদানি করা হয়েছে।',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String appClipboardExported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$countটি প্যাকেজ নাম কপি করা হয়েছে।',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get connectRetrying => 'সংযোগ করা যায়নি। ইন্টারনেট পরীক্ষা করুন।';
@@ -1221,6 +1399,26 @@ class AppLocalizationsBn extends AppLocalizations {
   @override
   String get appModeIncludeHint =>
       'শুধু নির্বাচিত অ্যাপগুলো VPN দিয়ে যায়; বাকিগুলো সরাসরি সংযোগ করে।';
+
+  @override
+  String get modeAllApps => 'সব অ্যাপ';
+
+  @override
+  String get modeAllAppsHint => 'সব অ্যাপ VPN দিয়ে যায়';
+
+  @override
+  String get modeSelectedApps => 'নির্বােবিত অ্যাপ';
+
+  @override
+  String get modeSelectedAppsHint => 'শুধু নির্বােবিত অ্যাপ';
+
+  @override
+  String selectedAppsCount(String count) {
+    return 'নির্বােবিত অ্যাপ  $count';
+  }
+
+  @override
+  String get allTrafficThroughVpn => 'ফোনের সব ট্রাফিক VPN দিয়ে যায়।';
 
   @override
   String fromRegionList(String region) {
@@ -1684,4 +1882,26 @@ class AppLocalizationsBn extends AppLocalizations {
   @override
   String get zedUpload => 'Upload';
 
+  @override
+  String get testRelay => 'রিলের অবস্থা পরীক্ষা';
+
+  @override
+  String get relayTestTitle => 'রিলের অবস্থা পরীক্ষা';
+
+  @override
+  String get relayTestHint =>
+      'শুধু রিলে পরীক্ষা করা হয়। Mozilla-তে কোনো অনুরোধ বা অ্যাকাউন্টের তথ্য পাঠানো হয় না।';
+
+  @override
+  String get relayTestPassed => 'রিলে প্রস্তুত';
+
+  @override
+  String get relayTestFailed => 'রিলের অবস্থা নিশ্চিত করা যায়নি';
+
+  @override
+  String get relayTestCopy => 'রিপোর্ট কপি করুন';
+
+  @override
+  String get relayTestInterrupted =>
+      'সম্পূর্ণ ফলাফল পাওয়ার আগে পরীক্ষা শেষ হয়েছে।';
 }

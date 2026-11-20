@@ -40,6 +40,17 @@ String formatRate(int bytesPerSecond) {
 /// left-to-right isolate).
 String ltr(String s) => '\u2066$s\u2069';
 
+/// Folds text for a search field: lower case, trimmed, and the letters a
+/// Persian keyboard and an Arabic one write differently made one, so a name
+/// written with either is found by the other. The zero-width non-joiner
+/// becomes a space, so a name joined with it is found by typing a space.
+String foldForSearch(String text) => text
+    .toLowerCase()
+    .trim()
+    .replaceAll('\u064A', '\u06CC')
+    .replaceAll('\u0643', '\u06A9')
+    .replaceAll('\u200C', ' ');
+
 String formatDuration(AppLocalizations l, Duration d) {
   if (d.isNegative) d = Duration.zero;
   if (d.inDays > 0) return l.durationDays(d.inDays, d.inHours % 24);

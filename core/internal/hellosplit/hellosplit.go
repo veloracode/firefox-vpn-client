@@ -23,20 +23,20 @@ import (
 // letter; FirstByte cuts the record after its first byte; Record makes two
 // records of the hello, cut after the name's first letter.
 const (
+	Auto      = "auto"
 	Off       = "off"
 	SNI       = "sni"
 	FirstByte = "first-byte"
 	Record    = "record"
 )
 
-// configured is network.hello_split; nil means Off.
+// configured is network.hello_split; nil means Auto.
 var configured atomic.Pointer[string]
 
-// Valid reports whether mode is a network.hello_split choice (empty means
-// Off).
+// Valid reports whether mode is a network.hello_split choice (empty means Auto).
 func Valid(mode string) bool {
 	switch mode {
-	case "", Off, SNI, FirstByte, Record:
+	case "", Auto, Off, SNI, FirstByte, Record:
 		return true
 	}
 	return false
@@ -45,28 +45,34 @@ func Valid(mode string) bool {
 // Set installs network.hello_split for the connections opened from now on.
 func Set(mode string) {
 	if mode == "" {
-		mode = Off
+		mode = Auto
 	}
 	configured.Store(&mode)
 }
 
 // current is the way a new connection sends its ClientHello.
-func current() string {
+// Mode returns the configured policy.
+func Mode() string {
 	if mode := configured.Load(); mode != nil {
 		return *mode
 	}
-	return Off
+	return Auto
 }
 
 // Wrap returns conn, a new connection about to start TLS, sending its
 // ClientHello in the way chosen. Anything that is not a ClientHello passes
 // untouched.
 func Wrap(conn net.Conn) net.Conn {
-	way := current()
-	if way == Off {
-		return conn
+	return WrapMode(conn, Mode())
+}
+
+// WrapMode applies one concrete fragmentation mode to a new connection.
+func WrapMode(conn net.Conn, mode string) net.Conn {
+	switch mode {
+	case FirstByte, SNI, Record:
+		return &splitConn{Conn: conn, way: mode}
 	}
-	return &splitConn{Conn: conn, way: way}
+	return conn
 }
 
 // splitConn splits the ClientHellos written to it.

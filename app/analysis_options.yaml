@@ -16,6 +16,8 @@ analyzer:
     - linux/**
     - windows/**
     - macos/**
+    # Flutter 3.50's gen-l10n still emits the deprecated SDK design delegates.
+    - lib/l10n/app_localizations.dart
 
 linter:
   # The lint rules applied to this project can be customized in the

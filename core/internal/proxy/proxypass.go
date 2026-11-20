@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/armanlife/firefox-vpn-client/core/internal/fxa"
@@ -39,8 +40,12 @@ func fetchProxyPassCtx(ctx context.Context, endpoint, accessToken string) (*guar
 	budgetCtx, cancelBudget := context.WithTimeout(ctx, guardianRetryBudget)
 	defer cancelBudget()
 	delay := GuardianRetryInitialDelay
+	attemptTimeout := APIRequestTimeout
+	if endpoint == "" || strings.TrimRight(endpoint, "/") == guardian.DefaultEndpoint {
+		attemptTimeout = guardian.TokenRequestTimeout
+	}
 	for attempt := 1; ; attempt++ {
-		attemptCtx, cancel := context.WithTimeout(budgetCtx, APIRequestTimeout)
+		attemptCtx, cancel := context.WithTimeout(budgetCtx, attemptTimeout)
 		pass, err := guardian.FetchProxyPass(attemptCtx, endpoint, accessToken)
 		cancel()
 		if err == nil || !guardian.IsTransient(err) || ctx.Err() != nil {
@@ -69,7 +74,7 @@ func fetchProxyPassCtx(ctx context.Context, endpoint, accessToken string) (*guar
 func GuardianFailureHint(err error) string {
 	switch {
 	case errors.Is(err, guardian.ErrRegionUnavailable):
-		return "Guardian refuses requests from this region (HTTP 451); set network.api_relay to your own relay in a supported region (scripts/relay)"
+		return "Guardian still refuses requests from this region (HTTP 451) after the built-in direct retry; as a fallback, set network.api_relay to your own relay in a supported region (docs/relay)"
 	case errors.Is(err, fxa.ErrReauthRequired):
 		return "the saved Firefox Account credential was rejected; sign the account in again from the dashboard"
 	case errors.Is(err, guardian.ErrQuotaExceeded):

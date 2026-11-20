@@ -591,6 +591,8 @@ func (c *Controller) renewLocked(ctx context.Context) error {
 // a Guardian rejection is recovered from by refreshing the OAuth token
 // (HTTP 401) or activating the account (HTTP 403).
 func (c *Controller) acquireUsablePass(ctx context.Context) (*runtimeAuth, *guardian.ProxyPassInfo, error) {
+	ctx, closeTunnel := c.withRenewalTunnel(ctx)
+	defer closeTunnel()
 	if c.accounts != nil {
 		auth, pass, err := c.accounts.AcquirePass(ctx, c.guardian)
 		if err != nil {
@@ -682,6 +684,8 @@ func (c *Controller) checkQuota() {
 	c.trafficSinceCheck.Store(0)
 	ctx, cancel := context.WithTimeout(context.Background(), PassRenewTimeout)
 	defer cancel()
+	ctx, closeTunnel := c.withRenewalTunnel(ctx)
+	defer closeTunnel()
 
 	auth, err := c.ensureOAuthToken(ctx)
 	if err != nil {
