@@ -367,7 +367,8 @@ class _DockItem extends StatelessWidget {
 /// A press-shrink observed through a [Listener]: pointer events are
 /// watched, never claimed, so an inner InkWell or button still gets
 /// its tap exactly once (a nested GestureDetector would steal the
-/// arena and swallow it).
+/// arena and swallow it). Tracks active pointer ids so lifting one of
+/// several fingers does not clear the shrink while another remains down.
 class _PressScale extends StatefulWidget {
   const _PressScale({required this.scale, required this.child});
 
@@ -379,13 +380,35 @@ class _PressScale extends StatefulWidget {
 }
 
 class _PressScaleState extends State<_PressScale> {
-  bool _down = false;
+  final Set<int> _activePointers = <int>{};
+
+  bool get _down => _activePointers.isNotEmpty;
+
+  void _handlePointerDown(PointerDownEvent event) {
+    if (!mounted) return;
+    final wasDown = _down;
+    _activePointers.add(event.pointer);
+    if (!wasDown) setState(() {});
+  }
+
+  void _handlePointerUp(PointerUpEvent event) =>
+      _releasePointer(event.pointer);
+
+  void _handlePointerCancel(PointerCancelEvent event) =>
+      _releasePointer(event.pointer);
+
+  void _releasePointer(int pointer) {
+    if (!mounted) return;
+    final wasDown = _down;
+    _activePointers.remove(pointer);
+    if (wasDown != _down) setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) => Listener(
-    onPointerDown: (_) => setState(() => _down = true),
-    onPointerUp: (_) => setState(() => _down = false),
-    onPointerCancel: (_) => setState(() => _down = false),
+    onPointerDown: _handlePointerDown,
+    onPointerUp: _handlePointerUp,
+    onPointerCancel: _handlePointerCancel,
     child: AnimatedScale(
       scale: _down ? widget.scale : 1,
       duration: const Duration(milliseconds: 180),

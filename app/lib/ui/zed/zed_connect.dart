@@ -49,6 +49,17 @@ Color _stateColor(BuildContext context, ZedConnectState s) {
   return scheme.onSurfaceVariant;
 }
 
+/// The foreground that belongs ON [_stateColor]'s background for the
+/// same state — pairing onPrimary with the busy (tertiary) or off
+/// (onSurfaceVariant) backgrounds mismatches the colour roles and can
+/// fail contrast (e.g. white on the Bento lime).
+Color _onStateColor(BuildContext context, ZedConnectState s) {
+  final scheme = Theme.of(context).colorScheme;
+  if (s.live) return scheme.onPrimary;
+  if (s.busy) return scheme.onTertiary;
+  return scheme.onSurface;
+}
+
 /// The wait's progress mark, shown by every connect control while the
 /// state is busy: a spinner, or — when the system asks for reduced
 /// motion — the same arc standing still (no animation runs at all).
@@ -174,19 +185,24 @@ class _SlideConnect extends StatefulWidget {
 }
 
 class _SlideConnectState extends State<_SlideConnect> {
-  double _drag = 0;
+  /// The drag fraction while a drag is in flight; null at rest. (A
+  /// plain 0 cannot mean "at rest": 0 is also the knob's left end, and
+  /// conflating the two snapped the knob back mid-drag.)
+  double? _drag;
 
   @override
   Widget build(BuildContext context) {
     final s = widget.state;
     final color = _stateColor(context, s);
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    final reduced = MediaQuery.disableAnimationsOf(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
         const knob = 56.0;
         final travel = (width - knob - 8).clamp(0, double.infinity);
         final rest = s.on ? 1.0 : 0.0;
-        final frac = _drag == 0 ? rest : _drag;
+        final frac = _drag ?? rest;
         return GestureDetector(
           // A plain tap toggles too — the power has always answered a
           // tap; the slide is the deliberate gesture on top of it.
@@ -194,15 +210,26 @@ class _SlideConnectState extends State<_SlideConnect> {
           onHorizontalDragUpdate: (d) {
             // travel is 0 when the control is narrower than the knob;
             // dividing by it would poison the drag fraction with NaN.
+            // In RTL the track is mirrored, so the physical delta's
+            // sign flips with it. The field is the source of truth —
+            // the build's `frac` can lag a frame behind the gesture.
             if (travel > 0) {
-              setState(() => _drag = (frac + d.delta.dx / travel).clamp(0, 1));
+              final dx = rtl ? -d.delta.dx : d.delta.dx;
+              setState(
+                () => _drag = ((_drag ?? rest) + dx / travel).clamp(0, 1),
+              );
             }
           },
           onHorizontalDragEnd: (_) {
-            final target = s.on ? _drag < 0.28 : _drag > 0.72;
-            if (target != s.on) s.onToggle();
-            setState(() => _drag = 0);
+            // The knob's landing zone decides: from off, only a drag
+            // past 0.72 connects; from on, only a drag back under
+            // 0.28 disconnects — anything less springs back.
+            final fracNow = _drag ?? rest;
+            final endOn = s.on ? fracNow >= 0.28 : fracNow > 0.72;
+            if (endOn != s.on) s.onToggle();
+            setState(() => _drag = null);
           },
+          onHorizontalDragCancel: () => setState(() => _drag = null),
           child: Container(
             height: 64,
             decoration: BoxDecoration(
@@ -222,10 +249,12 @@ class _SlideConnectState extends State<_SlideConnect> {
                     ),
                   ),
                 ),
-                AnimatedPositioned(
-                  duration: const Duration(milliseconds: 220),
+                AnimatedPositionedDirectional(
+                  duration: reduced
+                      ? Duration.zero
+                      : const Duration(milliseconds: 220),
                   curve: Curves.easeOut,
-                  left: 4 + travel * frac,
+                  start: 4 + travel * frac,
                   top: 4,
                   child: Container(
                     width: knob,
@@ -235,11 +264,7 @@ class _SlideConnectState extends State<_SlideConnect> {
                       shape: BoxShape.circle,
                     ),
                     child: Center(
-                      child: _busyMark(
-                        context,
-                        s,
-                        Theme.of(context).colorScheme.onPrimary,
-                      ),
+                      child: _busyMark(context, s, _onStateColor(context, s)),
                     ),
                   ),
                 ),
@@ -271,15 +296,12 @@ class _ButtonConnect extends StatelessWidget {
         onPressed: s.onToggle,
         style: FilledButton.styleFrom(
           backgroundColor: color,
+          foregroundColor: _onStateColor(context, s),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(big ? 32 : 24),
           ),
         ),
-        icon: _busyMark(
-          context,
-          s,
-          Theme.of(context).colorScheme.onPrimary,
-        ),
+        icon: _busyMark(context, s, _onStateColor(context, s)),
         label: Text(
           s.label,
           style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
@@ -300,12 +322,15 @@ class _MorphConnect extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = state;
     final color = _stateColor(context, s);
+    final onColor = _onStateColor(context, s);
     final radius = s.live ? 20.0 : (s.busy ? 40.0 : 32.0);
     final width = s.busy ? 80.0 : 220.0;
     return GestureDetector(
       onTap: s.onToggle,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 340),
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(milliseconds: 340),
         curve: Curves.easeInOutCubic,
         width: width,
         height: 64,
@@ -315,18 +340,11 @@ class _MorphConnect extends StatelessWidget {
         ),
         child: Center(
           child: s.busy
-              ? const SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    color: Colors.white,
-                  ),
-                )
+              ? _busyMark(context, s, onColor)
               : Text(
                   s.label,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: onColor,
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
                   ),
@@ -361,7 +379,9 @@ class _RailConnect extends StatelessWidget {
         child: Stack(
           children: [
             AnimatedPositioned(
-              duration: const Duration(milliseconds: 280),
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 280),
               curve: Curves.easeOutBack,
               left: 4,
               right: 4,
@@ -373,9 +393,9 @@ class _RailConnect extends StatelessWidget {
                   color: color,
                   borderRadius: BorderRadius.circular(28),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.power_settings_new_rounded,
-                  color: Colors.white,
+                  color: _onStateColor(context, s),
                 ),
               ),
             ),
@@ -704,7 +724,7 @@ class _GlassZConnect extends StatelessWidget {
         ),
         child: Center(
           child: s.busy
-              ? CircularProgressIndicator(color: color)
+              ? _BusyMark(color: color)
               : Text(
                   'Z',
                   style: TextStyle(

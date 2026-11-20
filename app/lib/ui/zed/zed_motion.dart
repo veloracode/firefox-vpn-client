@@ -11,15 +11,17 @@ import 'zed_prefs.dart';
 /// 120/90 ms fade.
 
 abstract final class ZedMotion {
-  /// Wraps a page change between [forward] direction signs: the sign of
-  /// (new index − old index) in tab order, flipped for RTL by the
-  /// caller where the original flips it.
+  /// Wraps a page change. [direction] is the sign of (new index − old
+  /// index) in tab order, already flipped for RTL by the caller:
+  /// horizontal transitions enter from the side the destination sits
+  /// on; scale/vertical styles are direction-neutral.
   static Widget transition({
     required ZedTransitionStyle style,
     required bool reduceMotion,
     required Animation<double> animation,
     required Animation<double> secondaryAnimation,
     required Widget child,
+    double direction = 1,
   }) {
     if (reduceMotion) {
       return FadeTransition(opacity: animation, child: child);
@@ -31,7 +33,7 @@ abstract final class ZedMotion {
         // 320 ms at a third of the width (duration lives on the switcher).
         return SlideTransition(
           position: Tween<Offset>(
-            begin: const Offset(1 / 3, 0),
+            begin: Offset(direction / 3, 0),
             end: Offset.zero,
           ).animate(animation),
           child: FadeTransition(opacity: animation, child: child),
@@ -41,7 +43,7 @@ abstract final class ZedMotion {
         // approximated on the single switcher animation.
         return SlideTransition(
           position: Tween<Offset>(
-            begin: const Offset(1, 0),
+            begin: Offset(direction, 0),
             end: Offset.zero,
           ).animate(animation),
           child: child,
@@ -73,7 +75,7 @@ abstract final class ZedMotion {
           child: child,
           builder: (context, child) {
             final t = animation.value;
-            final angle = (1 - t) * math.pi * (78 / 180);
+            final angle = (1 - t) * math.pi * (78 / 180) * direction;
             return Transform(
               transform: Matrix4.identity()
                 ..setEntry(3, 2, 0.0018)
@@ -127,10 +129,16 @@ class ZedPageSwitcher extends StatelessWidget {
     required this.prefs,
     required this.reduceMotion,
     required this.child,
+    this.direction = 1,
   });
 
   final ZedPrefs prefs;
   final bool reduceMotion;
+
+  /// The sign of the tab-order delta for this change (already flipped
+  /// for RTL by the shell): horizontal transitions enter from the
+  /// destination's side.
+  final double direction;
 
   /// The current page, keyed by its destination so the switcher can
   /// tell pages apart.
@@ -143,13 +151,18 @@ class ZedPageSwitcher extends StatelessWidget {
       prefs.transitionStyle,
       reduceMotion,
     ),
-    switchInCurve: ZedMotion.curve(prefs.transitionStyle),
+    // Reduced motion is a plain fade: an overshooting curve (Elastic)
+    // must not drive it, or the fade flashes instead of fading.
+    switchInCurve: reduceMotion
+        ? Curves.easeOut
+        : ZedMotion.curve(prefs.transitionStyle),
     switchOutCurve: Curves.easeIn,
     transitionBuilder: (child, animation) => ZedMotion.transition(
       style: prefs.transitionStyle,
       reduceMotion: reduceMotion,
       animation: animation,
       secondaryAnimation: const AlwaysStoppedAnimation(0),
+      direction: direction,
       child: child,
     ),
     child: child,

@@ -47,6 +47,11 @@ class MobileShell extends StatefulWidget {
 class _MobileShellState extends State<MobileShell> {
   int _tab = 0;
 
+  /// The last tab the switcher showed and the direction of the most
+  /// recent change (tab-order sign, flipped for RTL).
+  int? _lastTab;
+  double _tabDirection = 1;
+
   @override
   void initState() {
     super.initState();
@@ -154,12 +159,19 @@ class _MobileShellState extends State<MobileShell> {
     // last — the NavTabs rule); the rest opens as pushed pages with a
     // back bar, as phone apps have. The dock is the Zed kit's.
     final tab = _tab.clamp(0, 1);
+    if (_lastTab != tab) {
+      final delta = tab - (_lastTab ?? tab);
+      final rtl = Directionality.of(context) == TextDirection.rtl;
+      _tabDirection = (delta < 0 ? -1.0 : 1.0) * (rtl ? -1.0 : 1.0);
+      _lastTab = tab;
+    }
     final page =
         widget.noCore ??
         ZedPageSwitcher(
           prefs: settings.zed,
           reduceMotion: !settings.animationsEnabled ||
           MediaQuery.disableAnimationsOf(context),
+          direction: _tabDirection,
           child: KeyedSubtree(
             key: ValueKey(tab),
             child: tab == 0

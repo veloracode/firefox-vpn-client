@@ -101,6 +101,12 @@ enum _Page { overview, servers, accounts, settings, logs, about }
 class _ShellState extends State<Shell> {
   _Page _page = _Page.overview;
 
+  /// The last page the switcher showed and the direction of the most
+  /// recent change (tab-order sign, flipped for RTL) — the motion
+  /// system enters a page from the side its destination sits on.
+  _Page? _lastPage;
+  double _pageDirection = 1;
+
   /// The settings section the home page opened (Connection), until another
   /// page is chosen.
   SettingsSection? _settingsOpening;
@@ -252,10 +258,17 @@ class _ShellState extends State<Shell> {
       // OUTSIDE the transition (the MainScaffold rule). Glass paints
       // its wallpaper behind the page area here — the wallpaper belongs
       // to the scaffold, never to a page.
+      if (_lastPage != _page) {
+        final delta = _page.index - (_lastPage ?? _page).index;
+        final rtl = Directionality.of(context) == TextDirection.rtl;
+        _pageDirection = (delta < 0 ? -1.0 : 1.0) * (rtl ? -1.0 : 1.0);
+        _lastPage = _page;
+      }
       final switched = ZedPageSwitcher(
         prefs: widget.settings.zed,
         reduceMotion: !widget.settings.animationsEnabled ||
               MediaQuery.disableAnimationsOf(context),
+        direction: _pageDirection,
         child: KeyedSubtree(key: ValueKey(page), child: content),
       );
       final pageArea = widget.settings.zed.design == ZedDesign.glass
