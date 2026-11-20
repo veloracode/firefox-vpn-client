@@ -274,7 +274,7 @@ void main() {
         () => taps++,
       );
       final gesture = await tester.startGesture(
-        tester.getCenter(find.byType(GestureDetector).first),
+        tester.getCenter(find.byType(ZedConnectControl)),
       );
       await tester.pump(const Duration(milliseconds: 300));
       expect(taps, 0, reason: 'a short press must not toggle');

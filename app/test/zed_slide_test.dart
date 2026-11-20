@@ -169,4 +169,48 @@ void main() {
       },
     );
   });
+
+  group('Bento Hold with its tooltip', () {
+    // The homes always pass a tooltip, so ZedConnectControl wraps the
+    // control in a Tooltip. The Tooltip's long-press recognizer must
+    // not be able to cancel the 650 ms hold (it fires at ~500 ms):
+    // the hold's press tracking lives outside the gesture arena.
+    testWidgets('the hold completes even though a tooltip wraps it', (
+      tester,
+    ) async {
+      var taps = 0;
+      const prefs = ZedPrefs(bentoConnect: BentoConnectStyle.hold);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ZedTheme.build(Brightness.dark, const Locale('en'), prefs),
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 320,
+                child: ZedConnectControl(
+                  prefs: prefs,
+                  state: ZedConnectState(
+                    on: false,
+                    busy: false,
+                    live: false,
+                    label: 'Off',
+                    tooltip: 'Tap to connect',
+                    onToggle: () => taps++,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byType(ZedConnectControl)),
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(taps, 0, reason: 'a short press must not toggle');
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(taps, 1, reason: 'holding past 650 ms toggles, tooltip or not');
+      await gesture.up();
+    });
+  });
 }

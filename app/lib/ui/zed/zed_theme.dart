@@ -529,7 +529,12 @@ abstract final class ZedTheme {
         elevation: 0,
         color: surface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(radius),
+          // Bento cards take the design's own module shape (the Leaf
+          // asymmetry included); the other designs use their uniform
+          // module radius.
+          borderRadius: prefs.design == ZedDesign.bento
+              ? bentoModuleRadius(prefs.bentoCorner)
+              : BorderRadius.circular(radius),
           side: BorderSide(
             color: scheme.outlineVariant.withValues(alpha: 0.4),
           ),

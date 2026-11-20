@@ -250,7 +250,11 @@ class _SlideConnectState extends State<_SlideConnect> {
                   ),
                 ),
                 AnimatedPositionedDirectional(
-                  duration: reduced
+                  // While a drag is in flight the knob must track the
+                  // finger 1:1 — animating each update makes it lag
+                  // and undershoot; the 220 ms glide is for the
+                  // release snap and state changes at rest.
+                  duration: reduced || _drag != null
                       ? Duration.zero
                       : const Duration(milliseconds: 220),
                   curve: Curves.easeOut,
@@ -407,7 +411,9 @@ class _RailConnect extends StatelessWidget {
 }
 
 /// Hold: press and hold 650 ms (§25); the ring shows the hold filling,
-/// and releasing early cancels.
+/// and releasing early cancels. A Listener is used instead of a
+/// GestureDetector so press tracking stays outside the gesture arena and
+/// cannot be canceled by the wrapping Tooltip's long-press recognizer.
 class _HoldConnect extends StatefulWidget {
   const _HoldConnect({required this.state});
 
@@ -449,10 +455,11 @@ class _HoldConnectState extends State<_HoldConnect>
   Widget build(BuildContext context) {
     final s = widget.state;
     final color = _stateColor(context, s);
-    return GestureDetector(
-      onTapDown: (_) => _start(),
-      onTapUp: (_) => _cancel(),
-      onTapCancel: _cancel,
+    return Listener(
+      behavior: HitTestBehavior.opaque,
+      onPointerDown: (_) => _start(),
+      onPointerUp: (_) => _cancel(),
+      onPointerCancel: (_) => _cancel(),
       child: SizedBox(
         width: 120,
         height: 120,
@@ -674,23 +681,28 @@ class _SwitchConnect extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = state;
+    // While the state is busy the switch itself cannot show it, so
+    // the wait's mark rides beside the label.
+    final row = <Widget>[
+      Text(s.label, style: const TextStyle(fontWeight: FontWeight.w700)),
+      if (s.busy) ...[
+        const SizedBox(width: 10),
+        _busyMark(context, s, _stateColor(context, s)),
+      ],
+      const SizedBox(width: 16),
+    ];
     if (prefs != null) {
       return Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(s.label, style: const TextStyle(fontWeight: FontWeight.w700)),
-          const SizedBox(width: 16),
+          ...row,
           GlassSwitch(value: s.on, onChanged: (_) => s.onToggle(), prefs: prefs!),
         ],
       );
     }
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(s.label, style: const TextStyle(fontWeight: FontWeight.w700)),
-        const SizedBox(width: 16),
-        Switch(value: s.on, onChanged: (_) => s.onToggle()),
-      ],
+      children: [...row, Switch(value: s.on, onChanged: (_) => s.onToggle())],
     );
   }
 }
