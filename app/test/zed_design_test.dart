@@ -17,7 +17,72 @@ void main() {
       expect(p.bentoPalette, BentoPalette.zedLime);
       expect(p.transitionStyle, ZedTransitionStyle.push);
       expect(p.glassMaterial, GlassMaterial.clear);
-      expect(p.navStyle, NavBarStyle.floatingPill);
+      // The documented defaults (extract §0/§3): ExpressivePill nav,
+      // Leaf corners — both corrected in round 2 (P1).
+      expect(p.navStyle, NavBarStyle.expressivePill);
+      expect(p.bentoCorner, BentoCorner.leaf);
+      // The documented GlassPrefs defaults: lists and shrink on,
+      // motion highlights OFF (opt-in).
+      expect(p.glassLists, isTrue);
+      expect(p.glassShrinkBar, isTrue);
+      expect(p.glassMotionHighlights, isFalse);
+    });
+
+    test('JSON round-trips EVERY field, each set off its default', () {
+      // Every field carries a value that differs from both the Dart
+      // default and the fromJson fallback, so a dropped or misnamed
+      // JSON key anywhere fails this test (round-2 review, T4).
+      const p = ZedPrefs(
+        design: ZedDesign.glass,
+        bentoPalette: BentoPalette.berry,
+        bentoCorner: BentoCorner.leaf,
+        bentoConnect: BentoConnectStyle.tile,
+        bentoDockLabels: BentoDockLabels.never,
+        bentoAmoled: true,
+        glassMaterial: GlassMaterial.tinted,
+        glassWallpaper: GlassWallpaper.graphite,
+        glassTint: 11,
+        glassConnect: GlassConnectStyle.slider,
+        glassLists: false,
+        glassShrinkBar: false,
+        glassMotionHighlights: true,
+        reduceTransparency: true,
+        glassShowSpeed: false,
+        glassShowTimer: false,
+        pixelAccent: 9,
+        pixelConnect: PixelConnectStyle.ring,
+        pixelAmoled: true,
+        oldConnect: PixelConnectStyle.bar,
+        oldAmoled: true,
+        navStyle: NavBarStyle.minimal,
+        transitionStyle: ZedTransitionStyle.flip,
+        profile: ZedThemeProfile.clay,
+      );
+      final b = ZedPrefs.fromJson(p.toJson());
+      expect(b.design, p.design);
+      expect(b.bentoPalette, p.bentoPalette);
+      expect(b.bentoCorner, p.bentoCorner);
+      expect(b.bentoConnect, p.bentoConnect);
+      expect(b.bentoDockLabels, p.bentoDockLabels);
+      expect(b.bentoAmoled, p.bentoAmoled);
+      expect(b.glassMaterial, p.glassMaterial);
+      expect(b.glassWallpaper, p.glassWallpaper);
+      expect(b.glassTint, p.glassTint);
+      expect(b.glassConnect, p.glassConnect);
+      expect(b.glassLists, p.glassLists);
+      expect(b.glassShrinkBar, p.glassShrinkBar);
+      expect(b.glassMotionHighlights, p.glassMotionHighlights);
+      expect(b.reduceTransparency, p.reduceTransparency);
+      expect(b.glassShowSpeed, p.glassShowSpeed);
+      expect(b.glassShowTimer, p.glassShowTimer);
+      expect(b.pixelAccent, p.pixelAccent);
+      expect(b.pixelConnect, p.pixelConnect);
+      expect(b.pixelAmoled, p.pixelAmoled);
+      expect(b.oldConnect, p.oldConnect);
+      expect(b.oldAmoled, p.oldAmoled);
+      expect(b.navStyle, p.navStyle);
+      expect(b.transitionStyle, p.transitionStyle);
+      expect(b.profile, p.profile);
     });
 
     test('JSON round-trips every block', () {
@@ -80,6 +145,40 @@ void main() {
         UiDesign.pixel,
       );
       expect((await loadWith({'ui_design': 'old'})).uiDesign, UiDesign.old);
+    });
+
+    test('migration sets the field the app renders from (zed.design)',
+        () async {
+      // The theme, the home switch and both shells all read
+      // settings.zed.design — the legacy branch must set THAT, not
+      // just the uiDesign mirror (round-2 review, T3).
+      expect(
+        (await loadWith({'ui_design': 'portal'})).zed.design,
+        ZedDesign.glass,
+      );
+      expect(
+        (await loadWith({'ui_design': 'pixel'})).zed.design,
+        ZedDesign.pixel,
+      );
+      expect(
+        (await loadWith({'ui_design': 'nonsense'})).zed.design,
+        ZedDesign.bento,
+      );
+    });
+
+    test('a conflicting stored zed block beats ui_design', () async {
+      final s = await loadWith({
+        'ui_design': 'pixel',
+        'zed': const ZedPrefs(design: ZedDesign.glass).toJson(),
+      });
+      expect(s.zed.design, ZedDesign.glass);
+      expect(s.uiDesign, UiDesign.glass);
+    });
+
+    test('a malformed zed value degrades to defaults, no crash', () async {
+      final s = await loadWith({'zed': 'junk'});
+      expect(s.zed.design, ZedDesign.bento);
+      expect(s.uiDesign, UiDesign.bento);
     });
 
     test('a stored zed block wins and round-trips through update', () async {
@@ -259,7 +358,7 @@ void main() {
     ) async {
       var taps = 0;
       await pump(tester, const ZedPrefs(), () => taps++);
-      await tester.drag(find.byType(GestureDetector).first, const Offset(300, 0));
+      await tester.drag(find.byType(ZedConnectControl), const Offset(300, 0));
       await tester.pumpAndSettle();
       expect(taps, 1);
     });

@@ -135,6 +135,15 @@ class ZedConnectControl extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final control = _control(context);
+    // Every control may carry the tooltip: the drag-primary controls
+    // (Slide/Slider) and the Hold track their pointers through a
+    // Listener, OUTSIDE the gesture arena, so the Tooltip's
+    // long-press recognizer can never cancel them (a press that
+    // pauses before sliding used to lose the arena to the tooltip
+    // and the drag silently died — round-2 regression, proven by
+    // zed_tooltip_slide_test.dart). Tap-primary controls follow the
+    // platform's accepted behaviour: press-and-hold shows the hint
+    // instead of activating.
     return state.tooltip.isEmpty
         ? control
         : Tooltip(message: state.tooltip, child: control);
@@ -190,6 +199,84 @@ class _SlideConnectState extends State<_SlideConnect> {
   /// conflating the two snapped the knob back mid-drag.)
   double? _drag;
 
+  /// Pointer tracking, deliberately OUTSIDE the gesture arena (a
+  /// Listener, like the Hold control): the wrapping Tooltip's
+  /// long-press recognizer wins the arena at ~500 ms, and a
+  /// GestureDetector drag that pauses before sliding was cancelled
+  /// by it — the slide silently did nothing. Pointer events reach a
+  /// Listener regardless of who wins the arena.
+  int? _pointer;
+  double _downX = 0;
+
+  /// The pointer's travel past the touch slop at the last move event
+  /// (the drag's effective distance is measured from beyond the slop,
+  /// exactly as the arena recognizer accounted it).
+  double _lastBeyond = 0;
+  DateTime? _downAt;
+
+  void _slideDown(PointerDownEvent e) {
+    if (_pointer != null) return;
+    _pointer = e.pointer;
+    _downX = e.position.dx;
+    _lastBeyond = 0;
+    _downAt = DateTime.now();
+  }
+
+  void _slideMove(PointerMoveEvent e, double travel, bool rtl) {
+    if (e.pointer != _pointer) return;
+    // The drag starts only past the touch slop, mirroring the arena
+    // recognizer this replaces: sub-slop movement is still a tap,
+    // and the slop itself never counts as knob travel.
+    final total = e.position.dx - _downX;
+    if (_drag == null && total.abs() <= 18) return;
+    final beyond = total - 18 * total.sign;
+    final dBeyond = beyond - _lastBeyond;
+    _lastBeyond = beyond;
+    // travel is 0 when the control is narrower than the knob;
+    // dividing by it would poison the drag fraction with NaN. In RTL
+    // the track is mirrored, so the physical delta's sign flips.
+    if (travel <= 0 || dBeyond == 0) return;
+    final rest = widget.state.on ? 1.0 : 0.0;
+    final dx = rtl ? -dBeyond : dBeyond;
+    setState(() => _drag = ((_drag ?? rest) + dx / travel).clamp(0, 1));
+  }
+
+  void _slideUp(PointerUpEvent e) {
+    if (e.pointer != _pointer) return;
+    _pointer = null;
+    final s = widget.state;
+    final drag = _drag;
+    if (drag == null) {
+      // No drag happened: a plain tap — the power has always
+      // answered a tap. But a press held past the long-press
+      // deadline was the user reading the tooltip (which the arena
+      // would have awarded the press to), not a tap: don't toggle.
+      final held = _downAt == null
+          ? Duration.zero
+          : DateTime.now().difference(_downAt!);
+      if (held < const Duration(milliseconds: 500)) s.onToggle();
+      return;
+    }
+    // The knob's landing zone decides: from off, only a drag past
+    // the connect threshold connects; from on, only a drag back
+    // under the stay threshold disconnects — anything less springs
+    // back. The thresholds are per design: Bento's slide is
+    // 0.72/0.28 (§25); the Glass slider's own spec is 0.70/0.30
+    // (extract, GlassSlideControl) — the shared control used to run
+    // Bento's numbers for both (round-2 fidelity fix).
+    final endOn = s.on
+        ? drag >= (widget.glass ? 0.30 : 0.28)
+        : drag > (widget.glass ? 0.70 : 0.72);
+    if (endOn != s.on) s.onToggle();
+    setState(() => _drag = null);
+  }
+
+  void _slideCancel(PointerCancelEvent e) {
+    if (e.pointer != _pointer) return;
+    _pointer = null;
+    if (_drag != null) setState(() => _drag = null);
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = widget.state;
@@ -200,36 +287,14 @@ class _SlideConnectState extends State<_SlideConnect> {
       builder: (context, constraints) {
         final width = constraints.maxWidth;
         const knob = 56.0;
-        final travel = (width - knob - 8).clamp(0, double.infinity);
+        final travel = (width - knob - 8).clamp(0.0, double.infinity).toDouble();
         final rest = s.on ? 1.0 : 0.0;
         final frac = _drag ?? rest;
-        return GestureDetector(
-          // A plain tap toggles too — the power has always answered a
-          // tap; the slide is the deliberate gesture on top of it.
-          onTap: s.onToggle,
-          onHorizontalDragUpdate: (d) {
-            // travel is 0 when the control is narrower than the knob;
-            // dividing by it would poison the drag fraction with NaN.
-            // In RTL the track is mirrored, so the physical delta's
-            // sign flips with it. The field is the source of truth —
-            // the build's `frac` can lag a frame behind the gesture.
-            if (travel > 0) {
-              final dx = rtl ? -d.delta.dx : d.delta.dx;
-              setState(
-                () => _drag = ((_drag ?? rest) + dx / travel).clamp(0, 1),
-              );
-            }
-          },
-          onHorizontalDragEnd: (_) {
-            // The knob's landing zone decides: from off, only a drag
-            // past 0.72 connects; from on, only a drag back under
-            // 0.28 disconnects — anything less springs back.
-            final fracNow = _drag ?? rest;
-            final endOn = s.on ? fracNow >= 0.28 : fracNow > 0.72;
-            if (endOn != s.on) s.onToggle();
-            setState(() => _drag = null);
-          },
-          onHorizontalDragCancel: () => setState(() => _drag = null),
+        return Listener(
+          onPointerDown: _slideDown,
+          onPointerMove: (e) => _slideMove(e, travel, rtl),
+          onPointerUp: _slideUp,
+          onPointerCancel: _slideCancel,
           child: Container(
             height: 64,
             decoration: BoxDecoration(

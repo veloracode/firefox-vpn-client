@@ -94,7 +94,9 @@ class ZedPrefs {
   const ZedPrefs({
     this.design = ZedDesign.bento,
     this.bentoPalette = BentoPalette.zedLime,
-    this.bentoCorner = BentoCorner.round,
+    // The documented BentoCorners default is Leaf (extract §0) —
+    // the port originally defaulted to Round; corrected in round 2.
+    this.bentoCorner = BentoCorner.leaf,
     this.bentoConnect = BentoConnectStyle.slide,
     this.bentoDockLabels = BentoDockLabels.always,
     this.bentoAmoled = false,
@@ -104,7 +106,10 @@ class ZedPrefs {
     this.glassConnect = GlassConnectStyle.z,
     this.glassLists = true,
     this.glassShrinkBar = true,
-    this.glassMotionHighlights = true,
+    // The reference default is OFF (an opt-in flourish); the port
+    // originally defaulted this on — corrected in the round-2 review
+    // to match the documented GlassPrefs defaults.
+    this.glassMotionHighlights = false,
     this.reduceTransparency = false,
     this.glassShowSpeed = true,
     this.glassShowTimer = true,
@@ -113,7 +118,9 @@ class ZedPrefs {
     this.pixelAmoled = false,
     this.oldConnect = PixelConnectStyle.pill,
     this.oldAmoled = false,
-    this.navStyle = NavBarStyle.floatingPill,
+    // The documented AppSettings nav-style default is ExpressivePill
+    // (extract §0/§3) — corrected in round 2 (was FloatingPill).
+    this.navStyle = NavBarStyle.expressivePill,
     this.transitionStyle = ZedTransitionStyle.push,
     this.profile = ZedThemeProfile.none,
   });
@@ -267,7 +274,7 @@ class ZedPrefs {
         bento['palette'],
         BentoPalette.zedLime,
       ),
-      bentoCorner: _enum(BentoCorner.values, bento['corner'], BentoCorner.round),
+      bentoCorner: _enum(BentoCorner.values, bento['corner'], BentoCorner.leaf),
       bentoConnect: _enum(
         BentoConnectStyle.values,
         bento['connect'],
@@ -297,7 +304,7 @@ class ZedPrefs {
       ),
       glassLists: glass['lists'] != false,
       glassShrinkBar: glass['shrink_bar'] != false,
-      glassMotionHighlights: glass['motion_highlights'] != false,
+      glassMotionHighlights: glass['motion_highlights'] == true,
       reduceTransparency: glass['reduce_transparency'] == true,
       glassShowSpeed: glass['show_speed'] != false,
       glassShowTimer: glass['show_timer'] != false,
@@ -314,7 +321,7 @@ class ZedPrefs {
         PixelConnectStyle.pill,
       ),
       oldAmoled: old['amoled'] == true,
-      navStyle: _enum(NavBarStyle.values, j['nav_style'], NavBarStyle.floatingPill),
+      navStyle: _enum(NavBarStyle.values, j['nav_style'], NavBarStyle.expressivePill),
       transitionStyle: _enum(
         ZedTransitionStyle.values,
         j['transition'],

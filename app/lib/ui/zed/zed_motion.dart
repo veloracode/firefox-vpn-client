@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
@@ -49,14 +50,48 @@ abstract final class ZedMotion {
           child: child,
         );
       case ZedTransitionStyle.depth:
-        return ScaleTransition(
-          scale: Tween<double>(begin: 0.88, end: 1).animate(animation),
-          child: FadeTransition(opacity: animation, child: child),
+        // Spec (§6.1): enter scales 0.88 → 1, but the EXIT grows to
+        // 1.12 — the switcher runs this same builder in reverse for
+        // the outgoing page, so the tween is chosen by the
+        // animation's direction (round-2 finding M3: the exit used
+        // to shrink back to 0.88).
+        return AnimatedBuilder(
+          animation: animation,
+          child: child,
+          builder: (context, child) {
+            final v = animation.value;
+            final exiting =
+                animation.status == AnimationStatus.reverse ||
+                animation.status == AnimationStatus.dismissed;
+            final scale = exiting ? 1 + (1 - v) * 0.12 : 0.88 + v * 0.12;
+            return Transform.scale(
+              scale: scale,
+              child: FadeTransition(opacity: animation, child: child),
+            );
+          },
         );
       case ZedTransitionStyle.elastic:
-        return ScaleTransition(
-          scale: animation,
-          child: FadeTransition(opacity: animation, child: child),
+        // Spec (§6.1): enter slides from height/8 and scales from
+        // 0.9 on a bouncy spring, with a plain fade. The fade must
+        // ride the RAW progress: an overshooting curve on opacity
+        // exceeds 1.0 mid-flight and asserts in debug builds
+        // (round-2 finding M1 — the old code also scaled from 0).
+        // Scale and slide take the spring curve; the exit is the
+        // same builder reversed (the spec's scale-to-0.96 exit is
+        // approximated by the return to 0.9).
+        final spring = CurvedAnimation(
+          parent: animation,
+          curve: Curves.elasticOut,
+        );
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.125),
+            end: Offset.zero,
+          ).animate(spring),
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.9, end: 1).animate(spring),
+            child: FadeTransition(opacity: animation, child: child),
+          ),
         );
       case ZedTransitionStyle.curtain:
         return SlideTransition(
@@ -76,12 +111,23 @@ abstract final class ZedMotion {
           builder: (context, child) {
             final t = animation.value;
             final angle = (1 - t) * math.pi * (78 / 180) * direction;
-            return Transform(
-              transform: Matrix4.identity()
-                ..setEntry(3, 2, 0.0018)
-                ..rotateY(angle),
-              alignment: Alignment.center,
-              child: child,
+            // Spec (§6.1): the pivot sits near the leading edge
+            // (transformOrigin 0.15 / 0.85 by sign) and the page
+            // fades as it turns, alpha = 1 − |angle| / 110
+            // (round-2 finding M2: centre pivot, fully opaque).
+            final alpha = (1 - angle.abs() * 180 / math.pi / 110).clamp(
+              0.0,
+              1.0,
+            );
+            return Opacity(
+              opacity: alpha,
+              child: Transform(
+                transform: Matrix4.identity()
+                  ..setEntry(3, 2, 0.0018)
+                  ..rotateY(angle),
+                alignment: Alignment(direction > 0 ? -0.7 : 0.7, 0),
+                child: child,
+              ),
             );
           },
         );
@@ -94,9 +140,11 @@ abstract final class ZedMotion {
       ZedTransitionStyle.fade => const Duration(milliseconds: 260),
       ZedTransitionStyle.slide => const Duration(milliseconds: 320),
       ZedTransitionStyle.push => const Duration(milliseconds: 340),
-      ZedTransitionStyle.depth => const Duration(milliseconds: 340),
+      // Spec (§6.1): Depth's scale tween is 300 ms, Curtain's is
+      // 360 ms — both were 340 in the port (round-2 finding M3).
+      ZedTransitionStyle.depth => const Duration(milliseconds: 300),
       ZedTransitionStyle.elastic => const Duration(milliseconds: 450),
-      ZedTransitionStyle.curtain => const Duration(milliseconds: 340),
+      ZedTransitionStyle.curtain => const Duration(milliseconds: 360),
       ZedTransitionStyle.flip => const Duration(milliseconds: 360),
     };
   }
@@ -113,7 +161,10 @@ abstract final class ZedMotion {
   }
 
   static Curve curve(ZedTransitionStyle style) => switch (style) {
-    ZedTransitionStyle.elastic => Curves.elasticOut,
+    // Elastic's switcher-level curve must NOT overshoot: it drives
+    // the fade (see the elastic branch of transition(), which puts
+    // the spring curve on scale/slide only).
+    ZedTransitionStyle.elastic => Curves.easeOut,
     ZedTransitionStyle.depth => Curves.easeOutCubic,
     ZedTransitionStyle.curtain => Curves.easeOutCubic,
     _ => Curves.easeInOutCubic,
@@ -173,10 +224,22 @@ class ZedPageSwitcher extends StatelessWidget {
 /// an 800 ms window, each row delayed min(index, 12) × 45 ms, rising
 /// 26 dp with alpha and a 0.96→1 scale on a spring-like curve.
 class ZedEntrance extends StatefulWidget {
-  const ZedEntrance({super.key, required this.index, required this.child});
+  const ZedEntrance({
+    super.key,
+    required this.index,
+    required this.child,
+    this.reduceMotion = false,
+  });
 
   final int index;
   final Widget child;
+
+  /// The caller's reduced-motion verdict (the app's animations
+  /// setting OR-ed with the platform's, the same value the shells
+  /// hand the page switcher). The platform flag alone is also read
+  /// directly in [State.didChangeDependencies], so a caller that
+  /// passes nothing still honours the OS setting.
+  final bool reduceMotion;
 
   @override
   State<ZedEntrance> createState() => _ZedEntranceState();
@@ -189,38 +252,58 @@ class _ZedEntranceState extends State<ZedEntrance>
     duration: const Duration(milliseconds: 380),
   );
 
+  bool _reduced = false;
+  bool _started = false;
+  Timer? _startTimer;
+
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _reduced =
+        widget.reduceMotion || MediaQuery.disableAnimationsOf(context);
+    if (_reduced) {
+      // Reduced motion: render the end state and never schedule the
+      // staggered start at all (a pending start timer outliving the
+      // row was real, if benign, lifecycle debt — round-2 D4 test).
+      _startTimer?.cancel();
+      _c.value = 1;
+      return;
+    }
+    if (_started) return;
+    _started = true;
     final delay = Duration(milliseconds: math.min(widget.index, 12) * 45);
     if (delay == Duration.zero) {
       _c.forward();
     } else {
-      Future.delayed(delay, () {
-        if (mounted) _c.forward();
+      _startTimer = Timer(delay, () {
+        if (mounted && !_reduced) _c.forward();
       });
     }
   }
 
   @override
   void dispose() {
+    _startTimer?.cancel();
     _c.dispose();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => AnimatedBuilder(
-    animation: _c,
-    child: widget.child,
-    builder: (context, child) {
-      final t = Curves.easeOutBack.transform(_c.value.clamp(0, 1));
-      return Opacity(
-        opacity: _c.value.clamp(0, 1),
-        child: Transform.translate(
-          offset: Offset(0, 26 * (1 - t)),
-          child: Transform.scale(scale: 0.96 + 0.04 * t, child: child),
-        ),
-      );
-    },
-  );
+  Widget build(BuildContext context) {
+    if (_reduced) return widget.child;
+    return AnimatedBuilder(
+      animation: _c,
+      child: widget.child,
+      builder: (context, child) {
+        final t = Curves.easeOutBack.transform(_c.value.clamp(0, 1));
+        return Opacity(
+          opacity: _c.value.clamp(0, 1),
+          child: Transform.translate(
+            offset: Offset(0, 26 * (1 - t)),
+            child: Transform.scale(scale: 0.96 + 0.04 * t, child: child),
+          ),
+        );
+      },
+    );
+  }
 }

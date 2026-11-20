@@ -21,12 +21,19 @@ class ZedModule extends StatelessWidget {
     this.padding = const EdgeInsets.all(16),
     this.onTap,
     this.hero = false,
+    this.cell = false,
   });
 
   final ZedPrefs prefs;
   final Widget child;
   final EdgeInsetsGeometry padding;
   final VoidCallback? onTap;
+
+  /// A list cell (a [ZedGroup]'s container) rather than a free module:
+  /// in Glass, cells follow the `glassLists` preference — off means
+  /// the solid-cell form, exactly as the original's theme picks
+  /// `solidCell` over the glass module fill for list cells.
+  final bool cell;
 
   /// The hero module: Bento's stage surface (the deep palette colour
   /// the connect control sits on), with the stage's own ink.
@@ -36,7 +43,13 @@ class ZedModule extends StatelessWidget {
   Widget build(BuildContext context) {
     switch (prefs.design) {
       case ZedDesign.glass:
-        return GlassModule(padding: padding, onTap: onTap, child: child);
+        return GlassModule(
+          padding: padding,
+          onTap: onTap,
+          solid: cell && !prefs.glassLists,
+          reduced: prefs.reduceTransparency,
+          child: child,
+        );
       case ZedDesign.bento:
         final tokens = ZedColors.of(context);
         final radius = hero
@@ -140,6 +153,7 @@ class ZedGroup extends StatelessWidget {
         ZedModule(
           prefs: prefs,
           padding: EdgeInsets.zero,
+          cell: true,
           child: Column(children: children),
         ),
       ],
@@ -187,12 +201,17 @@ class ZedDock extends StatelessWidget {
     required this.items,
     required this.selected,
     required this.onSelect,
+    this.shrunk = false,
   });
 
   final ZedPrefs prefs;
   final List<(IconData, IconData, String)> items;
   final int selected;
   final ValueChanged<int> onSelect;
+
+  /// The collapsed form (the Glass "Shrink tab bar" preference, driven
+  /// by the shell's scroll tracking): a shorter, icon-only pill.
+  final bool shrunk;
 
   @override
   Widget build(BuildContext context) {
@@ -219,7 +238,11 @@ class ZedDock extends StatelessWidget {
     // the palette's dock fill and line, the active item in lime.
     final isBento = bento != null;
     final pill = Container(
-      height: isBento ? 56 : GlassTokens.dockHeight,
+      // Minimum height (see _DockItem): the pill grows with large
+      // text instead of clipping its labels.
+      constraints: BoxConstraints(
+        minHeight: isBento ? 56 : (shrunk ? 48 : GlassTokens.dockHeight),
+      ),
       padding: EdgeInsets.symmetric(horizontal: isBento ? 4 : 8),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -232,8 +255,11 @@ class ZedDock extends StatelessWidget {
               selected: i == selected,
               // Bento follows its dock-labels setting (active item
               // only by default); the other designs name every
-              // destination except in the two compact styles.
-              showLabel: isBento
+              // destination except in the two compact styles. The
+              // shrunk (scroll-collapsed) form is icon-only.
+              showLabel: shrunk
+                  ? false
+                  : isBento
                   ? switch (prefs.bentoDockLabels) {
                       BentoDockLabels.active => i == selected,
                       BentoDockLabels.always => true,
@@ -335,13 +361,26 @@ class _DockItem extends StatelessWidget {
       label: label,
       button: true,
       selected: selected,
+      // The activation action lives HERE: the child's semantics are
+      // excluded (so the label is announced once), which also drops
+      // the GestureDetector's own semantics action — without onTap
+      // on this node a screen-reader user could focus a destination
+      // but never switch to it (round-2 DeepSeek finding, ds-01).
+      onTap: onTap,
       child: ExcludeSemantics(
         child: GestureDetector(
           onTap: onTap,
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
+            duration: MediaQuery.disableAnimationsOf(context)
+                ? Duration.zero
+                : const Duration(milliseconds: 220),
             curve: Curves.easeOut,
-            height: itemHeight,
+            // A minimum, not a fixed height: at large OS text
+            // scales the label must grow the item, not be clipped
+            // by it (round-2 DeepSeek finding, ds-01).
+            constraints: itemHeight == null
+                ? null
+                : BoxConstraints(minHeight: itemHeight!),
             padding: EdgeInsets.symmetric(
               horizontal: selected && showLabel ? 14 : 10,
               vertical: 8,
@@ -423,7 +462,9 @@ class _PressScaleState extends State<_PressScale> {
     onPointerCancel: _handlePointerCancel,
     child: AnimatedScale(
       scale: _down ? widget.scale : 1,
-      duration: const Duration(milliseconds: 180),
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : const Duration(milliseconds: 180),
       curve: Curves.easeOutBack,
       child: widget.child,
     ),

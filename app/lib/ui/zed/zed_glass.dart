@@ -3,7 +3,6 @@ import 'dart:ui';
 import 'package:material_ui/material_ui.dart';
 
 import 'zed_prefs.dart';
-import 'zed_theme.dart';
 
 /// The Liquid Glass kit, reimplemented in Dart from the documented
 /// ZedSecure v3.2.0 recipe (LIQUID-GLASS.md): real backdrop blur ONLY on
@@ -53,7 +52,11 @@ abstract final class GlassTokens {
   /// The rim (§2.2): rimHi → rimMid at 0.28 → transparent at 0.48/0.64
   /// → rimLo, in the recipe's exact alphas (dark #94/#12/#42 white;
   /// light full / #47 / #CC white).
-  static Gradient rimGradient(bool dark) {
+  static Gradient rimGradient(
+    bool dark, {
+    Alignment begin = Alignment.topLeft,
+    Alignment end = Alignment.bottomRight,
+  }) {
     final hi = Colors.white.withValues(alpha: dark ? 0.58 : 1);
     final mid = Colors.white.withValues(alpha: dark ? 0.07 : 0.28);
     final lo = Colors.white.withValues(alpha: dark ? 0.26 : 0.80);
@@ -62,8 +65,8 @@ abstract final class GlassTokens {
     // the rim's fade through a dark tint.
     final clear = Colors.white.withValues(alpha: 0);
     return LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
+      begin: begin,
+      end: end,
       colors: [hi, mid, clear, clear, lo],
       stops: const [0, 0.28, 0.48, 0.64, 1],
     );
@@ -210,6 +213,8 @@ class GlassModule extends StatelessWidget {
     this.radius = GlassTokens.moduleRadius,
     this.padding,
     this.onTap,
+    this.solid = false,
+    this.reduced = false,
   });
 
   final Widget child;
@@ -217,9 +222,37 @@ class GlassModule extends StatelessWidget {
   final EdgeInsetsGeometry? padding;
   final VoidCallback? onTap;
 
+  /// The solid-cell form (the original's `glassLists` off state):
+  /// list cells stop being glass — the solid cell fill, no rim
+  /// gradient, no specular sliver (the recipe draws highlight and
+  /// rim only on translucent surfaces).
+  final bool solid;
+
+  /// Reduce-transparency: the recipe draws highlight and rim only
+  /// "if not reduced" (§2.2), so a reduced module is the solid fill
+  /// alone — the theme already resolves that fill into the card
+  /// colour (round-2 finding G1: the rim and sliver used to paint
+  /// anyway, over the solid fill).
+  final bool reduced;
+
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
+    if (solid || reduced) {
+      final body = DecoratedBox(
+        decoration: BoxDecoration(
+          color: solid
+              ? GlassTokens.solidCell(dark)
+              : (Theme.of(context).cardTheme.color ??
+                    GlassTokens.solidCell(dark)),
+          borderRadius: BorderRadius.circular(radius),
+        ),
+        child: Padding(padding: padding ?? EdgeInsets.zero, child: child),
+      );
+      final tap = onTap;
+      if (tap == null) return body;
+      return ZedPressable(onTap: tap, child: body);
+    }
     // Prefs reach the kit through the theme's card colour alpha for the
     // material; the rim/highlight are pure recipe constants.
     final fill = Theme.of(context).cardTheme.color ??
@@ -274,7 +307,11 @@ class GlassModule extends StatelessWidget {
 /// Real-glass chrome: the ONLY pieces allowed a backdrop blur (~12 dp).
 /// Used for the dock pill, circle buttons and the top edge. With
 /// reduce-transparency the blur goes away and the fill turns solid.
-class GlassChrome extends StatelessWidget {
+/// With the Glass "Motion highlights" preference on, the rim's light
+/// follows the pointer over the chrome (the original drives the same
+/// highlight from device tilt; a pointer is this kit's input on every
+/// platform) — off, the rim is the recipe's static gradient.
+class GlassChrome extends StatefulWidget {
   const GlassChrome({
     super.key,
     required this.child,
@@ -289,19 +326,42 @@ class GlassChrome extends StatelessWidget {
   final double blur;
 
   @override
+  State<GlassChrome> createState() => _GlassChromeState();
+}
+
+class _GlassChromeState extends State<GlassChrome> {
+  /// The pointer's position over the chrome, as fractions of the
+  /// chrome's size minus 0.5 (so 0 is centred); (0, 0) at rest.
+  Offset _tilt = Offset.zero;
+
+  void _track(PointerEvent e) {
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+    final local = box.globalToLocal(e.position);
+    final dx = (local.dx / box.size.width - 0.5).clamp(-0.5, 0.5);
+    final dy = (local.dy / box.size.height - 0.5).clamp(-0.5, 0.5);
+    final next = Offset(dx, dy);
+    if (next != _tilt) setState(() => _tilt = next);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final prefs = widget.prefs;
+    final radius = widget.radius;
     final dark = Theme.of(context).brightness == Brightness.dark;
     final solid = prefs.reduceTransparency;
     final fill = solid
         ? GlassTokens.chromeSolid(dark)
         : GlassTokens.chromeFill(dark, prefs.glassMaterial);
+    final motion = prefs.glassMotionHighlights && !solid;
     Widget body = DecoratedBox(
       decoration: BoxDecoration(
-        gradient: GlassTokens.rimGradient(dark),
+        gradient: GlassTokens.rimGradient(
+          dark,
+          begin: Alignment(-1 + 0.6 * _tilt.dx, -1 + 0.6 * _tilt.dy),
+          end: Alignment(1 + 0.6 * _tilt.dx, 1 + 0.6 * _tilt.dy),
+        ),
         borderRadius: BorderRadius.circular(radius),
-        boxShadow: const [
-          BoxShadow(color: Color(0x33000000), blurRadius: 24, offset: Offset(0, 8)),
-        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(1),
@@ -310,17 +370,48 @@ class GlassChrome extends StatelessWidget {
             color: fill,
             borderRadius: BorderRadius.circular(radius - 1),
           ),
-          child: child,
+          child: widget.child,
         ),
       ),
     );
-    if (solid) return body;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(radius),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-        child: body,
+    if (!solid) {
+      body = ClipRRect(
+        borderRadius: BorderRadius.circular(radius),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: widget.blur, sigmaY: widget.blur),
+          child: body,
+        ),
+      );
+    }
+    // The drop shadow lives OUTSIDE the clip: a shadow painted by
+    // the clipped body is cut off at the chrome's own outline, so
+    // the floating chrome used to lose its shadow exactly when the
+    // blur was on (round-2 finding G3).
+    body = DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(radius),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x33000000),
+            blurRadius: 24,
+            offset: Offset(0, 8),
+          ),
+        ],
       ),
+      child: body,
+    );
+    if (!motion) return body;
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerMove: _track,
+      onPointerHover: _track,
+      onPointerUp: (_) {
+        if (_tilt != Offset.zero) setState(() => _tilt = Offset.zero);
+      },
+      onPointerCancel: (_) {
+        if (_tilt != Offset.zero) setState(() => _tilt = Offset.zero);
+      },
+      child: body,
     );
   }
 }
@@ -386,38 +477,59 @@ class GlassSwitch extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final tint = glassTintColor(prefs.glassTint, dark);
-    return GestureDetector(
-      onTap: onChanged == null ? null : () => onChanged!(!value),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 240),
-        curve: Curves.easeOut,
-        width: 52,
-        height: 32,
-        decoration: BoxDecoration(
-          color: value
-              ? tint.withValues(alpha: 0.85)
-              : GlassTokens.moduleFill(dark, prefs.glassMaterial),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: dark ? 0.18 : 0.4),
+    final reduced = MediaQuery.disableAnimationsOf(context);
+    final duration = reduced
+        ? Duration.zero
+        : const Duration(milliseconds: 240);
+    // The original's switch geometry (§2.7, exact source values):
+    // a 63×28 capsule track — green when on (the iOS green pair,
+    // NOT the user's glass tint), the neutral `fill` token when
+    // off — and a 37×24 capsule knob travelling 2dp → 24dp.
+    // (Round 2, finding G2: the port had a 52×32 tint-coloured
+    // switch with a round knob.)
+    return Semantics(
+      toggled: value,
+      child: GestureDetector(
+        onTap: onChanged == null ? null : () => onChanged!(!value),
+        child: AnimatedContainer(
+          duration: duration,
+          curve: Curves.easeOut,
+          width: 63,
+          height: 28,
+          decoration: BoxDecoration(
+            color: value
+                ? (dark
+                      ? const Color(0xFF30D158)
+                      : const Color(0xFF34C759))
+                : (dark
+                      ? const Color(0x5C787880)
+                      : const Color(0x33787880)),
+            borderRadius: BorderRadius.circular(14),
           ),
-        ),
-        child: AnimatedAlign(
-          duration: const Duration(milliseconds: 240),
-          curve: Curves.easeOutBack,
-          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-          child: Container(
-            width: 26,
-            height: 26,
-            margin: const EdgeInsets.symmetric(horizontal: 3),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(color: Color(0x33000000), blurRadius: 6, offset: Offset(0, 2)),
-              ],
-            ),
+          child: Stack(
+            children: [
+              AnimatedPositioned(
+                duration: duration,
+                curve: Curves.easeOut,
+                left: value ? 24 : 2,
+                top: 2,
+                child: Container(
+                  width: 37,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x33000000),
+                        blurRadius: 3,
+                        offset: Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

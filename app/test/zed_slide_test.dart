@@ -68,7 +68,7 @@ void main() {
       var taps = 0;
       await pump(tester, on: true, cb: () => taps++);
       await tester.drag(
-        find.byType(GestureDetector).first,
+        find.byType(ZedConnectControl),
         const Offset(-300, 0),
       );
       await tester.pumpAndSettle();
@@ -81,7 +81,7 @@ void main() {
       var taps = 0;
       await pump(tester, on: true, cb: () => taps++);
       await tester.drag(
-        find.byType(GestureDetector).first,
+        find.byType(ZedConnectControl),
         const Offset(-100, 0),
       );
       await tester.pumpAndSettle();
@@ -92,7 +92,7 @@ void main() {
       var taps = 0;
       await pump(tester, on: false, cb: () => taps++);
       await tester.drag(
-        find.byType(GestureDetector).first,
+        find.byType(ZedConnectControl),
         const Offset(100, 0),
       );
       await tester.pumpAndSettle();
@@ -105,7 +105,7 @@ void main() {
       var taps = 0;
       await pump(tester, on: false, cb: () => taps++);
       await tester.drag(
-        find.byType(GestureDetector).first,
+        find.byType(ZedConnectControl),
         const Offset(300, 0),
       );
       await tester.pumpAndSettle();
@@ -116,7 +116,7 @@ void main() {
       var taps = 0;
       await pump(tester, on: false, cb: () => taps++, rtl: true);
       await tester.drag(
-        find.byType(GestureDetector).first,
+        find.byType(ZedConnectControl),
         const Offset(-300, 0),
       );
       await tester.pumpAndSettle();
@@ -129,7 +129,7 @@ void main() {
         var taps = 0;
         await pump(tester, on: true, cb: () => taps++);
         final gesture = await tester.startGesture(
-          tester.getCenter(find.byType(GestureDetector).first),
+          tester.getCenter(find.byType(ZedConnectControl)),
         );
         // Drag to the left end in steps, as a finger travels, then
         // HOLD: the knob must stay at the end (no snap back to the
@@ -146,6 +146,67 @@ void main() {
         expect(taps, 1);
       },
     );
+  });
+
+  group('Slide landing zones are the spec thresholds (0.72 / 0.28)', () {
+    // Harness travel is 256 dp (320 wide − 56 knob − 8 padding), so
+    // the connect threshold 0.72 sits at 184 dp of knob travel and
+    // the stay-connected floor 0.28 mirrors it. A test drag loses
+    // ~18 dp to touch slop before the recognizer starts reporting,
+    // so the physical drags are 190 (knob ≈172 = 0.67, must NOT
+    // toggle) and 215 (knob ≈197 = 0.77, must toggle). A plain
+    // 0.5/0.5 implementation fails the 190 cases (round-2 review,
+    // T1 — the older tests only dragged 100/300 and could not tell
+    // 0.72 from 0.5).
+    testWidgets('off: a 190 dp drag (knob 0.67) does not connect', (
+      tester,
+    ) async {
+      var taps = 0;
+      await pump(tester, on: false, cb: () => taps++);
+      await tester.drag(
+        find.byType(ZedConnectControl),
+        const Offset(190, 0),
+      );
+      await tester.pumpAndSettle();
+      expect(taps, 0);
+    });
+
+    testWidgets('off: a 215 dp drag (knob 0.77) connects', (tester) async {
+      var taps = 0;
+      await pump(tester, on: false, cb: () => taps++);
+      await tester.drag(
+        find.byType(ZedConnectControl),
+        const Offset(215, 0),
+      );
+      await tester.pumpAndSettle();
+      expect(taps, 1);
+    });
+
+    testWidgets('on: a 190 dp leftward drag (knob 0.33) keeps the link', (
+      tester,
+    ) async {
+      var taps = 0;
+      await pump(tester, on: true, cb: () => taps++);
+      await tester.drag(
+        find.byType(ZedConnectControl),
+        const Offset(-190, 0),
+      );
+      await tester.pumpAndSettle();
+      expect(taps, 0);
+    });
+
+    testWidgets('on: a 215 dp leftward drag (knob 0.23) disconnects', (
+      tester,
+    ) async {
+      var taps = 0;
+      await pump(tester, on: true, cb: () => taps++);
+      await tester.drag(
+        find.byType(ZedConnectControl),
+        const Offset(-215, 0),
+      );
+      await tester.pumpAndSettle();
+      expect(taps, 1);
+    });
   });
 
   group('Reduced motion', () {
@@ -166,8 +227,26 @@ void main() {
         await tester.pump(const Duration(milliseconds: 100));
         expect(tester.takeException(), isNull);
         expect(find.byType(CircularProgressIndicator), findsNothing);
+        // Absence-only is not enough (round-2 review, T6): the still
+        // busy arc must actually be there in the spinner's place.
+        expect(
+          find.descendant(
+            of: find.byType(ZedConnectControl),
+            matching: find.byType(CustomPaint),
+          ),
+          findsOneWidget,
+          reason: 'the reduced-motion busy mark is a still painted arc',
+        );
       },
     );
+
+    testWidgets('morph busy DOES spin when animations are enabled', (
+      tester,
+    ) async {
+      await pump(tester, on: false, cb: () {}, morphBusy: true);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    });
   });
 
   group('Bento Hold with its tooltip', () {
@@ -211,6 +290,82 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
       expect(taps, 1, reason: 'holding past 650 ms toggles, tooltip or not');
       await gesture.up();
+    });
+
+    testWidgets('the hold fires at 650 ms, not before (tight bracket)', (
+      tester,
+    ) async {
+      var taps = 0;
+      const prefs = ZedPrefs(bentoConnect: BentoConnectStyle.hold);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ZedTheme.build(Brightness.dark, const Locale('en'), prefs),
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 320,
+                child: ZedConnectControl(
+                  prefs: prefs,
+                  state: ZedConnectState(
+                    on: false,
+                    busy: false,
+                    live: false,
+                    label: 'Off',
+                    tooltip: 'Tap to connect',
+                    onToggle: () => taps++,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byType(ZedConnectControl)),
+      );
+      await tester.pump(const Duration(milliseconds: 640));
+      expect(taps, 0, reason: 'at 640 ms the 650 ms hold has not fired');
+      await tester.pump(const Duration(milliseconds: 20));
+      expect(taps, 1, reason: 'at 660 ms it has');
+      await gesture.up();
+    });
+
+    testWidgets('releasing before 650 ms never toggles', (tester) async {
+      // The cancel path (round-2 review, T2): an early release must
+      // disarm the hold timer for good — not just delay the toggle.
+      var taps = 0;
+      const prefs = ZedPrefs(bentoConnect: BentoConnectStyle.hold);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ZedTheme.build(Brightness.dark, const Locale('en'), prefs),
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 320,
+                child: ZedConnectControl(
+                  prefs: prefs,
+                  state: ZedConnectState(
+                    on: false,
+                    busy: false,
+                    live: false,
+                    label: 'Off',
+                    tooltip: 'Tap to connect',
+                    onToggle: () => taps++,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byType(ZedConnectControl)),
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+      await gesture.up();
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpAndSettle();
+      expect(taps, 0, reason: 'an early release cancels the hold');
     });
   });
 }

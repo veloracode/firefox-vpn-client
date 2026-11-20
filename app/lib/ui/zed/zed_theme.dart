@@ -382,18 +382,22 @@ class ZedColors extends ThemeExtension<ZedColors> {
       Theme.of(context).extension<ZedColors>()?.tokens;
 }
 
-/// Pixel/Old's ten accent presets (§25). Iris is the default.
+/// Pixel/Old's ten accent presets (§3.1): the SEED is each preset's
+/// LIGHT colour — `accentSeed()` in the original returns `.light` in
+/// both brightnesses. (Round 2 corrected 8 of the 10: the port had
+/// substituted generic Material-700 colours, so most accents built a
+/// scheme from the wrong hue/chroma.)
 const pixelAccents = <Color>[
   Color(0xFF5646D6), // Iris
-  Color(0xFF0277BD), // Ocean
-  Color(0xFF00897B), // Teal
+  Color(0xFF1E63D0), // Ocean
+  Color(0xFF00897E), // Teal
   Color(0xFF2E7D32), // Forest
-  Color(0xFFFF8F00), // Amber
-  Color(0xFFE91E63), // Rose
-  Color(0xFFC62828), // Crimson
-  Color(0xFF00ACC1), // Cyan
-  Color(0xFF7B1FA2), // Grape
-  Color(0xFF546E7A), // Slate
+  Color(0xFFB4690E), // Amber
+  Color(0xFFC4326B), // Rose
+  Color(0xFFC0362C), // Crimson
+  Color(0xFF00838F), // Cyan
+  Color(0xFF8E24AA), // Grape
+  Color(0xFF4A5B7A), // Slate
 ];
 
 /// Corner radius for a design's modules: Bento follows its corner style
@@ -467,8 +471,16 @@ abstract final class ZedTheme {
           onTertiary: bento.onStage,
           error: dark ? bento.danger : const Color(0xFFB3261E),
           onError: dark ? bento.onDanger : Colors.white,
-          errorContainer: bento.danger,
-          onErrorContainer: bento.onDanger,
+          // The danger token's role flips with brightness: in the
+          // light tables it IS the container tone (#FFDAD6); in the
+          // dark tables it is the bright error tone itself, so the
+          // dark container takes the Material dark error-container
+          // pair instead of reusing the accent as its own container
+          // (round-2 finding T3).
+          errorContainer: dark ? const Color(0xFF93000A) : bento.danger,
+          onErrorContainer: dark
+              ? const Color(0xFFFFDAD6)
+              : bento.onDanger,
           surface: bento.surface,
           onSurface: bento.ink,
           onSurfaceVariant: bento.muted,
@@ -587,13 +599,25 @@ abstract final class ZedTheme {
       dynamicSchemeVariant: DynamicSchemeVariant.tonalSpot,
     );
     if (amoled && dark) {
-      // The scheme itself must carry the AMOLED surface too: the
+      // The scheme itself must carry the AMOLED surfaces too: the
       // scaffold/card tuple alone leaves Material surfaces and the
       // dark rail (which blends scheme.surface) on the seeded colour.
+      // The override is the documented eight-role set (§3.1), not
+      // just `surface` — dialogs, menus and sheets read the
+      // surfaceContainer roles (round-2 finding T2).
       return (
-        scheme.copyWith(surface: const Color(0xFF0A0A0A)),
+        scheme.copyWith(
+          surface: const Color(0xFF000000),
+          surfaceDim: const Color(0xFF000000),
+          surfaceContainerLowest: const Color(0xFF000000),
+          surfaceContainerLow: const Color(0xFF0B0B0B),
+          surfaceContainer: const Color(0xFF0F0F0F),
+          surfaceContainerHigh: const Color(0xFF161616),
+          surfaceContainerHighest: const Color(0xFF1E1E1E),
+          surfaceBright: const Color(0xFF1A1A1A),
+        ),
         Colors.black,
-        const Color(0xFF0A0A0A),
+        const Color(0xFF000000),
       );
     }
     return (
@@ -614,7 +638,9 @@ const glassTintColors = <Color>[
   Color(0xFFFF375F), // pink
   Color(0xFFDB34F2), // purple
   Color(0xFFFF4245), // red
-  Color(0xFFFFD600), // yellow
+  Color(0xFF3CD3FE), // cyan — the original's tint set has Cyan here;
+  // "Yellow" exists only as a colour function, with no GlassTint
+  // (extract §2.5) — round-2 finding T4.
   Color(0xFF00DAC3), // mint
   Color(0xFF6D7CFF), // indigo
   Color(0xFFB78A66), // brown
@@ -630,7 +656,7 @@ const glassTintColorsLight = <Color>[
   Color(0xFFFF2D55),
   Color(0xFFCB30E0),
   Color(0xFFFF383C),
-  Color(0xFFFFCC00),
+  Color(0xFF00C0E8), // cyan (light pair of #3CD3FE)
   Color(0xFF00C8B3),
   Color(0xFF6155F5),
   Color(0xFFAC7F5E),

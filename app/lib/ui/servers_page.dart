@@ -235,6 +235,9 @@ class _ServersPageState extends State<ServersPage> {
               for (var i = 0; i < countries.length; i++)
                 ZedEntrance(
                   index: i,
+                  reduceMotion:
+                      !widget.settings.animationsEnabled ||
+                      MediaQuery.disableAnimationsOf(context),
                   child: _ChoiceRow(
                     leading: CountryFlag(code: countries[i].code, width: 36),
                     title: locationName(

@@ -47,6 +47,12 @@ class MobileShell extends StatefulWidget {
 class _MobileShellState extends State<MobileShell> {
   int _tab = 0;
 
+  /// The Glass dock's scroll-collapsed state (the "Shrink tab bar"
+  /// preference): scrolling down collapses the floating dock to its
+  /// icon-only mini form; scrolling up or reaching the top restores
+  /// it. Only ever set while the Glass shrink preference is on.
+  bool _dockShrunk = false;
+
   /// The last tab the switcher showed and the direction of the most
   /// recent change (tab-order sign, flipped for RTL).
   int? _lastTab;
@@ -190,6 +196,10 @@ class _MobileShellState extends State<MobileShell> {
     final dock = ZedDock(
       prefs: settings.zed,
       selected: tab,
+      shrunk:
+          settings.zed.design == ZedDesign.glass &&
+          settings.zed.glassShrinkBar &&
+          _dockShrunk,
       onSelect: (i) => setState(() => _tab = i),
       items: [
         (Icons.home_outlined, Icons.home_rounded, l.navHome),
@@ -215,7 +225,37 @@ class _MobileShellState extends State<MobileShell> {
                       dark: Theme.of(context).brightness == Brightness.dark,
                     ),
                   ),
-                  Positioned.fill(child: _body(context, tab, page)),
+                  // The floating dock overlays the page's bottom, so
+                  // the page viewport ends above it (the recipe's
+                  // reserved dock inset) — for EVERY tab, not just
+                  // Home: without this the Settings list's last rows
+                  // sat permanently behind the pill, untappable.
+                  // Scroll notifications from the page drive the
+                  // shrink preference's collapse.
+                  Positioned.fill(
+                    child: Padding(
+                      padding: const EdgeInsets.only(
+                        bottom: GlassTokens.dockInset,
+                      ),
+                      child: NotificationListener<ScrollNotification>(
+                        onNotification: (n) {
+                          if (settings.zed.glassShrinkBar &&
+                              n is ScrollUpdateNotification &&
+                              n.metrics.axis == Axis.vertical) {
+                            final d = n.scrollDelta ?? 0;
+                            if (d > 4 && !_dockShrunk) {
+                              setState(() => _dockShrunk = true);
+                            } else if ((d < -4 || n.metrics.pixels <= 0) &&
+                                _dockShrunk) {
+                              setState(() => _dockShrunk = false);
+                            }
+                          }
+                          return false;
+                        },
+                        child: _body(context, tab, page),
+                      ),
+                    ),
+                  ),
                   // The dock floats OVER the page (real-glass chrome),
                   // outside the page transition like every dock here.
                   Positioned(left: 0, right: 0, bottom: 0, child: dock),

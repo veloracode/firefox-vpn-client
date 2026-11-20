@@ -645,7 +645,15 @@ class _SettingsPageState extends State<SettingsPage> {
           icon: Icons.design_services_outlined,
           title: l.uiDesign,
           value: s.uiDesign,
-          onChanged: (v) => s.update(uiDesign: v),
+          // A hand-picked design also clears the profile selection
+          // (profiles set the design too — same staleness rule as the
+          // design rows below). update(zed:) syncs uiDesign back.
+          onChanged: (v) => s.update(
+            zed: s.zed.copyWith(
+              design: ZedDesign.values.byName(v.name),
+              profile: ZedThemeProfile.none,
+            ),
+          ),
           options: [
             (UiDesign.bento, 'Bento', null),
             (UiDesign.pixel, l.designPixel, null),
@@ -3276,7 +3284,13 @@ ZedPrefs _applyZedProfile(ZedPrefs p, ZedThemeProfile profile) =>
 /// isolation).
 List<Widget> _zedDesignRows(AppLocalizations l, AppSettings s) {
   final z = s.zed;
-  void set(ZedPrefs next) => s.update(zed: next);
+  // A manual edit means the settings no longer match any one-tap
+  // profile preset, so the profile selection clears to "none"
+  // instead of claiming a preset the values have drifted from
+  // (round-2 DeepSeek finding, confirmed). The profile row itself
+  // writes through update() directly so it can SET a profile.
+  void set(ZedPrefs next) =>
+      s.update(zed: next.copyWith(profile: ZedThemeProfile.none));
   Widget toggle(
     IconData icon,
     String label,
@@ -3286,6 +3300,27 @@ List<Widget> _zedDesignRows(AppLocalizations l, AppSettings s) {
     icon: icon,
     label: label,
     child: Switch(value: value, onChanged: onChanged),
+  );
+  // The Pixel/Old accent: ONE shared seed for both designs, exactly
+  // as the reference has a single accent setting behind both of its
+  // Material designs — so both designs' blocks offer the same row.
+  Widget accentRow() => _Choice<int>(
+    icon: Icons.palette_outlined,
+    title: 'Accent',
+    value: z.pixelAccent,
+    onChanged: (v) => set(z.copyWith(pixelAccent: v)),
+    options: [
+      (0, 'Iris', null),
+      (1, 'Ocean', null),
+      (2, 'Teal', null),
+      (3, 'Forest', null),
+      (4, 'Amber', null),
+      (5, 'Rose', null),
+      (6, 'Crimson', null),
+      (7, 'Cyan', null),
+      (8, 'Grape', null),
+      (9, 'Slate', null),
+    ],
   );
   final rows = <Widget>[];
   switch (z.design) {
@@ -3367,7 +3402,7 @@ List<Widget> _zedDesignRows(AppLocalizations l, AppSettings s) {
             (4, 'Pink', null),
             (5, 'Purple', null),
             (6, 'Red', null),
-            (7, 'Yellow', null),
+            (7, 'Cyan', null),
             (8, 'Mint', null),
             (9, 'Indigo', null),
             (10, 'Brown', null),
@@ -3403,24 +3438,7 @@ List<Widget> _zedDesignRows(AppLocalizations l, AppSettings s) {
       ]);
     case ZedDesign.pixel:
       rows.addAll([
-        _Choice<int>(
-          icon: Icons.palette_outlined,
-          title: 'Accent',
-          value: z.pixelAccent,
-          onChanged: (v) => set(z.copyWith(pixelAccent: v)),
-          options: [
-            (0, 'Iris', null),
-            (1, 'Ocean', null),
-            (2, 'Teal', null),
-            (3, 'Forest', null),
-            (4, 'Amber', null),
-            (5, 'Rose', null),
-            (6, 'Crimson', null),
-            (7, 'Cyan', null),
-            (8, 'Grape', null),
-            (9, 'Slate', null),
-          ],
-        ),
+        accentRow(),
         _Choice<PixelConnectStyle>(
           icon: Icons.power_settings_new_rounded,
           title: 'Connect control',
@@ -3436,6 +3454,7 @@ List<Widget> _zedDesignRows(AppLocalizations l, AppSettings s) {
       ]);
     case ZedDesign.old:
       rows.addAll([
+        accentRow(),
         _Choice<PixelConnectStyle>(
           icon: Icons.power_settings_new_rounded,
           title: 'Connect control',
@@ -3455,7 +3474,9 @@ List<Widget> _zedDesignRows(AppLocalizations l, AppSettings s) {
       icon: Icons.dock_rounded,
       title: 'Navigation bar',
       value: z.navStyle,
-      onChanged: (v) => set(z.copyWith(navStyle: v)),
+      // Nav style and transition are not profile-controlled fields:
+      // editing them must not clear the profile selection.
+      onChanged: (v) => s.update(zed: z.copyWith(navStyle: v)),
       options: [
         (NavBarStyle.floatingPill, 'Floating pill', null),
         (NavBarStyle.fullBar, 'Full bar', null),
@@ -3470,7 +3491,7 @@ List<Widget> _zedDesignRows(AppLocalizations l, AppSettings s) {
       icon: Icons.animation_rounded,
       title: 'Screen transition',
       value: z.transitionStyle,
-      onChanged: (v) => set(z.copyWith(transitionStyle: v)),
+      onChanged: (v) => s.update(zed: z.copyWith(transitionStyle: v)),
       options: [
         for (final t in ZedTransitionStyle.values) (t, t.name, null),
       ],
@@ -3479,7 +3500,7 @@ List<Widget> _zedDesignRows(AppLocalizations l, AppSettings s) {
       icon: Icons.style_rounded,
       title: 'Theme profile',
       value: z.profile,
-      onChanged: (v) => set(_applyZedProfile(z, v)),
+      onChanged: (v) => s.update(zed: _applyZedProfile(z, v)),
       options: [
         for (final p in ZedThemeProfile.values) (p, p.name, null),
       ],

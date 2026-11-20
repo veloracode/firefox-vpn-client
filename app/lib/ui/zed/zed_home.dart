@@ -215,14 +215,13 @@ Widget _functionStack(ZedHomeArgs args) => HomeFunctionStack(
 );
 
 class _HomeScaffold extends StatelessWidget {
-  const _HomeScaffold({required this.children, this.bottomInset = 16});
+  const _HomeScaffold({required this.children});
 
   final List<Widget> children;
-  final double bottomInset;
 
   @override
   Widget build(BuildContext context) => SingleChildScrollView(
-    padding: EdgeInsets.fromLTRB(16, 16, 16, bottomInset),
+    padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -354,8 +353,10 @@ class ZedGlassHome extends StatelessWidget {
     final l = AppLocalizations.of(context);
     final d = ZedHomeData(args.core, args.core.status!, l, phone: args.phone);
     final prefs = args.settings.zed;
+    // No page-level bottom inset for the floating dock: the phone
+    // shell now reserves the dock's inset for every tab's viewport
+    // (and the desktop shell has no floating dock at all).
     return _HomeScaffold(
-      bottomInset: 110,
       children: [
         const SizedBox(height: 8),
         Center(
