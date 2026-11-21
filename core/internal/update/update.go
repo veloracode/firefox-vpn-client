@@ -1,5 +1,5 @@
 // Package update installs new versions of the desktop app on Windows,
-// Linux, and macOS. The app finds a newer release on GitHub and asks its
+// Linux, and macOS. The app finds a newer release in its manifest and asks its
 // core to download it: the core fetches the release's SHA256SUMS.txt and
 // its signature (SHA256SUMS.txt.sig, Ed25519, checked against the key built
 // into the core, internal/signing), then the release's zip (Windows) or
@@ -21,7 +21,7 @@
 // its bundle, whose Contents is replaced. For a copy that Setup
 // installed, it also sets the version in Windows' list of installed apps;
 // the uninstaller removes the app's files whichever version put them there
-// ([UninstallDelete] in app/windows/installer/firefox-vpn.iss). The new
+// ([UninstallDelete] in app/windows/installer/arman-vpn.iss). The new
 // Setup is not run: when it fails, Inno Setup's rollback removes the files
 // it added but does not restore the ones it replaced (tried), which can
 // leave half of each version. The copy writes what happened to result.json
@@ -61,9 +61,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/armanlife/firefox-vpn-client/core/internal/logx"
-	"github.com/armanlife/firefox-vpn-client/core/internal/signing"
-	"github.com/armanlife/firefox-vpn-client/core/internal/version"
+	"github.com/armanlife/arman-vpn-client/core/internal/logx"
+	"github.com/armanlife/arman-vpn-client/core/internal/signing"
+	"github.com/armanlife/arman-vpn-client/core/internal/version"
 )
 
 // The states of Status.
@@ -92,9 +92,9 @@ type appPackage struct {
 
 // windowsPackage is the Windows app's zip.
 var windowsPackage = appPackage{
-	name:   func(v string) string { return "Firefox-VPN-" + v + "-Windows-x64.zip" },
-	app:    "firefox-vpn.exe",
-	core:   "core/firefox-vpn-core.exe",
+	name:   func(v string) string { return "Arman-VPN-" + v + "-Windows-x64.zip" },
+	app:    "arman-vpn.exe",
+	core:   "core/arman-vpn-core.exe",
 	unpack: unzip,
 }
 
@@ -115,13 +115,13 @@ func AppDir(exe string) string {
 
 // releasesURL is where GitHub serves a release's files:
 // <releasesURL>v<version>/<file>.
-const releasesURL = "https://github.com/armanlife/firefox-vpn-client/releases/download/"
+const releasesURL = "https://github.com/armanlife/arman-vpn-client/releases/download/"
 
 // ServerEnv names a release server to use instead of GitHub, for trying
 // updates with a local test release: it serves
 // <server>/releases/download/v<version>/<file>. A loopback server is
 // reached directly.
-const ServerEnv = "FIREFOX_VPN_UPDATE_SERVER"
+const ServerEnv = "ARMAN_VPN_UPDATE_SERVER"
 
 // Size limits of what a download reads.
 const (
@@ -249,10 +249,16 @@ func Supported(appDir, dataDir, current string) string {
 	if why := dataDirOK(appDir, dataDir); why != "" {
 		return why
 	}
-	if _, err := os.Stat(filepath.Join(appDir, filepath.FromSlash(thePackage.app))); err != nil {
+	if !HasApp(appDir) {
 		return "the app is not beside this core"
 	}
 	return ""
+}
+
+// HasApp reports whether appDir holds the desktop app.
+func HasApp(appDir string) bool {
+	_, err := os.Stat(filepath.Join(appDir, filepath.FromSlash(thePackage.app)))
+	return err == nil
 }
 
 // New opens the update folder of a copy of the app: it reads what the
@@ -413,11 +419,20 @@ func bad(format string, a ...any) error { return &badRelease{fmt.Errorf(format, 
 // Download starts downloading version v in the background, unless it is
 // downloading or downloaded already. v must be newer than this version.
 func (m *Manager) Download(v string) error {
+	return m.DownloadFrom(v, m.defaultSource(v))
+}
+
+// DownloadFrom downloads a manifest-selected archive, preserving all
+// signature, checksum, version, and installation checks.
+func (m *Manager) DownloadFrom(v string, source Source) error {
 	if !isVersion(v) {
 		return fmt.Errorf("%q is not a version", v)
 	}
 	if !version.Newer(v, m.opts.Current) {
 		return fmt.Errorf("version %s is not newer than this one (%s)", v, m.opts.Current)
+	}
+	if err := source.validate(); err != nil {
+		return err
 	}
 	m.mu.Lock()
 	switch m.status.State {
@@ -436,17 +451,17 @@ func (m *Manager) Download(v string) error {
 	}
 	m.status = Status{State: StateDownloading, Version: v, Last: m.status.Last}
 	m.mu.Unlock()
-	go m.download(v)
+	go m.download(v, source)
 	return nil
 }
 
 // download fetches version v the first way that works; a release that does
 // not check out is not tried another way.
-func (m *Manager) download(v string) {
+func (m *Manager) download(v string, source Source) {
 	logx.Info("update: downloading version=%s", v)
 	var err error
 	for _, t := range m.transports() {
-		if err = m.fetch(t, v); err == nil {
+		if err = m.fetch(t, v, source); err == nil {
 			break
 		}
 		logx.Warn("update: downloading version=%s failed err=%s", v, logx.Err(err))
@@ -483,20 +498,19 @@ func (m *Manager) transports() []http.RoundTripper {
 
 // fetch downloads the signed list and the package of version v through t,
 // and keeps them in the version's folder once they check out.
-func (m *Manager) fetch(t http.RoundTripper, v string) error {
-	base := m.baseURL + "v" + v + "/"
+func (m *Manager) fetch(t http.RoundTripper, v string, source Source) error {
 	small := &http.Client{Transport: t, Timeout: listTimeout}
 	defer small.CloseIdleConnections()
-	sums, err := get(small, base+SumsFile, maxSumsSize)
+	sums, err := get(small, source.ChecksumsURL, maxSumsSize)
 	if err != nil {
 		return err
 	}
-	sig, err := get(small, base+SigFile, maxSigSize)
+	sig, err := get(small, source.SignatureURL, maxSigSize)
 	if err != nil {
 		return err
 	}
-	name := AssetName(v)
-	want, err := checkedHash(sums, sig, name)
+	name := source.File
+	want, err := checkedPackageHash(sums, sig, name, v)
 	if err != nil {
 		return err
 	}
@@ -508,13 +522,22 @@ func (m *Manager) fetch(t http.RoundTripper, v string) error {
 	defer os.Remove(part)
 	big := &http.Client{Transport: t, Timeout: packageTimeout}
 	defer big.CloseIdleConnections()
-	if err := m.getPackage(big, base+name, part, want); err != nil {
+	if err := m.getPackage(big, source.URL, part, want); err != nil {
 		return err
 	}
 	for file, data := range map[string][]byte{SumsFile: sums, SigFile: sig} {
 		if err := os.WriteFile(filepath.Join(dir, file), data, 0o644); err != nil {
 			return err
 		}
+	}
+	metadata, err := json.Marshal(struct {
+		File string `json:"file"`
+	}{name})
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(dir, packageFile), metadata, 0o644); err != nil {
+		return err
 	}
 	return os.Rename(part, filepath.Join(dir, name))
 }
@@ -660,8 +683,11 @@ func (m *Manager) checkPackage(v string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	name := AssetName(v)
-	want, err := checkedHash(sums, sig, name)
+	name, err := m.cachedPackageName(v)
+	if err != nil {
+		return "", err
+	}
+	want, err := checkedPackageHash(sums, sig, name, v)
 	if err != nil {
 		return "", err
 	}

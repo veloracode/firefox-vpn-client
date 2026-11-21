@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/armanlife/firefox-vpn-client/core/internal/egress"
-	"github.com/armanlife/firefox-vpn-client/core/internal/logx"
+	"github.com/armanlife/arman-vpn-client/core/internal/egress"
+	"github.com/armanlife/arman-vpn-client/core/internal/logx"
 )
 
 // The SOCKS5 port also serves HTTP proxy clients (the Windows system proxy
@@ -51,7 +51,7 @@ func (s *SOCKSServer) serveHTTP(client *bufferedConn, clientAddr string, start t
 	}
 	if s.Auth != nil && !s.Auth.matchBasic(req.Header.Get("Proxy-Authorization")) {
 		logx.Warn("HTTP proxy client rejected: %s client=%s", errSOCKSAuth, clientAddr)
-		writeHTTPError(client, http.StatusProxyAuthRequired, "The proxy needs the username and password set in Settings.", `Basic realm="Firefox VPN"`)
+		writeHTTPError(client, http.StatusProxyAuthRequired, "The proxy needs the username and password set in Settings.", `Basic realm="Arman VPN"`)
 		return
 	}
 	if s.handshakeTimeout > 0 {
@@ -112,7 +112,7 @@ func (s *SOCKSServer) openTarget(client net.Conn, target, clientAddr, inbound st
 			host, _, _ := net.SplitHostPort(target)
 			s.Notices.record(NoticeLoop, "", host)
 			if warn {
-				logx.Warn("a loop: this program's own connections come back to its proxy as a client's (client=%s target=%s), so nothing connects; a program sends this program's own traffic into the proxy: in PassWall2 turn Localhost Proxy off, in another VPN program's TUN mode let firefox-vpn-core connect directly", clientAddr, logx.Target(target))
+				logx.Warn("a loop: this program's own connections come back to its proxy as a client's (client=%s target=%s), so nothing connects; a program sends this program's own traffic into the proxy: in PassWall2 turn Localhost Proxy off, in another VPN program's TUN mode let arman-vpn-core connect directly", clientAddr, logx.Target(target))
 			}
 		}
 	}
@@ -125,6 +125,10 @@ func (s *SOCKSServer) openTarget(client net.Conn, target, clientAddr, inbound st
 	}
 	if err == nil {
 		logx.Debug("upstream tunnel open succeeded client=%s target=%s", clientAddr, logx.Target(target))
+		// A tunnel opening closes the account for whatever was failing.
+		if reason, held := s.failures.settled(); held > 0 {
+			logx.Info("connections are opening again; %d more waited on: %s", held, reason)
+		}
 		transport := ""
 		if s.Transport != nil {
 			transport = s.Transport()
@@ -132,12 +136,27 @@ func (s *SOCKSServer) openTarget(client net.Conn, target, clientAddr, inbound st
 		return s.Conns.opened(tracked, conn, transport), nil
 	}
 	s.Conns.failed(tracked, target, err)
-	if portRefused(target, err) {
-		host, port, _ := net.SplitHostPort(target)
+	// Every connection waiting on one outage fails for the same reason, so
+	// the reason is what is collapsed; the client and target of the one that
+	// is logged stand for the rest, and every failure is still at Debug.
+	reason := logx.Err(err)
+	host, port, _ := net.SplitHostPort(target)
+	refused := portRefused(target, err)
+	if refused {
 		s.Notices.record(NoticePort, port, host)
-		logx.Warn("Mozilla's proxy does not connect to port %s; it connects to ports %s only client=%s target=%s", port, UpstreamPortsText, clientAddr, logx.Target(target))
-	} else {
-		logx.Warn("upstream tunnel open failed client=%s target=%s err=%s", clientAddr, logx.Target(target), logx.Err(err))
+		reason = "Mozilla's proxy does not connect to port " + port
+	}
+	logx.Debug("upstream tunnel open failed client=%s target=%s err=%s", clientAddr, logx.Target(target), logx.Err(err))
+	if log, held := s.failures.note(reason); log {
+		more := ""
+		if held > 0 {
+			more = fmt.Sprintf(" (and %d more connections waited on the previous reason)", held)
+		}
+		if refused {
+			logx.Warn("Mozilla's proxy does not connect to port %s; it connects to ports %s only client=%s target=%s%s", port, UpstreamPortsText, clientAddr, logx.Target(target), more)
+		} else {
+			logx.Warn("upstream tunnel open failed client=%s target=%s err=%s%s", clientAddr, logx.Target(target), logx.Err(err), more)
+		}
 	}
 	return nil, err
 }

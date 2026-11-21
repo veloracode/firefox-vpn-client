@@ -10,7 +10,7 @@ class AppLocalizationsHu extends AppLocalizations {
   AppLocalizationsHu([String locale = 'hu']) : super(locale);
 
   @override
-  String get appTitle => 'FoxyVPN';
+  String get appTitle => 'Arman VPN';
 
   @override
   String get navOverview => 'Áttekintés';
@@ -150,6 +150,10 @@ class AppLocalizationsHu extends AppLocalizations {
   }
 
   @override
+  String get accountsGuideUnlimited =>
+      'A Firefox-fiókok jelenleg korlátlan adatmennyiséget kapnak.';
+
+  @override
   String accountsOrderNote(int percent) {
     return 'A lista sorrendjében: mindegyik $percent%-ig, az utolsó az adatkerete elfogyásáig.';
   }
@@ -172,6 +176,9 @@ class AppLocalizationsHu extends AppLocalizations {
   @override
   String get delayTestFailed =>
       'Nem sikerült megmérni a szerverek késleltetését. Ellenőrizze az internetet.';
+
+  @override
+  String get delayFromLastTest => 'Az előző mérésből';
 
   @override
   String get createAccountTitle => 'Nincs Firefox Accountja?';
@@ -452,6 +459,9 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get settingsTitle => 'Beállítások';
+
+  @override
+  String get settingsNoMatch => 'Nincs találat';
 
   @override
   String get sectionGeneral => 'Általános';
@@ -741,6 +751,56 @@ class AppLocalizationsHu extends AppLocalizations {
       'A következő fiók akkor veszi át, amikor az adatkeret ekkora része elfogyott.';
 
   @override
+  String get signInMethod => 'Bejelentkezési mód';
+
+  @override
+  String get signInMethodBrowser => 'Bejelentkezés böngészővel';
+
+  @override
+  String get signInMethodApi => 'Közvetlen bejelentkezés';
+
+  @override
+  String get browserSignInBroken => 'A bejelentkezési oldal nem nyitható meg.';
+
+  @override
+  String get browserSignInBlocked =>
+      'A Mozilla nem fejezte be a fiók hozzáadásának utolsó lépését (HTTP 406).';
+
+  @override
+  String get browserSignInFallback => 'Bejelentkezés e-maillel és jelszóval';
+
+  @override
+  String get backupExport => 'Biztonsági mentés készítése';
+
+  @override
+  String get backupImport => 'Biztonsági mentés importálása';
+
+  @override
+  String backupSaved(String name) {
+    return 'Mentve: $name';
+  }
+
+  @override
+  String get backupImportTitle => 'Hozzáadja ezeket a fiókokat?';
+
+  @override
+  String get backupAccountExists =>
+      'Már hozzá van adva; a bejelentkezést a fájlból kapja';
+
+  @override
+  String get backupImportAction => 'Hozzáadás';
+
+  @override
+  String backupImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count fiók hozzáadva',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get sectionDns => 'DNS';
 
   @override
@@ -772,7 +832,38 @@ class AppLocalizationsHu extends AppLocalizations {
   String get transportH3 => 'HTTP/3 (QUIC)';
 
   @override
+  String get ipVersion => 'IP-verzió';
+
+  @override
+  String get ipVersionAuto => 'Automatikus (előbb IPv4, aztán IPv6)';
+
+  @override
+  String get ipVersionDual => 'Mindkettő egyszerre (dual-stack)';
+
+  @override
+  String get ipVersionV6First => 'Előbb IPv6, aztán IPv4';
+
+  @override
+  String get ipVersionV4 => 'Csak IPv4';
+
+  @override
+  String get ipVersionV6 => 'Csak IPv6';
+
+  @override
+  String get tunMtu => 'MTU';
+
+  @override
+  String get tunMtuHint =>
+      'A VPN-interfész csomagmérete, 1280 és 9000 között. Üres: automatikus.';
+
+  @override
+  String get tunMtuInvalid => 'Egy szám 1280 és 9000 között, vagy üres';
+
+  @override
   String get transportH2 => 'HTTP/2 (TCP)';
+
+  @override
+  String get transportH1 => 'HTTP/1.1 (TLS)';
 
   @override
   String get directRules => 'Közvetlen';
@@ -854,6 +945,13 @@ class AppLocalizationsHu extends AppLocalizations {
   String get tlsFragment => 'TLS-fragmentálás';
 
   @override
+  String get tlsFragmentAuto => 'Automatikus';
+
+  @override
+  String get tlsFragmentAutoHint =>
+      'Más módszereket próbál ki, ha a szokásos kapcsolat sikertelen.';
+
+  @override
   String get tlsFragmentOff => 'Kikapcsolva';
 
   @override
@@ -884,7 +982,20 @@ class AppLocalizationsHu extends AppLocalizations {
   String get sectionBypass => 'Ha a Mozilla le van tiltva';
 
   @override
+  String get sharedRelay => 'Megosztott átjátszó';
+
+  @override
+  String get sharedRelayHint =>
+      'Az alkalmazás megosztott átjátszóinak használata, ha a Mozilla blokkolja a régiót. Az engedélyezett saját átjátszó elsőbbséget élvez.';
+
+  @override
+  String get personalRelay => 'Saját átjátszó';
+
+  @override
   String get apiRelay => 'Közvetítő szerver';
+
+  @override
+  String get apiRelayUse => 'A továbbítószerver használata';
 
   @override
   String get apiRelayHint =>
@@ -968,6 +1079,9 @@ class AppLocalizationsHu extends AppLocalizations {
   String get speedInNotification => 'Sebesség megjelenítése az értesítésben';
 
   @override
+  String get showAppModeSwitch => 'Gyors VPN-módváltás';
+
+  @override
   String get liveTraffic => 'Élő forgalom';
 
   @override
@@ -1029,12 +1143,21 @@ class AppLocalizationsHu extends AppLocalizations {
   }
 
   @override
+  String updateRequired(String version) {
+    return 'Frissíts a(z) $version verzióra. Ez a frissítés szükséges.';
+  }
+
+  @override
   String get download => 'Letöltés';
 
   @override
   String updateCheckFailed(String error) {
     return 'Nem sikerült frissítéseket keresni: $error';
   }
+
+  @override
+  String get updateCheckNoNetwork =>
+      'A GitHub nem érhető el. Ellenőrizze az internetkapcsolatot, és próbálja újra.';
 
   @override
   String get updateNow => 'Frissítés';
@@ -1086,6 +1209,9 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get connectOnStartup => 'Csatlakozás rendszerindításkor';
+
+  @override
+  String get autostartShowsWindow => 'Az alkalmazás ablakának megjelenítése';
 
   @override
   String get proxyServiceActive => 'A proxyszolgáltatás aktív';
@@ -1142,7 +1268,60 @@ class AppLocalizationsHu extends AppLocalizations {
   String get dataUsedTitle => 'Felhasznált adat';
 
   @override
+  String get monthlyData => 'Adat';
+
+  @override
   String get bypassApps => 'Alkalmazásonkénti proxy';
+
+  @override
+  String get appClipboardImport => 'Importálás a vágólapról';
+
+  @override
+  String get appClipboardExport => 'Exportálás a vágólapra';
+
+  @override
+  String get appClipboardUnavailable => 'Nem sikerült elérni a vágólapot.';
+
+  @override
+  String get appClipboardNoMatches =>
+      'Egyetlen telepített alkalmazás sem egyezik a vágólapon lévő csomagnevekkel.';
+
+  @override
+  String get appClipboardMerge => 'Egyesítés';
+
+  @override
+  String get appClipboardReplace => 'Csere';
+
+  @override
+  String appClipboardImportPrompt(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count telepített alkalmazás egyezik. Hozzáadja őket a jelenlegi kijelöléshez, vagy lecseréli a kijelölést?',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String appClipboardImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count alkalmazás importálva.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String appClipboardExported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count csomagnév másolva.',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get connectRetrying =>
@@ -1235,6 +1414,26 @@ class AppLocalizationsHu extends AppLocalizations {
   @override
   String get appModeIncludeHint =>
       'Csak a kijelölt alkalmazások mennek a VPN-en át; a többiek közvetlenül csatlakoznak.';
+
+  @override
+  String get modeAllApps => 'Minden alkalmazás';
+
+  @override
+  String get modeAllAppsHint => 'Minden alkalmazás a VPN-en megy';
+
+  @override
+  String get modeSelectedApps => 'Kiválasztott alkalmazások';
+
+  @override
+  String get modeSelectedAppsHint => 'Csak a kiválasztott alkalmazások';
+
+  @override
+  String selectedAppsCount(String count) {
+    return 'Kiválasztott alkalmazások  $count';
+  }
+
+  @override
+  String get allTrafficThroughVpn => 'A telefon teljes forgalma a VPN-en megy.';
 
   @override
   String fromRegionList(String region) {
@@ -1424,7 +1623,7 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get tunBusy =>
-      'A Firefox VPN egy másik példánya használja a TUN módot.';
+      'Az Arman VPN egy másik példánya használja a TUN módot.';
 
   @override
   String get tunNoDriver =>
@@ -1451,11 +1650,11 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get tunInstallPrompt =>
-      'A Firefox VPN telepíteni szeretné a TUN mód szolgáltatását.';
+      'Az Arman VPN telepíteni szeretné a TUN mód szolgáltatását.';
 
   @override
   String get tunRemovePrompt =>
-      'A Firefox VPN el szeretné távolítani a TUN mód szolgáltatását.';
+      'Az Arman VPN el szeretné távolítani a TUN mód szolgáltatását.';
 
   @override
   String tunRemoveFailed(String error) {
@@ -1575,131 +1774,181 @@ class AppLocalizationsHu extends AppLocalizations {
   String get connRouteFailed => 'Sikertelen';
 
   @override
-  String get dotMethodEntry => 'How to create multiple accounts with one Gmail';
+  String get testRelay => 'Átjátszó ellenőrzése';
 
   @override
-  String get dotMethodTitle => 'Multiple accounts with one Gmail';
+  String get relayTestTitle => 'Átjátszó állapotvizsgálata';
 
   @override
-  String get dotMethodIntro =>
-      'Gmail ignores dots in an address: a.b@gmail.com and ab@gmail.com are the same inbox.';
+  String get relayTestHint =>
+      'Csak az átjátszót ellenőrzi. Nem küld Mozilla-kérést vagy fiókadatokat.';
 
   @override
-  String get dotMethodPoint =>
-      'Each dotted version counts as a NEW email address when you sign up for a Firefox account — but every verification email still arrives in that same one inbox.';
+  String get relayTestPassed => 'Az átjátszó kész';
 
   @override
-  String get dotMethodStep1 =>
-      'Create a Firefox account with a new dotted version of your address.';
+  String get relayTestFailed => 'Az átjátszó állapota nem igazolható';
 
   @override
-  String get dotMethodStep2 =>
-      'Open the verification email in your one inbox and confirm it, or note the code it carries.';
+  String get relayTestCopy => 'Jelentés másolása';
 
   @override
-  String get dotMethodStep3 =>
-      'Come back here and add the account. Repeat with another dotted version for more accounts.';
+  String get relayTestInterrupted =>
+      'A teszt a teljes eredmény beérkezése előtt véget ért.';
 
   @override
-  String get dotMethodExample => 'Example';
+  String get zedInterface => 'Interface';
 
   @override
-  String get uiDesign => 'Design';
+  String get zedDesign => 'Design';
 
   @override
-  String get homeAnimations => 'Home animations';
+  String get zedTransition => 'Page transition';
 
   @override
-  String get homeAnimationsSubtitle => 'Uses more CPU';
+  String get zedNavStyle => 'Navigation style';
 
   @override
-  String get designFoxy => 'Foxy';
+  String get zedReduceMotion => 'Reduce motion';
 
   @override
-  String get designClassic => 'Classic';
+  String get zedPalette => 'Palette';
 
   @override
-  String get designPixel => 'Pixel';
+  String get zedCorners => 'Corners';
 
   @override
-  String get designPortal => 'Portal';
+  String get zedTitleSize => 'Title size';
 
   @override
-  String get designOld => 'Old';
+  String get zedDensity => 'Density';
 
   @override
-  String get zedTapCoreConnect => 'Tap the core to connect';
+  String get zedDockLabels => 'Dock labels';
 
   @override
-  String get zedTapCoreCancel => 'Tap the core to cancel';
+  String get zedDockAutoHide => 'Auto-hide dock';
 
   @override
-  String get zedTrafficProtected => 'All traffic is protected';
+  String get zedConnectStyle => 'Connect control';
 
   @override
-  String get zedVpnOn => 'VPN is ON';
+  String get zedMotifs => 'Motifs';
 
   @override
-  String get zedVpnOff => 'VPN is OFF';
+  String get zedPlayfulTouch => 'Playful touch';
 
   @override
-  String get zedConnectedFor => 'Connected for';
+  String get zedIndexes => 'Indexes';
 
   @override
-  String get zedPing => 'Ping';
+  String get zedLiveTiles => 'Live tiles';
 
   @override
-  String get zedPingMeasuring => 'measuring…';
+  String get zedWave => 'Wave';
 
   @override
-  String get zedPingUnavailable => 'unavailable';
+  String get zedHomeSpeed => 'Speed on home';
 
   @override
-  String get zedConnectionDetails => 'Connection details';
+  String get zedHomeSession => 'Session timer on home';
 
   @override
-  String get zedTapToChooseLocation => 'Tap to choose a location';
+  String get zedHomeQuick => 'Quick actions on home';
 
   @override
-  String get zedRecommendedTapChoose => 'Recommended — tap to choose';
+  String get zedHomeChips => 'Home chips';
 
   @override
-  String get zedAddFirstAccount => 'Tap to add your first account';
+  String get zedAmoled => 'AMOLED black';
 
   @override
-  String zedAccountsActive(int active, int total) {
-    return '$active/$total active';
-  }
+  String get zedAccent => 'Accent';
 
   @override
-  String zedAccountsOfConnected(int connected, int total) {
-    return '$connected of $total connected';
-  }
+  String get zedColorStyle => 'Colour style';
 
   @override
-  String zedAccountsSummary(int enabled, int connected) {
-    return '$enabled enabled · $connected connected';
-  }
+  String get zedContrast => 'Contrast';
 
   @override
-  String get zedAccountOff => 'off';
+  String get zedCornerStyle => 'Corner style';
 
   @override
-  String get zedQuotaExhausted => 'quota exhausted';
+  String get zedTrafficStyle => 'Traffic cards';
 
   @override
-  String get zedIdle => 'idle';
+  String get zedTrafficTileSize => 'Traffic tile size';
 
   @override
-  String get zedSpeed => 'Speed';
+  String get zedProfile => 'Theme profile';
 
   @override
-  String get zedSpeedLive => 'Live';
+  String get zedCustomColors => 'Custom colours';
 
   @override
-  String get zedDownload => 'Download';
+  String get zedCustomDownload => 'Download colour';
 
   @override
-  String get zedUpload => 'Upload';
+  String get zedCustomUpload => 'Upload colour';
 
+  @override
+  String get zedCustomDownloadTile => 'Download tile colour';
+
+  @override
+  String get zedCustomUploadTile => 'Upload tile colour';
+
+  @override
+  String get zedCustomConnect => 'Connect colour';
+
+  @override
+  String get zedCustomConnected => 'Connected colour';
+
+  @override
+  String get zedCustomTapHint => 'Tap hint colour';
+
+  @override
+  String get zedCustomServerCard => 'Server card colour';
+
+  @override
+  String get zedCustomServerActive => 'Active server colour';
+
+  @override
+  String get zedCustomConfigCard => 'Config card colour';
+
+  @override
+  String get zedCustomConfigCardText => 'Config card text colour';
+
+  @override
+  String get zedTint => 'Tint';
+
+  @override
+  String get zedWallpaper => 'Wallpaper';
+
+  @override
+  String get zedMaterial => 'Material';
+
+  @override
+  String get zedGlassLists => 'Glass lists';
+
+  @override
+  String get zedShrinkTabBar => 'Shrinking tab bar';
+
+  @override
+  String get zedMotionHighlights => 'Motion highlights';
+
+  @override
+  String get zedReduceTransparency => 'Reduce transparency';
+
+  @override
+  String get zedHomeTimer => 'Timer on home';
+
+  @override
+  String get zedHomeCard => 'Home card';
+
+  @override
+  String get zedNone => 'None';
+
+  @override
+  String get zedCustom => 'Custom';
 }

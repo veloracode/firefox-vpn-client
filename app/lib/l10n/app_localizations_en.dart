@@ -10,7 +10,7 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appTitle => 'FoxyVPN';
+  String get appTitle => 'Arman VPN';
 
   @override
   String get navOverview => 'Overview';
@@ -151,6 +151,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get accountsGuideUnlimited =>
+      'Firefox Accounts have unlimited data at the moment.';
+
+  @override
   String accountsOrderNote(int percent) {
     return 'In the order of this list: each up to $percent%, the last one until its data runs out.';
   }
@@ -172,6 +176,9 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get delayTestFailed =>
       'Couldn\'t measure the servers\' delay. Check your internet.';
+
+  @override
+  String get delayFromLastTest => 'From the last test';
 
   @override
   String get createAccountTitle => 'Don\'t have a Firefox Account?';
@@ -447,6 +454,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsTitle => 'Settings';
+
+  @override
+  String get settingsNoMatch => 'Nothing matches that';
 
   @override
   String get sectionGeneral => 'General';
@@ -737,6 +747,56 @@ class AppLocalizationsEn extends AppLocalizations {
       'The next account takes over when this share of the quota is used.';
 
   @override
+  String get signInMethod => 'Sign-in method';
+
+  @override
+  String get signInMethodBrowser => 'Sign in with the browser';
+
+  @override
+  String get signInMethodApi => 'Sign in directly';
+
+  @override
+  String get browserSignInBroken => 'The sign-in page could not be opened.';
+
+  @override
+  String get browserSignInBlocked =>
+      'Mozilla did not complete the final step of adding the account (HTTP 406).';
+
+  @override
+  String get browserSignInFallback => 'Sign in with email and password';
+
+  @override
+  String get backupExport => 'Save a backup';
+
+  @override
+  String get backupImport => 'Import a backup';
+
+  @override
+  String backupSaved(String name) {
+    return 'Saved: $name';
+  }
+
+  @override
+  String get backupImportTitle => 'Add these accounts?';
+
+  @override
+  String get backupAccountExists => 'Already added; it signs in from the file';
+
+  @override
+  String get backupImportAction => 'Add';
+
+  @override
+  String backupImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count accounts added',
+      one: '1 account added',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get sectionDns => 'DNS';
 
   @override
@@ -768,7 +828,38 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transportH3 => 'HTTP/3 (QUIC)';
 
   @override
+  String get ipVersion => 'IP version';
+
+  @override
+  String get ipVersionAuto => 'Auto (IPv4, then IPv6)';
+
+  @override
+  String get ipVersionDual => 'Both at once (dual-stack)';
+
+  @override
+  String get ipVersionV6First => 'IPv6 first, then IPv4';
+
+  @override
+  String get ipVersionV4 => 'IPv4 only';
+
+  @override
+  String get ipVersionV6 => 'IPv6 only';
+
+  @override
+  String get tunMtu => 'MTU';
+
+  @override
+  String get tunMtuHint =>
+      'The VPN interface\'s packet size, 1280 to 9000. Empty: automatic.';
+
+  @override
+  String get tunMtuInvalid => 'A number from 1280 to 9000, or empty';
+
+  @override
   String get transportH2 => 'HTTP/2 (TCP)';
+
+  @override
+  String get transportH1 => 'HTTP/1.1 (TLS)';
 
   @override
   String get directRules => 'Direct';
@@ -850,6 +941,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tlsFragment => 'TLS fragmentation';
 
   @override
+  String get tlsFragmentAuto => 'Automatic';
+
+  @override
+  String get tlsFragmentAutoHint =>
+      'Tries other methods if the normal connection fails.';
+
+  @override
   String get tlsFragmentOff => 'Off';
 
   @override
@@ -880,7 +978,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sectionBypass => 'If Mozilla is blocked';
 
   @override
+  String get sharedRelay => 'Shared relay';
+
+  @override
+  String get sharedRelayHint =>
+      'Use the app\'s shared relays if Mozilla blocks your region. An enabled personal relay takes priority.';
+
+  @override
+  String get personalRelay => 'Personal relay';
+
+  @override
   String get apiRelay => 'Relay server';
+
+  @override
+  String get apiRelayUse => 'Use the relay server';
 
   @override
   String get apiRelayHint =>
@@ -962,6 +1073,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get speedInNotification => 'Show speed in the notification';
 
   @override
+  String get showAppModeSwitch => 'Quick VPN mode switch';
+
+  @override
   String get liveTraffic => 'Live traffic';
 
   @override
@@ -1023,12 +1137,21 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String updateRequired(String version) {
+    return 'Please update to version $version. This update is required.';
+  }
+
+  @override
   String get download => 'Download';
 
   @override
   String updateCheckFailed(String error) {
     return 'Could not check for updates: $error';
   }
+
+  @override
+  String get updateCheckNoNetwork =>
+      'Could not reach GitHub. Check your internet connection and try again.';
 
   @override
   String get updateNow => 'Update';
@@ -1080,6 +1203,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get connectOnStartup => 'Connect on startup';
+
+  @override
+  String get autostartShowsWindow => 'Show the app\'s window';
 
   @override
   String get proxyServiceActive => 'Proxy service active';
@@ -1135,7 +1261,62 @@ class AppLocalizationsEn extends AppLocalizations {
   String get dataUsedTitle => 'Data used';
 
   @override
+  String get monthlyData => 'Data';
+
+  @override
   String get bypassApps => 'Per-app proxy';
+
+  @override
+  String get appClipboardImport => 'Import from Clipboard';
+
+  @override
+  String get appClipboardExport => 'Export to Clipboard';
+
+  @override
+  String get appClipboardUnavailable => 'Couldn\'t access the clipboard.';
+
+  @override
+  String get appClipboardNoMatches =>
+      'No installed apps match the package names in the clipboard.';
+
+  @override
+  String get appClipboardMerge => 'Merge';
+
+  @override
+  String get appClipboardReplace => 'Replace';
+
+  @override
+  String appClipboardImportPrompt(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Found $count installed apps.',
+      one: 'Found 1 installed app.',
+    );
+    return '$_temp0 Add the matches to the current selection or replace it?';
+  }
+
+  @override
+  String appClipboardImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Imported $count apps.',
+      one: 'Imported 1 app.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String appClipboardExported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Copied $count package names.',
+      one: 'Copied 1 package name.',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get connectRetrying => 'Couldn\'t connect. Check your internet.';
@@ -1224,6 +1405,27 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get appModeIncludeHint =>
       'Only the selected apps go through the VPN; the others connect directly.';
+
+  @override
+  String get modeAllApps => 'All apps';
+
+  @override
+  String get modeAllAppsHint => 'All apps go through the VPN';
+
+  @override
+  String get modeSelectedApps => 'Selected apps';
+
+  @override
+  String get modeSelectedAppsHint => 'Only the selected apps';
+
+  @override
+  String selectedAppsCount(String count) {
+    return 'Selected apps  $count';
+  }
+
+  @override
+  String get allTrafficThroughVpn =>
+      'All of the phone\'s traffic goes through the VPN.';
 
   @override
   String fromRegionList(String region) {
@@ -1412,7 +1614,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'The TUN service is newer than this app. Update the app to use TUN mode.';
 
   @override
-  String get tunBusy => 'Another copy of Firefox VPN is using TUN mode.';
+  String get tunBusy => 'Another copy of Arman VPN is using TUN mode.';
 
   @override
   String get tunNoDriver =>
@@ -1439,11 +1641,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tunInstallPrompt =>
-      'Firefox VPN wants to install the service for TUN mode.';
+      'Arman VPN wants to install the service for TUN mode.';
 
   @override
   String get tunRemovePrompt =>
-      'Firefox VPN wants to remove the service for TUN mode.';
+      'Arman VPN wants to remove the service for TUN mode.';
 
   @override
   String tunRemoveFailed(String error) {
@@ -1563,131 +1765,181 @@ class AppLocalizationsEn extends AppLocalizations {
   String get connRouteFailed => 'Failed';
 
   @override
-  String get dotMethodEntry => 'How to create multiple accounts with one Gmail';
+  String get testRelay => 'Test relay health';
 
   @override
-  String get dotMethodTitle => 'Multiple accounts with one Gmail';
+  String get relayTestTitle => 'Relay health test';
 
   @override
-  String get dotMethodIntro =>
-      'Gmail ignores dots in an address: a.b@gmail.com and ab@gmail.com are the same inbox.';
+  String get relayTestHint =>
+      'Checks only the relay. No Mozilla request or account information is sent.';
 
   @override
-  String get dotMethodPoint =>
-      'Each dotted version counts as a NEW email address when you sign up for a Firefox account — but every verification email still arrives in that same one inbox.';
+  String get relayTestPassed => 'Relay is ready';
 
   @override
-  String get dotMethodStep1 =>
-      'Create a Firefox account with a new dotted version of your address.';
+  String get relayTestFailed => 'Relay health could not be confirmed';
 
   @override
-  String get dotMethodStep2 =>
-      'Open the verification email in your one inbox and confirm it, or note the code it carries.';
+  String get relayTestCopy => 'Copy report';
 
   @override
-  String get dotMethodStep3 =>
-      'Come back here and add the account. Repeat with another dotted version for more accounts.';
+  String get relayTestInterrupted =>
+      'The test ended before a complete result was received.';
 
   @override
-  String get dotMethodExample => 'Example';
+  String get zedInterface => 'Interface';
 
   @override
-  String get uiDesign => 'Design';
+  String get zedDesign => 'Design';
 
   @override
-  String get homeAnimations => 'Home animations';
+  String get zedTransition => 'Page transition';
 
   @override
-  String get homeAnimationsSubtitle => 'Uses more CPU';
+  String get zedNavStyle => 'Navigation style';
 
   @override
-  String get designFoxy => 'Foxy';
+  String get zedReduceMotion => 'Reduce motion';
 
   @override
-  String get designClassic => 'Original';
+  String get zedPalette => 'Palette';
 
   @override
-  String get designPixel => 'Pixel';
+  String get zedCorners => 'Corners';
 
   @override
-  String get designPortal => 'Portal';
+  String get zedTitleSize => 'Title size';
 
   @override
-  String get designOld => 'Old';
+  String get zedDensity => 'Density';
 
   @override
-  String get zedTapCoreConnect => 'Tap the core to connect';
+  String get zedDockLabels => 'Dock labels';
 
   @override
-  String get zedTapCoreCancel => 'Tap the core to cancel';
+  String get zedDockAutoHide => 'Auto-hide dock';
 
   @override
-  String get zedTrafficProtected => 'All traffic is protected';
+  String get zedConnectStyle => 'Connect control';
 
   @override
-  String get zedVpnOn => 'VPN is ON';
+  String get zedMotifs => 'Motifs';
 
   @override
-  String get zedVpnOff => 'VPN is OFF';
+  String get zedPlayfulTouch => 'Playful touch';
 
   @override
-  String get zedConnectedFor => 'Connected for';
+  String get zedIndexes => 'Indexes';
 
   @override
-  String get zedPing => 'Ping';
+  String get zedLiveTiles => 'Live tiles';
 
   @override
-  String get zedPingMeasuring => 'measuring…';
+  String get zedWave => 'Wave';
 
   @override
-  String get zedPingUnavailable => 'unavailable';
+  String get zedHomeSpeed => 'Speed on home';
 
   @override
-  String get zedConnectionDetails => 'Connection details';
+  String get zedHomeSession => 'Session timer on home';
 
   @override
-  String get zedTapToChooseLocation => 'Tap to choose a location';
+  String get zedHomeQuick => 'Quick actions on home';
 
   @override
-  String get zedRecommendedTapChoose => 'Recommended — tap to choose';
+  String get zedHomeChips => 'Home chips';
 
   @override
-  String get zedAddFirstAccount => 'Tap to add your first account';
+  String get zedAmoled => 'AMOLED black';
 
   @override
-  String zedAccountsActive(int active, int total) {
-    return '$active/$total active';
-  }
+  String get zedAccent => 'Accent';
 
   @override
-  String zedAccountsOfConnected(int connected, int total) {
-    return '$connected of $total connected';
-  }
+  String get zedColorStyle => 'Colour style';
 
   @override
-  String zedAccountsSummary(int enabled, int connected) {
-    return '$enabled enabled · $connected connected';
-  }
+  String get zedContrast => 'Contrast';
 
   @override
-  String get zedAccountOff => 'off';
+  String get zedCornerStyle => 'Corner style';
 
   @override
-  String get zedQuotaExhausted => 'quota exhausted';
+  String get zedTrafficStyle => 'Traffic cards';
 
   @override
-  String get zedIdle => 'idle';
+  String get zedTrafficTileSize => 'Traffic tile size';
 
   @override
-  String get zedSpeed => 'Speed';
+  String get zedProfile => 'Theme profile';
 
   @override
-  String get zedSpeedLive => 'Live';
+  String get zedCustomColors => 'Custom colours';
 
   @override
-  String get zedDownload => 'Download';
+  String get zedCustomDownload => 'Download colour';
 
   @override
-  String get zedUpload => 'Upload';
+  String get zedCustomUpload => 'Upload colour';
 
+  @override
+  String get zedCustomDownloadTile => 'Download tile colour';
+
+  @override
+  String get zedCustomUploadTile => 'Upload tile colour';
+
+  @override
+  String get zedCustomConnect => 'Connect colour';
+
+  @override
+  String get zedCustomConnected => 'Connected colour';
+
+  @override
+  String get zedCustomTapHint => 'Tap hint colour';
+
+  @override
+  String get zedCustomServerCard => 'Server card colour';
+
+  @override
+  String get zedCustomServerActive => 'Active server colour';
+
+  @override
+  String get zedCustomConfigCard => 'Config card colour';
+
+  @override
+  String get zedCustomConfigCardText => 'Config card text colour';
+
+  @override
+  String get zedTint => 'Tint';
+
+  @override
+  String get zedWallpaper => 'Wallpaper';
+
+  @override
+  String get zedMaterial => 'Material';
+
+  @override
+  String get zedGlassLists => 'Glass lists';
+
+  @override
+  String get zedShrinkTabBar => 'Shrinking tab bar';
+
+  @override
+  String get zedMotionHighlights => 'Motion highlights';
+
+  @override
+  String get zedReduceTransparency => 'Reduce transparency';
+
+  @override
+  String get zedHomeTimer => 'Timer on home';
+
+  @override
+  String get zedHomeCard => 'Home card';
+
+  @override
+  String get zedNone => 'None';
+
+  @override
+  String get zedCustom => 'Custom';
 }

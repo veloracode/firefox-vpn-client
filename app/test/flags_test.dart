@@ -2,12 +2,12 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:firefox_vpn/core/core_api.dart';
-import 'package:firefox_vpn/core/remote_flags.dart';
-import 'package:firefox_vpn/ui/widgets.dart';
+import 'package:arman_vpn/core/core_api.dart';
+import 'package:arman_vpn/core/remote_flags.dart';
+import 'package:arman_vpn/ui/widgets.dart';
 
 /// A core that has the flag of Iran only.
 class _FlagCore implements CoreApi {

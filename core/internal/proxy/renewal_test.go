@@ -7,9 +7,25 @@ import (
 	"testing"
 	"time"
 
-	"github.com/armanlife/firefox-vpn-client/core/internal/fxa"
-	"github.com/armanlife/firefox-vpn-client/core/internal/guardian"
+	"github.com/armanlife/arman-vpn-client/core/internal/fxa"
+	"github.com/armanlife/arman-vpn-client/core/internal/guardian"
 )
+
+func TestRenewalTunnelRefusalDoesNotRebuildItsOwnSession(t *testing.T) {
+	session := &fakeProxySession{openErr: &proxyConnectHTTPError{statusCode: 407, status: "407"}}
+	controller := &Controller{
+		current: &managedSession{session: session, expiresAt: time.Now().Add(time.Minute), accepting: true},
+	}
+	controller.renewMu.Lock()
+	defer controller.renewMu.Unlock()
+	conn, err := (existingSessionOpener{controller}).OpenTunnel("vpn.mozilla.org:443")
+	if conn != nil || !errors.Is(err, session.openErr) {
+		t.Fatalf("tunnel open did not return its refusal: %v", err)
+	}
+	if session.openCount.Load() != 1 || session.closeCount.Load() != 0 || controller.current.refs != 0 {
+		t.Fatal("the renewal opener rebuilt the session or leaked its reference")
+	}
+}
 
 func TestProxyControllerSleepOrDoneWakesOnClose(t *testing.T) {
 	t.Parallel()

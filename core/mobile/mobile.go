@@ -18,12 +18,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/armanlife/firefox-vpn-client/core/internal/config"
-	"github.com/armanlife/firefox-vpn-client/core/internal/logx"
-	"github.com/armanlife/firefox-vpn-client/core/internal/netstate"
-	"github.com/armanlife/firefox-vpn-client/core/internal/securefile"
-	"github.com/armanlife/firefox-vpn-client/core/internal/service"
-	"github.com/armanlife/firefox-vpn-client/core/internal/tun"
+	"github.com/armanlife/arman-vpn-client/core/internal/config"
+	"github.com/armanlife/arman-vpn-client/core/internal/logx"
+	"github.com/armanlife/arman-vpn-client/core/internal/netstate"
+	"github.com/armanlife/arman-vpn-client/core/internal/securefile"
+	"github.com/armanlife/arman-vpn-client/core/internal/service"
+	"github.com/armanlife/arman-vpn-client/core/internal/tun"
 )
 
 var (
@@ -99,9 +99,8 @@ func Start(dataDir string, on bool) error {
 	if err != nil {
 		return err
 	}
-	// Every app on the phone can reach its loopback: the API answers only
-	// this app (the local token) and a browser it signs in.
-	d.RequireLocalToken()
+	// Each Android user gets its own listener, protected by its local token.
+	d.UsePrivateDashboard()
 	if !on {
 		d.Off()
 	}
@@ -152,8 +151,7 @@ func SetOn(on bool) {
 	}
 }
 
-// Connect turns the proxy on for the user (the button): the core turns it
-// off again when it does not reach Mozilla within a minute (IsOn).
+// Connect turns the proxy on and tries to reach Mozilla within a minute.
 func Connect() {
 	mu.Lock()
 	d := running
@@ -170,6 +168,15 @@ func IsOn() bool {
 	d := running
 	mu.Unlock()
 	return d != nil && d.IsOn()
+}
+
+// ConnectPending keeps the Android notification in its connecting state
+// during the core's explicit connection attempts.
+func ConnectPending() bool {
+	mu.Lock()
+	d := running
+	mu.Unlock()
+	return d != nil && d.ConnectPending()
 }
 
 // NetworkChanged tells the core about Android's network: connected or
@@ -194,6 +201,17 @@ func LastError() string {
 		return ""
 	}
 	return stopErr.Error()
+}
+
+// DashboardAddress is the local API's address, or empty until it is ready.
+func DashboardAddress() string {
+	mu.Lock()
+	d := running
+	mu.Unlock()
+	if d == nil {
+		return ""
+	}
+	return d.PrivateDashboardAddress()
 }
 
 // DirectApps lists, one per line, the apps of the routing region that the
@@ -271,6 +289,18 @@ func Running() bool {
 	return running != nil
 }
 
+// TunMTU is tun.mtu, the VPN interface's MTU the user chose, or 0 for the
+// app's own; the app sets its VPN to it (CoreService.kt), and TunConfig
+// uses it too.
+func TunMTU() int32 {
+	mu.Lock()
+	defer mu.Unlock()
+	if running == nil {
+		return 0
+	}
+	return int32(running.TunMTU())
+}
+
 // TunConfig makes the VPN's way into the core, for a device of the given MTU:
 // it opens the core's TUN listener, which the proxy's rules for the VPN apply
 // to, and writes the configuration of hev-socks5-tunnel, the C library that
@@ -278,6 +308,9 @@ func Running() bool {
 // the app runs the library with it (Tun2Socks.kt). The app must exclude itself
 // from the VPN, so the core's own connections do not loop back into it.
 func TunConfig(mtu int32) (string, error) {
+	if m := TunMTU(); m > 0 {
+		mtu = m
+	}
 	mu.Lock()
 	defer mu.Unlock()
 	d := running

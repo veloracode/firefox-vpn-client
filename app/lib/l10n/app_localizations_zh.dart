@@ -10,7 +10,7 @@ class AppLocalizationsZh extends AppLocalizations {
   AppLocalizationsZh([String locale = 'zh']) : super(locale);
 
   @override
-  String get appTitle => 'FoxyVPN';
+  String get appTitle => 'Arman VPN';
 
   @override
   String get navOverview => '概览';
@@ -148,6 +148,9 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get accountsGuideUnlimited => 'Firefox 账户目前流量不限量。';
+
+  @override
   String accountsOrderNote(int percent) {
     return '按此列表顺序使用：每个账户用到 $percent%，最后一个用到流量耗尽。';
   }
@@ -168,6 +171,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get delayTestFailed => '无法测量服务器延迟。请检查网络。';
+
+  @override
+  String get delayFromLastTest => '来自上次测试';
 
   @override
   String get createAccountTitle => '还没有 Firefox 账户？';
@@ -434,6 +440,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsTitle => '设置';
+
+  @override
+  String get settingsNoMatch => '没有匹配结果';
 
   @override
   String get sectionGeneral => '常规';
@@ -715,6 +724,54 @@ class AppLocalizationsZh extends AppLocalizations {
   String get switchThresholdHint => '流量用到此比例时，自动切换到下一个账户。';
 
   @override
+  String get signInMethod => '登录方式';
+
+  @override
+  String get signInMethodBrowser => '通过浏览器登录';
+
+  @override
+  String get signInMethodApi => '直接登录';
+
+  @override
+  String get browserSignInBroken => '无法打开登录页面。';
+
+  @override
+  String get browserSignInBlocked => 'Mozilla 未能完成添加账号的最后一步（HTTP 406）。';
+
+  @override
+  String get browserSignInFallback => '使用邮箱和密码登录';
+
+  @override
+  String get backupExport => '保存备份';
+
+  @override
+  String get backupImport => '导入备份';
+
+  @override
+  String backupSaved(String name) {
+    return '已保存：$name';
+  }
+
+  @override
+  String get backupImportTitle => '添加这些账户？';
+
+  @override
+  String get backupAccountExists => '已添加；将使用文件中的登录信息';
+
+  @override
+  String get backupImportAction => '添加';
+
+  @override
+  String backupImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '已添加 $count 个账户',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get sectionDns => 'DNS';
 
   @override
@@ -745,7 +802,37 @@ class AppLocalizationsZh extends AppLocalizations {
   String get transportH3 => 'HTTP/3 (QUIC)';
 
   @override
+  String get ipVersion => 'IP 版本';
+
+  @override
+  String get ipVersionAuto => '自动（先 IPv4，再 IPv6）';
+
+  @override
+  String get ipVersionDual => '同时使用两者（双栈）';
+
+  @override
+  String get ipVersionV6First => '先 IPv6，再 IPv4';
+
+  @override
+  String get ipVersionV4 => '仅 IPv4';
+
+  @override
+  String get ipVersionV6 => '仅 IPv6';
+
+  @override
+  String get tunMtu => 'MTU';
+
+  @override
+  String get tunMtuHint => 'VPN 接口的数据包大小，1280 到 9000。留空：自动。';
+
+  @override
+  String get tunMtuInvalid => '1280 到 9000 之间的数字，或留空';
+
+  @override
   String get transportH2 => 'HTTP/2 (TCP)';
+
+  @override
+  String get transportH1 => 'HTTP/1.1 (TLS)';
 
   @override
   String get directRules => '直连';
@@ -826,6 +913,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get tlsFragment => 'TLS 分片';
 
   @override
+  String get tlsFragmentAuto => '自动';
+
+  @override
+  String get tlsFragmentAutoHint => '如果常规连接失败，则尝试其他方法。';
+
+  @override
   String get tlsFragmentOff => '关闭';
 
   @override
@@ -853,7 +946,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sectionBypass => '如果 Mozilla 被封锁';
 
   @override
+  String get sharedRelay => '共享中继';
+
+  @override
+  String get sharedRelayHint => '如果 Mozilla 屏蔽了你所在的地区，则使用应用的共享中继。已启用的个人中继优先。';
+
+  @override
+  String get personalRelay => '个人中继';
+
+  @override
   String get apiRelay => '中继服务器';
+
+  @override
+  String get apiRelayUse => '使用中继服务器';
 
   @override
   String get apiRelayHint =>
@@ -932,6 +1037,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get speedInNotification => '在通知中显示速度';
 
   @override
+  String get showAppModeSwitch => '快速切换 VPN 模式';
+
+  @override
   String get liveTraffic => '实时流量';
 
   @override
@@ -992,12 +1100,20 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String updateRequired(String version) {
+    return '请更新至 $version 版本。此更新为必要更新。';
+  }
+
+  @override
   String get download => '下载';
 
   @override
   String updateCheckFailed(String error) {
     return '无法检查更新：$error';
   }
+
+  @override
+  String get updateCheckNoNetwork => '无法连接到 GitHub。请检查网络连接后重试。';
 
   @override
   String get updateNow => '更新';
@@ -1049,6 +1165,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get connectOnStartup => '开机自动连接';
+
+  @override
+  String get autostartShowsWindow => '显示应用窗口';
 
   @override
   String get proxyServiceActive => '代理服务运行中';
@@ -1103,7 +1222,58 @@ class AppLocalizationsZh extends AppLocalizations {
   String get dataUsedTitle => '已用流量';
 
   @override
+  String get monthlyData => '流量';
+
+  @override
   String get bypassApps => '分应用代理';
+
+  @override
+  String get appClipboardImport => '从剪贴板导入';
+
+  @override
+  String get appClipboardExport => '导出到剪贴板';
+
+  @override
+  String get appClipboardUnavailable => '无法访问剪贴板。';
+
+  @override
+  String get appClipboardNoMatches => '剪贴板中的包名与任何已安装的应用都不匹配。';
+
+  @override
+  String get appClipboardMerge => '合并';
+
+  @override
+  String get appClipboardReplace => '替换';
+
+  @override
+  String appClipboardImportPrompt(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '找到 $count 个匹配的已安装应用。要将它们添加到当前选择，还是替换当前选择？',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String appClipboardImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '已导入 $count 个应用。',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String appClipboardExported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '已复制 $count 个包名。',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get connectRetrying => '无法连接。请检查网络。';
@@ -1180,6 +1350,26 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appModeIncludeHint => '仅所选应用走 VPN，其他应用直连。';
+
+  @override
+  String get modeAllApps => '所有应用';
+
+  @override
+  String get modeAllAppsHint => '所有应用都经过 VPN';
+
+  @override
+  String get modeSelectedApps => '选定的应用';
+
+  @override
+  String get modeSelectedAppsHint => '仅选定的应用';
+
+  @override
+  String selectedAppsCount(String count) {
+    return '选定的应用  $count';
+  }
+
+  @override
+  String get allTrafficThroughVpn => '手机的所有流量都经过 VPN。';
 
   @override
   String fromRegionList(String region) {
@@ -1355,7 +1545,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get tunAppOutdated => 'TUN 服务比此应用新。请更新应用以使用 TUN 模式。';
 
   @override
-  String get tunBusy => '另一个 Firefox VPN 副本正在使用 TUN 模式。';
+  String get tunBusy => '另一个 Arman VPN 副本正在使用 TUN 模式。';
 
   @override
   String get tunNoDriver => '系统的 TUN 驱动不可用。请重启电脑后重试。';
@@ -1379,10 +1569,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get tunServiceRemoved => '已移除 TUN 服务。';
 
   @override
-  String get tunInstallPrompt => 'Firefox VPN 想要安装 TUN 模式的服务。';
+  String get tunInstallPrompt => 'Arman VPN 想要安装 TUN 模式的服务。';
 
   @override
-  String get tunRemovePrompt => 'Firefox VPN 想要移除 TUN 模式的服务。';
+  String get tunRemovePrompt => 'Arman VPN 想要移除 TUN 模式的服务。';
 
   @override
   String tunRemoveFailed(String error) {
@@ -1500,133 +1690,181 @@ class AppLocalizationsZh extends AppLocalizations {
   String get connRouteFailed => '失败';
 
   @override
-  String get dotMethodEntry => 'How to create multiple accounts with one Gmail';
+  String get testRelay => '测试中继状态';
 
   @override
-  String get dotMethodTitle => 'Multiple accounts with one Gmail';
+  String get relayTestTitle => '中继状态测试';
 
   @override
-  String get dotMethodIntro =>
-      'Gmail ignores dots in an address: a.b@gmail.com and ab@gmail.com are the same inbox.';
+  String get relayTestHint => '仅检查中继，不向 Mozilla 发送请求或账户信息。';
 
   @override
-  String get dotMethodPoint =>
-      'Each dotted version counts as a NEW email address when you sign up for a Firefox account — but every verification email still arrives in that same one inbox.';
+  String get relayTestPassed => '中继已就绪';
 
   @override
-  String get dotMethodStep1 =>
-      'Create a Firefox account with a new dotted version of your address.';
+  String get relayTestFailed => '无法确认中继状态';
 
   @override
-  String get dotMethodStep2 =>
-      'Open the verification email in your one inbox and confirm it, or note the code it carries.';
+  String get relayTestCopy => '复制报告';
 
   @override
-  String get dotMethodStep3 =>
-      'Come back here and add the account. Repeat with another dotted version for more accounts.';
+  String get relayTestInterrupted => '测试在收到完整结果前结束。';
 
   @override
-  String get dotMethodExample => 'Example';
+  String get zedInterface => 'Interface';
 
   @override
-  String get uiDesign => 'Design';
+  String get zedDesign => 'Design';
 
   @override
-  String get homeAnimations => 'Home animations';
+  String get zedTransition => 'Page transition';
 
   @override
-  String get homeAnimationsSubtitle => 'Uses more CPU';
+  String get zedNavStyle => 'Navigation style';
 
   @override
-  String get designFoxy => 'Foxy';
+  String get zedReduceMotion => 'Reduce motion';
 
   @override
-  String get designClassic => 'Classic';
+  String get zedPalette => 'Palette';
 
   @override
-  String get designPixel => 'Pixel';
+  String get zedCorners => 'Corners';
 
   @override
-  String get designPortal => 'Portal';
+  String get zedTitleSize => 'Title size';
 
   @override
-  String get designOld => 'Old';
+  String get zedDensity => 'Density';
 
   @override
-  String get zedTapCoreConnect => 'Tap the core to connect';
+  String get zedDockLabels => 'Dock labels';
 
   @override
-  String get zedTapCoreCancel => 'Tap the core to cancel';
+  String get zedDockAutoHide => 'Auto-hide dock';
 
   @override
-  String get zedTrafficProtected => 'All traffic is protected';
+  String get zedConnectStyle => 'Connect control';
 
   @override
-  String get zedVpnOn => 'VPN is ON';
+  String get zedMotifs => 'Motifs';
 
   @override
-  String get zedVpnOff => 'VPN is OFF';
+  String get zedPlayfulTouch => 'Playful touch';
 
   @override
-  String get zedConnectedFor => 'Connected for';
+  String get zedIndexes => 'Indexes';
 
   @override
-  String get zedPing => 'Ping';
+  String get zedLiveTiles => 'Live tiles';
 
   @override
-  String get zedPingMeasuring => 'measuring…';
+  String get zedWave => 'Wave';
 
   @override
-  String get zedPingUnavailable => 'unavailable';
+  String get zedHomeSpeed => 'Speed on home';
 
   @override
-  String get zedConnectionDetails => 'Connection details';
+  String get zedHomeSession => 'Session timer on home';
 
   @override
-  String get zedTapToChooseLocation => 'Tap to choose a location';
+  String get zedHomeQuick => 'Quick actions on home';
 
   @override
-  String get zedRecommendedTapChoose => 'Recommended — tap to choose';
+  String get zedHomeChips => 'Home chips';
 
   @override
-  String get zedAddFirstAccount => 'Tap to add your first account';
+  String get zedAmoled => 'AMOLED black';
 
   @override
-  String zedAccountsActive(int active, int total) {
-    return '$active/$total active';
-  }
+  String get zedAccent => 'Accent';
 
   @override
-  String zedAccountsOfConnected(int connected, int total) {
-    return '$connected of $total connected';
-  }
+  String get zedColorStyle => 'Colour style';
 
   @override
-  String zedAccountsSummary(int enabled, int connected) {
-    return '$enabled enabled · $connected connected';
-  }
+  String get zedContrast => 'Contrast';
 
   @override
-  String get zedAccountOff => 'off';
+  String get zedCornerStyle => 'Corner style';
 
   @override
-  String get zedQuotaExhausted => 'quota exhausted';
+  String get zedTrafficStyle => 'Traffic cards';
 
   @override
-  String get zedIdle => 'idle';
+  String get zedTrafficTileSize => 'Traffic tile size';
 
   @override
-  String get zedSpeed => 'Speed';
+  String get zedProfile => 'Theme profile';
 
   @override
-  String get zedSpeedLive => 'Live';
+  String get zedCustomColors => 'Custom colours';
 
   @override
-  String get zedDownload => 'Download';
+  String get zedCustomDownload => 'Download colour';
 
   @override
-  String get zedUpload => 'Upload';
+  String get zedCustomUpload => 'Upload colour';
 
+  @override
+  String get zedCustomDownloadTile => 'Download tile colour';
+
+  @override
+  String get zedCustomUploadTile => 'Upload tile colour';
+
+  @override
+  String get zedCustomConnect => 'Connect colour';
+
+  @override
+  String get zedCustomConnected => 'Connected colour';
+
+  @override
+  String get zedCustomTapHint => 'Tap hint colour';
+
+  @override
+  String get zedCustomServerCard => 'Server card colour';
+
+  @override
+  String get zedCustomServerActive => 'Active server colour';
+
+  @override
+  String get zedCustomConfigCard => 'Config card colour';
+
+  @override
+  String get zedCustomConfigCardText => 'Config card text colour';
+
+  @override
+  String get zedTint => 'Tint';
+
+  @override
+  String get zedWallpaper => 'Wallpaper';
+
+  @override
+  String get zedMaterial => 'Material';
+
+  @override
+  String get zedGlassLists => 'Glass lists';
+
+  @override
+  String get zedShrinkTabBar => 'Shrinking tab bar';
+
+  @override
+  String get zedMotionHighlights => 'Motion highlights';
+
+  @override
+  String get zedReduceTransparency => 'Reduce transparency';
+
+  @override
+  String get zedHomeTimer => 'Timer on home';
+
+  @override
+  String get zedHomeCard => 'Home card';
+
+  @override
+  String get zedNone => 'None';
+
+  @override
+  String get zedCustom => 'Custom';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -1634,7 +1872,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   AppLocalizationsZhHant() : super('zh_Hant');
 
   @override
-  String get appTitle => 'FoxyVPN';
+  String get appTitle => 'Arman VPN';
 
   @override
   String get navOverview => '總覽';
@@ -1772,6 +2010,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   }
 
   @override
+  String get accountsGuideUnlimited => 'Firefox 帳號目前流量不限量。';
+
+  @override
   String accountsOrderNote(int percent) {
     return '依此清單順序使用：每個帳戶用到 $percent%，最後一個用到流量用完。';
   }
@@ -1792,6 +2033,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get delayTestFailed => '無法測量伺服器延遲。請檢查網路。';
+
+  @override
+  String get delayFromLastTest => '來自上次測試';
 
   @override
   String get createAccountTitle => '還沒有 Firefox Account？';
@@ -2057,6 +2301,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get settingsTitle => '設定';
+
+  @override
+  String get settingsNoMatch => '沒有符合的結果';
 
   @override
   String get sectionGeneral => '一般';
@@ -2338,6 +2585,54 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get switchThresholdHint => '流量用到此比例時，自動換下一個帳號。';
 
   @override
+  String get signInMethod => '登入方式';
+
+  @override
+  String get signInMethodBrowser => '透過瀏覽器登入';
+
+  @override
+  String get signInMethodApi => '直接登入';
+
+  @override
+  String get browserSignInBroken => '無法開啟登入頁面。';
+
+  @override
+  String get browserSignInBlocked => 'Mozilla 未能完成新增帳號的最後一步（HTTP 406）。';
+
+  @override
+  String get browserSignInFallback => '使用電子郵件和密碼登入';
+
+  @override
+  String get backupExport => '儲存備份';
+
+  @override
+  String get backupImport => '匯入備份';
+
+  @override
+  String backupSaved(String name) {
+    return '已儲存：$name';
+  }
+
+  @override
+  String get backupImportTitle => '新增這些帳號？';
+
+  @override
+  String get backupAccountExists => '已新增；將使用檔案中的登入資訊';
+
+  @override
+  String get backupImportAction => '新增';
+
+  @override
+  String backupImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '已新增 $count 個帳號',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get sectionDns => 'DNS';
 
   @override
@@ -2368,7 +2663,37 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get transportH3 => 'HTTP/3 (QUIC)';
 
   @override
+  String get ipVersion => 'IP 版本';
+
+  @override
+  String get ipVersionAuto => '自動（先 IPv4，再 IPv6）';
+
+  @override
+  String get ipVersionDual => '同時使用兩者（雙堆疊）';
+
+  @override
+  String get ipVersionV6First => '先 IPv6，再 IPv4';
+
+  @override
+  String get ipVersionV4 => '僅 IPv4';
+
+  @override
+  String get ipVersionV6 => '僅 IPv6';
+
+  @override
+  String get tunMtu => 'MTU';
+
+  @override
+  String get tunMtuHint => 'VPN 介面的封包大小，1280 到 9000。留空：自動。';
+
+  @override
+  String get tunMtuInvalid => '1280 到 9000 之間的數字，或留空';
+
+  @override
   String get transportH2 => 'HTTP/2 (TCP)';
+
+  @override
+  String get transportH1 => 'HTTP/1.1 (TLS)';
 
   @override
   String get directRules => '直接連線';
@@ -2448,6 +2773,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get tlsFragment => 'TLS 分片';
 
   @override
+  String get tlsFragmentAuto => '自動';
+
+  @override
+  String get tlsFragmentAutoHint => '如果一般連線失敗，就嘗試其他方法。';
+
+  @override
   String get tlsFragmentOff => '關閉';
 
   @override
@@ -2475,7 +2806,19 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get sectionBypass => '如果 Mozilla 被封鎖';
 
   @override
+  String get sharedRelay => '共用中繼';
+
+  @override
+  String get sharedRelayHint => '如果 Mozilla 封鎖了你所在的地區，則使用應用程式的共用中繼。已啟用的個人中繼優先。';
+
+  @override
+  String get personalRelay => '個人中繼';
+
+  @override
   String get apiRelay => '中繼伺服器';
+
+  @override
+  String get apiRelayUse => '使用中繼伺服器';
 
   @override
   String get apiRelayHint =>
@@ -2554,6 +2897,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get speedInNotification => '在通知中顯示速度';
 
   @override
+  String get showAppModeSwitch => '快速切換 VPN 模式';
+
+  @override
   String get liveTraffic => '即時流量';
 
   @override
@@ -2614,12 +2960,20 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   }
 
   @override
+  String updateRequired(String version) {
+    return '請更新至 $version 版本。此更新為必要更新。';
+  }
+
+  @override
   String get download => '下載';
 
   @override
   String updateCheckFailed(String error) {
     return '無法檢查更新：$error';
   }
+
+  @override
+  String get updateCheckNoNetwork => '無法連線到 GitHub。請檢查網路連線後再試一次。';
 
   @override
   String get updateNow => '更新';
@@ -2671,6 +3025,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get connectOnStartup => '開機自動連線';
+
+  @override
+  String get autostartShowsWindow => '顯示應用程式視窗';
 
   @override
   String get proxyServiceActive => '代理服務執行中';
@@ -2725,7 +3082,58 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get dataUsedTitle => '已用流量';
 
   @override
+  String get monthlyData => '流量';
+
+  @override
   String get bypassApps => '個別應用程式代理';
+
+  @override
+  String get appClipboardImport => '從剪貼簿匯入';
+
+  @override
+  String get appClipboardExport => '匯出至剪貼簿';
+
+  @override
+  String get appClipboardUnavailable => '無法存取剪貼簿。';
+
+  @override
+  String get appClipboardNoMatches => '剪貼簿中的套件名稱與任何已安裝的應用程式都不相符。';
+
+  @override
+  String get appClipboardMerge => '合併';
+
+  @override
+  String get appClipboardReplace => '取代';
+
+  @override
+  String appClipboardImportPrompt(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '找到 $count 個相符的已安裝應用程式。要加入目前的選取清單，還是取代清單？',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String appClipboardImported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '已匯入 $count 個應用程式。',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String appClipboardExported(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '已複製 $count 個套件名稱。',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get connectRetrying => '無法連線。請檢查網路。';
@@ -2802,6 +3210,26 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get appModeIncludeHint => '只有所選應用程式經過 VPN；其他應用程式直接連線。';
+
+  @override
+  String get modeAllApps => '所有應用程式';
+
+  @override
+  String get modeAllAppsHint => '所有應用程式都經過 VPN';
+
+  @override
+  String get modeSelectedApps => '選取的應用程式';
+
+  @override
+  String get modeSelectedAppsHint => '僅選取的應用程式';
+
+  @override
+  String selectedAppsCount(String count) {
+    return '選取的應用程式  $count';
+  }
+
+  @override
+  String get allTrafficThroughVpn => '手機的所有流量都經過 VPN。';
 
   @override
   String fromRegionList(String region) {
@@ -2980,7 +3408,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get tunAppOutdated => 'TUN 服務比此應用程式新。請更新應用程式以使用 TUN 模式。';
 
   @override
-  String get tunBusy => '另一個 Firefox VPN 副本正在使用 TUN 模式。';
+  String get tunBusy => '另一個 Arman VPN 副本正在使用 TUN 模式。';
 
   @override
   String get tunNoDriver => '系統的 TUN 驅動程式無法使用。請重新啟動電腦後再試一次。';
@@ -3004,10 +3432,10 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get tunServiceRemoved => '已移除 TUN 服務。';
 
   @override
-  String get tunInstallPrompt => 'Firefox VPN 想要安裝 TUN 模式的服務。';
+  String get tunInstallPrompt => 'Arman VPN 想要安裝 TUN 模式的服務。';
 
   @override
-  String get tunRemovePrompt => 'Firefox VPN 想要移除 TUN 模式的服務。';
+  String get tunRemovePrompt => 'Arman VPN 想要移除 TUN 模式的服務。';
 
   @override
   String tunRemoveFailed(String error) {
@@ -3125,131 +3553,23 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get connRouteFailed => '失敗';
 
   @override
-  String get dotMethodEntry => 'How to create multiple accounts with one Gmail';
+  String get testRelay => '測試中繼狀態';
 
   @override
-  String get dotMethodTitle => 'Multiple accounts with one Gmail';
+  String get relayTestTitle => '中繼狀態測試';
 
   @override
-  String get dotMethodIntro =>
-      'Gmail ignores dots in an address: a.b@gmail.com and ab@gmail.com are the same inbox.';
+  String get relayTestHint => '僅檢查中繼，不向 Mozilla 傳送請求或帳戶資訊。';
 
   @override
-  String get dotMethodPoint =>
-      'Each dotted version counts as a NEW email address when you sign up for a Firefox account — but every verification email still arrives in that same one inbox.';
+  String get relayTestPassed => '中繼已就緒';
 
   @override
-  String get dotMethodStep1 =>
-      'Create a Firefox account with a new dotted version of your address.';
+  String get relayTestFailed => '無法確認中繼狀態';
 
   @override
-  String get dotMethodStep2 =>
-      'Open the verification email in your one inbox and confirm it, or note the code it carries.';
+  String get relayTestCopy => '複製報告';
 
   @override
-  String get dotMethodStep3 =>
-      'Come back here and add the account. Repeat with another dotted version for more accounts.';
-
-  @override
-  String get dotMethodExample => 'Example';
-
-  @override
-  String get uiDesign => 'Design';
-
-  @override
-  String get homeAnimations => 'Home animations';
-
-  @override
-  String get homeAnimationsSubtitle => 'Uses more CPU';
-
-  @override
-  String get designFoxy => 'Foxy';
-
-  @override
-  String get designClassic => 'Classic';
-
-  @override
-  String get designPixel => 'Pixel';
-
-  @override
-  String get designPortal => 'Portal';
-
-  @override
-  String get designOld => 'Old';
-
-  @override
-  String get zedTapCoreConnect => 'Tap the core to connect';
-
-  @override
-  String get zedTapCoreCancel => 'Tap the core to cancel';
-
-  @override
-  String get zedTrafficProtected => 'All traffic is protected';
-
-  @override
-  String get zedVpnOn => 'VPN is ON';
-
-  @override
-  String get zedVpnOff => 'VPN is OFF';
-
-  @override
-  String get zedConnectedFor => 'Connected for';
-
-  @override
-  String get zedPing => 'Ping';
-
-  @override
-  String get zedPingMeasuring => 'measuring…';
-
-  @override
-  String get zedPingUnavailable => 'unavailable';
-
-  @override
-  String get zedConnectionDetails => 'Connection details';
-
-  @override
-  String get zedTapToChooseLocation => 'Tap to choose a location';
-
-  @override
-  String get zedRecommendedTapChoose => 'Recommended — tap to choose';
-
-  @override
-  String get zedAddFirstAccount => 'Tap to add your first account';
-
-  @override
-  String zedAccountsActive(int active, int total) {
-    return '$active/$total active';
-  }
-
-  @override
-  String zedAccountsOfConnected(int connected, int total) {
-    return '$connected of $total connected';
-  }
-
-  @override
-  String zedAccountsSummary(int enabled, int connected) {
-    return '$enabled enabled · $connected connected';
-  }
-
-  @override
-  String get zedAccountOff => 'off';
-
-  @override
-  String get zedQuotaExhausted => 'quota exhausted';
-
-  @override
-  String get zedIdle => 'idle';
-
-  @override
-  String get zedSpeed => 'Speed';
-
-  @override
-  String get zedSpeedLive => 'Live';
-
-  @override
-  String get zedDownload => 'Download';
-
-  @override
-  String get zedUpload => 'Upload';
-
+  String get relayTestInterrupted => '測試在收到完整結果前結束。';
 }

@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/armanlife/firefox-vpn-client/core/internal/serverlist"
+	"github.com/armanlife/arman-vpn-client/core/internal/serverlist"
 )
 
 // FastestCountry is the proxy.country value that picks the location with
@@ -48,6 +48,9 @@ type LocationPing struct {
 	Recommended bool   `json:"recommended"`
 	PingMS      int64  `json:"ping_ms,omitempty"`
 	Error       string `json:"error,omitempty"`
+	// Cached marks a figure from an earlier measurement, kept because the
+	// location was slow and was left out of this one.
+	Cached bool `json:"cached,omitempty"`
 }
 
 func (p LocationPing) OK() bool { return p.Error == "" && p.PingMS > 0 }

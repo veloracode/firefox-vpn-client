@@ -178,13 +178,13 @@ func TestOffSendsTheHelloWhole(t *testing.T) {
 }
 
 func TestValid(t *testing.T) {
-	for _, mode := range []string{"", Off, SNI, FirstByte, Record} {
+	for _, mode := range []string{"", Auto, Off, SNI, FirstByte, Record} {
 		if !Valid(mode) {
 			t.Errorf("%q is refused", mode)
 		}
 	}
-	if Valid("auto") {
-		t.Error("auto is accepted")
+	if Valid("invalid") {
+		t.Error("an unknown mode is accepted")
 	}
 }
 

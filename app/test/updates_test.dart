@@ -1,15 +1,19 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:firefox_vpn/app_info.dart';
-import 'package:firefox_vpn/core/updates.dart';
+import 'package:arman_vpn/app_info.dart';
+import 'package:arman_vpn/core/updates.dart';
 
 /// A release server on loopback in GitHub's place: [routes] maps
 /// "METHOD /path" to a status and a body; anything else is 404.
-Future<String> serve(Map<String, (int, String)> routes) async {
+Future<String> serve(
+  Map<String, (int, String)> routes, {
+  List<String>? requests,
+}) async {
   final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
   addTearDown(() => server.close(force: true));
   server.listen((req) {
+    requests?.add('${req.method} ${req.uri.path}');
     final (status, body) = routes['${req.method} ${req.uri.path}'] ?? (404, '');
     req.response.statusCode = status;
     if (req.method != 'HEAD') req.response.write(body);
@@ -24,11 +28,11 @@ void main() {
   test('a phone downloads the APK for its processor', () {
     expect(
       apkUrl(page, 'arm64-v8a'),
-      'https://github.com/o/r/releases/download/v1.2.3/Firefox-VPN-1.2.3-Android-arm64-v8a.apk',
+      'https://github.com/o/r/releases/download/v1.2.3/Arman-VPN-1.2.3-Android-arm64-v8a.apk',
     );
     expect(
       apkUrl(page, 'armeabi-v7a'),
-      endsWith('/v1.2.3/Firefox-VPN-1.2.3-Android-armeabi-v7a.apk'),
+      endsWith('/v1.2.3/Arman-VPN-1.2.3-Android-armeabi-v7a.apk'),
     );
     expect(apkUrl(page, 'x86_64'), endsWith('-x86_64.apk'));
   });
@@ -36,22 +40,22 @@ void main() {
   test('another processor gets the universal APK', () {
     expect(
       apkUrl(page, 'x86'),
-      endsWith('/Firefox-VPN-1.2.3-Android-universal.apk'),
+      endsWith('/Arman-VPN-1.2.3-Android-universal.apk'),
     );
     expect(
       apkUrl(page, ''),
-      endsWith('/Firefox-VPN-1.2.3-Android-universal.apk'),
+      endsWith('/Arman-VPN-1.2.3-Android-universal.apk'),
     );
   });
 
   test('a computer downloads the file for its kind of copy', () {
     expect(
       releaseFileUrl(page, windowsName(installed: true)),
-      'https://github.com/o/r/releases/download/v1.2.3/Firefox-VPN-1.2.3-Windows-Setup-x64.exe',
+      'https://github.com/o/r/releases/download/v1.2.3/Arman-VPN-1.2.3-Windows-Setup-x64.exe',
     );
     expect(
       releaseFileUrl(page, windowsName(installed: false)),
-      endsWith('/Firefox-VPN-1.2.3-Windows-x64.zip'),
+      endsWith('/Arman-VPN-1.2.3-Windows-x64.zip'),
     );
     expect(linuxName('3.10.0 (stable) on "linux_arm64"'), 'Linux-arm64.tar.gz');
     expect(linuxName('3.10.0 (stable) on "linux_x64"'), 'Linux-amd64.tar.gz');
@@ -68,11 +72,11 @@ void main() {
       final url = await serve({
         'GET /updates.json': (200, updates),
         // GitHub sends a published release's file on to its storage.
-        'HEAD /releases/download/v1.0.6/Firefox-VPN-1.0.6-Windows-x64.zip': (
+        'HEAD /releases/download/v1.0.6/Arman-VPN-1.0.6-Windows-x64.zip': (
           302,
           '',
         ),
-        'HEAD /releases/download/v1.0.4/Firefox-VPN-1.0.4-Android-universal.apk':
+        'HEAD /releases/download/v1.0.4/Arman-VPN-1.0.4-Android-universal.apk':
             (302, ''),
       });
       final release = await checkForUpdate(
@@ -89,6 +93,115 @@ void main() {
       );
       expect(phone?.version, '1.0.4');
     });
+
+    test('a valid primary file takes precedence over the mirror', () async {
+      final mirrorRequests = <String>[];
+      final mirror = await serve({
+        'GET /updates.json': (200, '{"android":"9.9.9"}'),
+      }, requests: mirrorRequests);
+      final primary = await serve({'GET /updates.json': (200, updates)});
+      expect(
+        await checkForUpdate(
+          server: primary,
+          updatesMirror: '$mirror/updates.json',
+          os: 'android',
+          current: '1.0.4',
+        ),
+        isNull,
+      );
+      expect(mirrorRequests, isEmpty);
+    });
+
+    test('the mirror supplies metadata when the primary is unusable', () async {
+      for (final response in [
+        (503, ''),
+        (200, 'not JSON'),
+        (200, '{"windows":"invalid"}'),
+        (200, '{"android":"1.0.4"}'),
+      ]) {
+        final primaryRequests = <String>[];
+        final mirrorRequests = <String>[];
+        final primary = await serve({
+          'GET /updates.json': response,
+          'HEAD /releases/download/v1.0.6/Arman-VPN-1.0.6-Windows-x64.zip': (
+            302,
+            '',
+          ),
+        }, requests: primaryRequests);
+        final mirror = await serve({
+          'GET /updates.json': (200, updates),
+        }, requests: mirrorRequests);
+        final release = await checkForUpdate(
+          server: primary,
+          updatesMirror: '$mirror/updates.json',
+          os: 'windows',
+          current: '1.0.5',
+        );
+        expect(release?.version, '1.0.6', reason: '$response');
+        expect(release?.url, '$primary/releases/tag/v1.0.6');
+        expect(primaryRequests, [
+          'GET /updates.json',
+          'HEAD /releases/download/v1.0.6/Arman-VPN-1.0.6-Windows-x64.zip',
+        ]);
+        expect(mirrorRequests, ['GET /updates.json']);
+      }
+    });
+
+    test('an unreachable primary uses the mirror', () async {
+      final mirror = await serve({'GET /updates.json': (200, updates)});
+      final unavailable = await HttpServer.bind(
+        InternetAddress.loopbackIPv4,
+        0,
+      );
+      final primary = 'http://127.0.0.1:${unavailable.port}';
+      await unavailable.close(force: true);
+      expect(
+        await checkForUpdate(
+          server: primary,
+          updatesMirror: '$mirror/updates.json',
+          os: 'android',
+          current: '1.0.4',
+        ),
+        isNull,
+      );
+    });
+
+    test(
+      'an unusable primary and mirror fall back to the release API',
+      () async {
+        final requests = <String>[];
+        final primary = await serve({
+          'GET /updates.json': (503, ''),
+          'GET /releases/latest': (200, latest),
+        }, requests: requests);
+        final mirror = await serve({'GET /updates.json': (200, 'not JSON')});
+        final release = await checkForUpdate(
+          server: primary,
+          updatesMirror: '$mirror/updates.json',
+          os: 'macos',
+          current: '1.0.4',
+        );
+        expect(release?.version, '1.0.6');
+        expect(requests, ['GET /updates.json', 'GET /releases/latest']);
+      },
+    );
+
+    test(
+      'a mirrored version still requires its published release file',
+      () async {
+        final primary = await serve({'GET /updates.json': (503, '')});
+        final mirror = await serve({'GET /updates.json': (200, updates)});
+        await expectLater(
+          checkForUpdate(
+            server: primary,
+            updatesMirror: '$mirror/updates.json',
+            os: 'windows',
+            current: '1.0.5',
+          ),
+          throwsA(isA<HttpException>()),
+        );
+      },
+    );
 
     test('a phone is not offered a release made for the computers', () async {
       final url = await serve({

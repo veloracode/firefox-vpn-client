@@ -1,11 +1,10 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:firefox_vpn/app_settings.dart';
-import 'package:firefox_vpn/core/models.dart';
-import 'package:firefox_vpn/l10n/app_localizations.dart';
-import 'package:firefox_vpn/ui/accounts_page.dart';
-import 'package:firefox_vpn/ui/format.dart';
+import 'package:arman_vpn/app_settings.dart';
+import 'package:arman_vpn/core/models.dart';
+import 'package:arman_vpn/l10n/app_localizations.dart';
+import 'package:arman_vpn/ui/accounts_page.dart';
+import 'package:arman_vpn/ui/format.dart';
 
 void main() {
   test('the system locale picks the app language', () {
@@ -50,7 +49,7 @@ void main() {
     );
     expect(
       accountReason(fa, account('signin_failed', 'failed', 'bad password'), 95),
-      contains('bad password'),
+      fa.reasonSignInRequired,
     );
     // A reason this app does not know: the core's words.
     expect(
@@ -66,7 +65,7 @@ void main() {
   });
 
   testWidgets('every language formats dates', (tester) async {
-    // Loads the date formats the app gets from flutter_localizations.
+    // Loads the date formats the app gets from material_ui.
     for (final language in AppSettings.supportedLanguages) {
       final locale = AppSettings.localeOf(language);
       await GlobalMaterialLocalizations.delegate.load(locale);

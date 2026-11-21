@@ -12,7 +12,7 @@ import (
 
 	"golang.org/x/sys/windows"
 
-	"github.com/armanlife/firefox-vpn-client/core/internal/tunapi"
+	"github.com/armanlife/arman-vpn-client/core/internal/tunapi"
 )
 
 // InstallForUser installs the service for the user running this process.
@@ -27,25 +27,6 @@ func InstallForUser(prompt string) error {
 		return Install(user)
 	}
 	return runElevated("install-as-admin", "-user", user)
-}
-
-// startForUser starts the installed service, as an administrator after
-// Windows' prompt, unless this process already is one.
-func startForUser(_ string) error {
-	if windows.GetCurrentProcessToken().IsElevated() {
-		return StartInstalled()
-	}
-	return runElevated("start-as-admin")
-}
-
-// manualForUser takes the installed service out of the start-at-boot
-// list and stops it, as an administrator after Windows' prompt, unless
-// this process already is one.
-func manualForUser(_ string) error {
-	if windows.GetCurrentProcessToken().IsElevated() {
-		return MakeManual()
-	}
-	return runElevated("manual-as-admin")
 }
 
 // UninstallForUser removes the service: through its pipe while it runs,
@@ -79,7 +60,7 @@ func runElevated(args ...string) error {
 	if err != nil {
 		return err
 	}
-	report, err := os.CreateTemp("", "firefox-vpn-tun-*.txt")
+	report, err := os.CreateTemp("", "arman-vpn-tun-*.txt")
 	if err != nil {
 		return err
 	}

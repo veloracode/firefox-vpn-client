@@ -209,13 +209,6 @@ class CoreController extends ChangeNotifier {
   Future<TunServiceResult> installTunService({String? prompt}) =>
       _tunService(() => tunService!.install(prompt: prompt), installing: true);
 
-  /// Makes sure the TUN service runs, with the system's administrator
-  /// prompt only when it does not: the service never starts with the
-  /// computer, so choosing the TUN mode starts it (installing it on the
-  /// first use). [prompt] is the prompt's reason on macOS.
-  Future<TunServiceResult> startTunService({String? prompt}) =>
-      _tunService(() => tunService!.start(prompt: prompt), installing: true);
-
   /// Removes the TUN service; [prompt] is the reason macOS' administrator
   /// prompt shows when the service does not run.
   Future<TunServiceResult> removeTunService({String? prompt}) => _tunService(
@@ -258,7 +251,9 @@ class CoreController extends ChangeNotifier {
       for (var i = 0; i < 20; i++) {
         final next = await api.status();
         status = next;
-        if ((next.state.phase == Phase.off) != on) break;
+        if (next.proxyOn == on || (on && next.connectFailure.isNotEmpty)) {
+          break;
+        }
         await Future<void>.delayed(const Duration(milliseconds: 150));
       }
     } finally {
@@ -288,8 +283,8 @@ class CoreController extends ChangeNotifier {
   Future<void> autoConnect() => _act(() => _require().autoConnect());
 
   /// Starts downloading [version] of the app (the Windows app's core).
-  Future<void> downloadUpdate(String version) =>
-      _act(() => _require().downloadUpdate(version));
+  Future<void> downloadUpdate(String version, {Map<String, Object?>? source}) =>
+      _act(() => _require().downloadUpdate(version, source: source));
 
   /// Installs the downloaded [version]; the app ([pid]) quits once this
   /// returns, and starts again with [args].
@@ -379,6 +374,42 @@ class CoreController extends ChangeNotifier {
   Future<void> refreshQuota(Account a) =>
       _account(a.id, () => _require().refreshAccount(a.id));
 
+  /// Reads the quota again for every account whose figure is [after] old or
+  /// more, which the accounts page asks for when it opens. An account that is
+  /// not in use is never read otherwise, so its figure keeps the limit that
+  /// was in force when it was last used, long after that limit changed.
+  /// Failures are passed over: this runs on its own, with nobody to tell.
+  Future<void> refreshStaleQuotas({
+    Duration after = const Duration(days: 1),
+  }) async {
+    if (_refreshingQuotas) return;
+    _refreshingQuotas = true;
+    try {
+      final now = DateTime.now();
+      for (final a in [...?accounts?.accounts]) {
+        if (_disposed) return;
+        // An account that needs its user to sign in again, or that has a
+        // problem, would only fail and spin its card. One turned off is
+        // read like any other: its figure still shows.
+        if (a.status == AccountStatus.reauthRequired ||
+            a.status == AccountStatus.unavailable) {
+          continue;
+        }
+        final checked = a.usage?.checkedAt;
+        if (checked != null && now.difference(checked) < after) continue;
+        try {
+          await refreshQuota(a);
+        } catch (_) {
+          // An account that cannot be read keeps the figure it had.
+        }
+      }
+    } finally {
+      _refreshingQuotas = false;
+    }
+  }
+
+  bool _refreshingQuotas = false;
+
   Future<void> remove(Account a) =>
       _account(a.id, () => _require().removeAccount(a.id));
 
@@ -431,10 +462,15 @@ class CoreController extends ChangeNotifier {
       _retestAt = null;
       _retestDelay = _retestFirst;
     }
-    if (s.state.phase != Phase.running || testing || switchingProxy) return;
+    if (!s.proxyOn ||
+        s.state.phase != Phase.running ||
+        testing ||
+        switchingProxy) {
+      return;
+    }
     if (s.noNetwork) return;
-    // The core's auto-connect tests by itself.
-    if (s.autoConnecting) return;
+    // The core owns both kinds of connection attempts.
+    if (s.autoConnecting || s.connectPending) return;
     if (s.confirmedBy(lastTest)) {
       _retestAt = null;
       _retestDelay = _retestFirst;
@@ -480,6 +516,7 @@ class CoreController extends ChangeNotifier {
 
   bool _cameToFront = false;
   bool _measuringDelay = false;
+
   static const _highDelayAgain = Duration(seconds: 10);
   static const _oldDelay = Duration(minutes: 1);
 

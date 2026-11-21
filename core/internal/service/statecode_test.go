@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/armanlife/firefox-vpn-client/core/internal/accounts"
-	"github.com/armanlife/firefox-vpn-client/core/internal/config"
+	"github.com/armanlife/arman-vpn-client/core/internal/accounts"
+	"github.com/armanlife/arman-vpn-client/core/internal/config"
 )
 
 // waitCode waits until /api/status reports the state code, and returns the
@@ -107,9 +107,6 @@ func TestStartFailureHasCode(t *testing.T) {
 // forgets it.
 func TestSystemProxyTakenShowsInTheStatus(t *testing.T) {
 	d := newTestDaemon(t)
-	if err := d.SetSystemProxy(config.SystemProxyClear); err != nil {
-		t.Fatal(err)
-	}
 	if err := d.SetSystemProxy(config.SystemProxySet); err != nil {
 		t.Fatal(err)
 	}

@@ -10,18 +10,18 @@ import (
 	"slices"
 	"time"
 
-	"github.com/armanlife/firefox-vpn-client/core/internal/config"
-	"github.com/armanlife/firefox-vpn-client/core/internal/egress"
-	"github.com/armanlife/firefox-vpn-client/core/internal/logx"
-	"github.com/armanlife/firefox-vpn-client/core/internal/proxy"
-	"github.com/armanlife/firefox-vpn-client/core/internal/service"
-	"github.com/armanlife/firefox-vpn-client/core/internal/tunapi"
-	"github.com/armanlife/firefox-vpn-client/core/internal/version"
+	"github.com/armanlife/arman-vpn-client/core/internal/config"
+	"github.com/armanlife/arman-vpn-client/core/internal/egress"
+	"github.com/armanlife/arman-vpn-client/core/internal/logx"
+	"github.com/armanlife/arman-vpn-client/core/internal/proxy"
+	"github.com/armanlife/arman-vpn-client/core/internal/service"
+	"github.com/armanlife/arman-vpn-client/core/internal/tunapi"
+	"github.com/armanlife/arman-vpn-client/core/internal/version"
 )
 
 // The TUN mode in the app's core process. While the daemon wants a TUN
 // (Daemon.TunWanted), tunSync holds a session with the TUN service
-// (cmd/firefox-vpn-tun, protocol internal/tunapi): it opens the adapter,
+// (cmd/arman-vpn-tun, protocol internal/tunapi): it opens the adapter,
 // binds the core's own connections outside it (egress), routes everything
 // into it, and closes it when the mode changes, the proxy goes off, or the
 // app quits. However this process ends, its pipe connection ends with it,
@@ -35,6 +35,7 @@ type tunHost interface {
 	SetTunStatus(service.TunStatus)
 	ReconnectUpstream()
 	TunPrograms() []config.TunProgram
+	TunMTU() int
 	VPNUDPPorts() []proxy.PortRange
 	NoteRefusedUDP(program, path string)
 }
@@ -227,7 +228,8 @@ func (t *tunSync) start(ctx context.Context) {
 	for _, r := range t.host.VPNUDPPorts() {
 		udpPorts = append(udpPorts, tunapi.PortRange{From: r.From, To: r.To})
 	}
-	reply, err := t.ask(conn, tunapi.Message{Type: tunapi.TypeOpen, Proxy: addr, Username: user, Password: password, Programs: programs, UDPPorts: udpPorts})
+	// tun.mtu; a service of an older protocol keeps its own.
+	reply, err := t.ask(conn, tunapi.Message{Type: tunapi.TypeOpen, Proxy: addr, Username: user, Password: password, Programs: programs, UDPPorts: udpPorts, MTU: t.host.TunMTU()})
 	if err == nil && (reply.Type != tunapi.TypeOpened || reply.Interface == nil) {
 		err = fmt.Errorf("unexpected reply %q", reply.Type)
 	}

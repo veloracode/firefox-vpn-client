@@ -10,11 +10,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/armanlife/firefox-vpn-client/core/internal/egress"
-	"github.com/armanlife/firefox-vpn-client/core/internal/logx"
-	"github.com/armanlife/firefox-vpn-client/core/internal/tun"
-	"github.com/armanlife/firefox-vpn-client/core/internal/tunapi"
-	"github.com/armanlife/firefox-vpn-client/core/internal/tunstack"
+	"github.com/armanlife/arman-vpn-client/core/internal/egress"
+	"github.com/armanlife/arman-vpn-client/core/internal/logx"
+	"github.com/armanlife/arman-vpn-client/core/internal/tun"
+	"github.com/armanlife/arman-vpn-client/core/internal/tunapi"
+	"github.com/armanlife/arman-vpn-client/core/internal/tunstack"
 )
 
 // session is one core's TUN: the adapter, then its routes and stack and
@@ -109,7 +109,7 @@ func newSession(s *Server, owner *tunapi.Conn, client string, protocol int, m tu
 		Name:  AdapterName,
 		Inet4: adapterV4,
 		Inet6: adapterV6,
-		MTU:   adapterMTU,
+		MTU:   uint32(sessionMTU(m.MTU)),
 		Handler: tunstack.Handler{
 			DNS:     sess.dns.Answer,
 			TCP:     func(f *tunstack.Flow) { sess.forward(f.Source, f.Destination, f.Accept, f.Refuse) },

@@ -7,9 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/armanlife/firefox-vpn-client/core/internal/accounts"
-	"github.com/armanlife/firefox-vpn-client/core/internal/config"
-	"github.com/armanlife/firefox-vpn-client/core/internal/logx"
+	"github.com/armanlife/arman-vpn-client/core/internal/accounts"
+	"github.com/armanlife/arman-vpn-client/core/internal/config"
+	"github.com/armanlife/arman-vpn-client/core/internal/guardian"
+	"github.com/armanlife/arman-vpn-client/core/internal/logx"
 )
 
 // Files the service keeps in its data folder.
@@ -92,6 +93,7 @@ func LoadConfig(paths DataPaths, forceVerbose bool) (config.Config, error) {
 	if err := configureAPIRelay(cfg.Network); err != nil {
 		return config.Config{}, fmt.Errorf("invalid network.api_relay: %w", err)
 	}
+	guardian.LoadTokenRouteCache(filepath.Join(paths.Dir, "guardian-route.json"))
 	return cfg, nil
 }
 

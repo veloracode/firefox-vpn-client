@@ -1,14 +1,19 @@
 # Project-level configuration.
 cmake_minimum_required(VERSION 3.14)
-project(firefox_vpn LANGUAGES CXX)
+project(arman_vpn LANGUAGES CXX)
 
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
-set(BINARY_NAME "firefox-vpn")
+set(BINARY_NAME "arman-vpn")
 
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.
 cmake_policy(VERSION 3.14...3.25)
+
+# webview_windows still compiles with MSVC's experimental coroutines
+# (/await), which recent MSVC refuses (STL1011) unless silenced. This
+# reaches the plugin targets through the directory scope.
+add_compile_definitions(_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)
 
 # Define build configuration option.
 get_property(IS_MULTICONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)

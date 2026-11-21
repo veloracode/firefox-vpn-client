@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 
 import '../app_settings.dart';
@@ -17,7 +17,13 @@ import 'bypass_apps_page.dart';
 import 'connection_mode.dart';
 import 'format.dart';
 import 'port_dialog.dart';
+import 'relay_test_dialog.dart';
 import 'widgets.dart';
+import 'zed/zed_connect_glass.dart' show GlassSwitch;
+import 'zed/zed_kit.dart' show ZedSectionHeader, ZedSwatchRow;
+import 'zed/zed_labels.dart';
+import 'zed/zed_prefs.dart';
+import 'zed/zed_theme.dart';
 
 /// The program file the user picks in the system's open dialog (title, the
 /// kind of file); tests replace it.
@@ -120,6 +126,148 @@ List<(String, List<SettingsEntry>)> settingsGroups(
     ),
 ];
 
+/// Whether a setting the search found is on this platform at all. The
+/// index is shared, but a computer's settings are not on a phone and the
+/// other way round; these follow the `if (Platform...)` conditions in the
+/// sections' own code.
+bool settingOnThisPlatform(AppLocalizations l, String name) {
+  final computer = Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+  final computerOnly = {
+    l.closeBehavior,
+    l.startOnBoot,
+    l.autostartShowsWindow,
+    l.connectOnStartup,
+  };
+  final androidOnly = {
+    l.showAppModeSwitch,
+    l.speedInNotification,
+    l.connectionMode,
+    l.bypassApps,
+  };
+  if (!computer && computerOnly.contains(name)) return false;
+  if (!Platform.isAndroid && androidOnly.contains(name)) return false;
+  return true;
+}
+
+/// A section's name as the list shows it, for saying where a setting that
+/// a search found lives.
+String settingsSectionName(AppLocalizations l, SettingsSection section) {
+  for (final (_, entries) in settingsGroups(l, tun: true)) {
+    for (final (which, _, name) in entries) {
+      if (which == section) return name;
+    }
+  }
+  return l.settingsTitle;
+}
+
+/// Every setting the list's search can find, with the section that holds
+/// it. test/settings_search_test.dart builds the same list from the
+/// sections' own code and fails when the two differ, so a setting added to
+/// a section cannot be left out of the search quietly.
+List<(SettingsSection, String)> settingsIndex(AppLocalizations l) => [
+  (SettingsSection.general, l.autostartShowsWindow),
+  (SettingsSection.general, l.closeBehavior),
+  (SettingsSection.general, l.connectOnStartup),
+  (SettingsSection.general, l.language),
+  (SettingsSection.general, l.sectionGeneral),
+  (SettingsSection.general, l.showAppModeSwitch),
+  (SettingsSection.general, l.showPublicIp),
+  (SettingsSection.general, l.speedInNotification),
+  (SettingsSection.general, l.startOnBoot),
+  (SettingsSection.general, l.theme),
+  (SettingsSection.general, l.zedInterface),
+  (SettingsSection.general, l.zedDesign),
+  (SettingsSection.general, l.zedTransition),
+  (SettingsSection.general, l.zedNavStyle),
+  (SettingsSection.general, l.zedReduceMotion),
+  (SettingsSection.general, l.zedPalette),
+  (SettingsSection.general, l.zedCorners),
+  (SettingsSection.general, l.zedTitleSize),
+  (SettingsSection.general, l.zedDensity),
+  (SettingsSection.general, l.zedDockLabels),
+  (SettingsSection.general, l.zedDockAutoHide),
+  (SettingsSection.general, l.zedConnectStyle),
+  (SettingsSection.general, l.zedMotifs),
+  (SettingsSection.general, l.zedPlayfulTouch),
+  (SettingsSection.general, l.zedIndexes),
+  (SettingsSection.general, l.zedLiveTiles),
+  (SettingsSection.general, l.zedWave),
+  (SettingsSection.general, l.zedHomeSpeed),
+  (SettingsSection.general, l.zedHomeSession),
+  (SettingsSection.general, l.zedHomeQuick),
+  (SettingsSection.general, l.zedHomeChips),
+  (SettingsSection.general, l.zedAmoled),
+  (SettingsSection.general, l.zedAccent),
+  (SettingsSection.general, l.zedColorStyle),
+  (SettingsSection.general, l.zedContrast),
+  (SettingsSection.general, l.zedCornerStyle),
+  (SettingsSection.general, l.zedTrafficStyle),
+  (SettingsSection.general, l.zedTrafficTileSize),
+  (SettingsSection.general, l.zedProfile),
+  (SettingsSection.general, l.zedCustomColors),
+  (SettingsSection.general, l.zedCustomDownload),
+  (SettingsSection.general, l.zedCustomUpload),
+  (SettingsSection.general, l.zedCustomDownloadTile),
+  (SettingsSection.general, l.zedCustomUploadTile),
+  (SettingsSection.general, l.zedCustomConnect),
+  (SettingsSection.general, l.zedCustomConnected),
+  (SettingsSection.general, l.zedCustomTapHint),
+  (SettingsSection.general, l.zedCustomServerCard),
+  (SettingsSection.general, l.zedCustomServerActive),
+  (SettingsSection.general, l.zedCustomConfigCard),
+  (SettingsSection.general, l.zedCustomConfigCardText),
+  (SettingsSection.general, l.zedTint),
+  (SettingsSection.general, l.zedWallpaper),
+  (SettingsSection.general, l.zedMaterial),
+  (SettingsSection.general, l.zedGlassLists),
+  (SettingsSection.general, l.zedShrinkTabBar),
+  (SettingsSection.general, l.zedMotionHighlights),
+  (SettingsSection.general, l.zedReduceTransparency),
+  (SettingsSection.general, l.zedHomeTimer),
+  (SettingsSection.general, l.zedHomeCard),
+  (SettingsSection.connection, l.connectionMode),
+  (SettingsSection.connection, l.ipVersion),
+  (SettingsSection.connection, l.listenAddress),
+  (SettingsSection.connection, l.localProxy),
+  (SettingsSection.connection, l.proxyLogin),
+  (SettingsSection.connection, l.proxyPort),
+  (SettingsSection.connection, l.sectionConnection),
+  (SettingsSection.connection, l.transport),
+  (SettingsSection.connection, l.tunMtu),
+  (SettingsSection.relay, l.apiRelay),
+  (SettingsSection.relay, l.apiRelayUse),
+  (SettingsSection.relay, l.personalRelay),
+  (SettingsSection.relay, l.sharedRelay),
+  (SettingsSection.fragment, l.tlsFragment),
+  (SettingsSection.routing, l.blockAds),
+  (SettingsSection.routing, l.blockRules),
+  (SettingsSection.routing, l.bypassApps),
+  (SettingsSection.routing, l.directRules),
+  (SettingsSection.routing, l.region),
+  (SettingsSection.routing, l.removeTunService),
+  (SettingsSection.routing, l.resolveDomains),
+  (SettingsSection.routing, l.routingDirect),
+  (SettingsSection.routing, l.routingLists),
+  (SettingsSection.routing, l.ruleSyntaxTitle),
+  (SettingsSection.routing, l.rulesTitle),
+  (SettingsSection.routing, l.sectionRouting),
+  (SettingsSection.routing, l.testDestination),
+  (SettingsSection.tun, l.sectionTun),
+  (SettingsSection.tun, l.tunPrograms),
+  (SettingsSection.tun, l.udpNoticeSetting),
+  (SettingsSection.dns, l.dnsCustom),
+  (SettingsSection.dns, l.dnsFallback),
+  (SettingsSection.dns, l.dnsPreset),
+  (SettingsSection.dns, l.sectionDns),
+  (SettingsSection.advanced, l.addProgram),
+  (SettingsSection.advanced, l.appPort),
+  (SettingsSection.advanced, l.listSource),
+  (SettingsSection.advanced, l.removeTunService),
+  (SettingsSection.advanced, l.updateLists),
+  (SettingsSection.advanced, l.upstreamProxy),
+  (SettingsSection.advanced, l.webDashboard),
+];
+
 /// A group in a list of settings: its title over a card of its rows.
 class SettingsGroup extends StatelessWidget {
   const SettingsGroup({super.key, required this.title, required this.tiles});
@@ -163,6 +311,11 @@ class _SettingsPageState extends State<SettingsPage> {
   /// The section shown; null for the list of sections.
   late SettingsSection? _open = widget.section ?? widget.opening;
 
+  /// What was typed in the list's search field, already folded for
+  /// matching ([_fold]); empty means the whole list is shown.
+  String _query = '';
+  final _search = TextEditingController();
+
   /// The core's config.json as raw JSON; null until read.
   Map<String, Object?>? _config;
   bool _saving = false;
@@ -174,6 +327,12 @@ class _SettingsPageState extends State<SettingsPage> {
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -280,10 +439,11 @@ class _SettingsPageState extends State<SettingsPage> {
     if (mounted) _toast(AppLocalizations.of(context).saved);
   }
 
-  /// Changes the language, then offers the routing most of its speakers
-  /// want (Persian: Iran, Chinese: China, Russian: Russia).
+  /// Android changes only the UI language. Desktop also offers the routing
+  /// most of its speakers want (Persian: Iran, Chinese: China, Russian: Russia).
   Future<void> _pickLanguage(String language) async {
     widget.settings.update(language: language);
+    if (Platform.isAndroid) return;
     final region = AppSettings.regionForLanguage(language);
     if (region == null ||
         (_bool(['routing', 'enabled']) &&
@@ -356,19 +516,101 @@ class _SettingsPageState extends State<SettingsPage> {
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: onTap,
               );
+          // A section is shown when its name matches what was typed; an
+          // empty search shows them all.
+          bool matches(String name) =>
+              _query.isEmpty || foldForSearch(name).contains(_query);
+          final shown = [
+            for (final (title, entries) in groups)
+              (
+                title,
+                [
+                  for (final entry in entries)
+                    if (matches(entry.$3)) entry,
+                ],
+                onOpenLogs != null &&
+                    entries.last.$1 == SettingsSection.advanced &&
+                    matches(l.navLogs),
+              ),
+          ].where((g) => g.$2.isNotEmpty || g.$3).toList();
+          // The settings themselves, when something was typed: the name of
+          // each, under the section that holds it, so one tap opens it.
+          final hits = _query.isEmpty
+              ? const <(SettingsSection, String)>[]
+              : [
+                  for (final entry in settingsIndex(l))
+                    if (foldForSearch(entry.$2).contains(_query) &&
+                        sections.any((e) => e.$1 == entry.$1) &&
+                        settingOnThisPlatform(l, entry.$2) &&
+                        !shown.any(
+                          (g) => g.$2.any(
+                            (e) => e.$1 == entry.$1 && e.$3 == entry.$2,
+                          ),
+                        ))
+                      entry,
+                ];
+
           return ListView(
             padding: pagePadding(context),
             children: [
               PageTitle(l.settingsTitle),
-              for (final (title, entries) in groups)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: TextField(
+                  controller: _search,
+                  onChanged: (v) => setState(() => _query = foldForSearch(v)),
+                  textInputAction: TextInputAction.search,
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText: l.search,
+                    prefixIcon: const Icon(Icons.search_rounded),
+                    suffixIcon: _search.text.isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: MaterialLocalizations.of(context)
+                                .deleteButtonTooltip,
+                            icon: const Icon(Icons.close_rounded),
+                            onPressed: () => setState(() {
+                              _search.clear();
+                              _query = '';
+                            }),
+                          ),
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              if (shown.isEmpty && hits.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 32),
+                  child: Text(
+                    l.settingsNoMatch,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              for (final (title, entries, logs) in shown)
                 SettingsGroup(
                   title: title,
                   tiles: [
                     for (final (section, icon, name) in entries)
                       row(icon, name, () => setState(() => _open = section)),
-                    if (onOpenLogs != null &&
-                        entries.last.$1 == SettingsSection.advanced)
-                      row(Icons.receipt_long_outlined, l.navLogs, onOpenLogs),
+                    if (logs)
+                      row(Icons.receipt_long_outlined, l.navLogs, onOpenLogs!),
+                  ],
+                ),
+              if (hits.isNotEmpty)
+                SettingsGroup(
+                  title: l.settingsTitle,
+                  tiles: [
+                    for (final (section, name) in hits)
+                      ListTile(
+                        leading: const Icon(Icons.chevron_right_rounded),
+                        title: Text(name),
+                        subtitle: Text(settingsSectionName(l, section)),
+                        onTap: () => setState(() => _open = section),
+                      ),
                   ],
                 ),
             ],
@@ -426,115 +668,861 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _general(AppLocalizations l, AppSettings s) => Panel(
-    title: l.sectionGeneral,
-    icon: Icons.tune_rounded,
-    child: Column(
-      children: [
-        _Choice<String>(
-          icon: Icons.translate_rounded,
-          title: l.language,
-          value: s.language,
-          onChanged: _pickLanguage,
-          options: [
-            ('', l.languageSystem, null),
-            for (final code in AppSettings.supportedLanguages)
-              (code, languageNames[code]!, languageStyle(code)),
-          ],
-        ),
-        _Choice<ThemeMode>(
-          icon: Icons.brightness_6_outlined,
-          title: l.theme,
-          value: s.themeMode,
-          onChanged: (v) => s.update(themeMode: v),
-          options: [
-            (ThemeMode.system, l.themeSystem, null),
-            (ThemeMode.light, l.themeLight, null),
-            (ThemeMode.dark, l.themeDark, null),
-          ],
-        ),
-        _Choice<UiDesign>(
-          icon: Icons.design_services_outlined,
-          title: l.uiDesign,
-          value: s.uiDesign,
-          onChanged: (v) => s.update(uiDesign: v),
-          options: [
-            (UiDesign.pixel, l.designPixel, null),
-            (UiDesign.portal, l.designPortal, null),
-            (UiDesign.old, l.designOld, null),
-            (UiDesign.foxy, l.designFoxy, null),
-            (UiDesign.classic, l.designClassic, null),
-          ],
-        ),
-        if (!Platform.isAndroid)
-          _Choice<CloseAction>(
-            icon: Icons.close_rounded,
-            title: l.closeBehavior,
-            value: s.closeAction,
-            onChanged: (v) => s.update(closeAction: v),
+  Widget _general(AppLocalizations l, AppSettings s) {
+    final generalPanel = Panel(
+      title: l.sectionGeneral,
+      icon: Icons.tune_rounded,
+      child: Column(
+        children: [
+          _Choice<String>(
+            icon: Icons.translate_rounded,
+            title: l.language,
+            value: s.language,
+            onChanged: _pickLanguage,
             options: [
-              (CloseAction.ask, l.closeAsk, null),
-              (CloseAction.tray, l.closeTray, null),
-              (CloseAction.quit, l.closeQuit, null),
+              ('', l.languageSystem, null),
+              for (final code in AppSettings.supportedLanguages)
+                (code, languageNames[code]!, languageStyle(code)),
             ],
           ),
-        _Row(
-          icon: Icons.visibility_outlined,
-          label: l.showPublicIp,
-          child: Switch(
-            value: s.showPublicIp,
-            onChanged: (v) => s.update(showPublicIp: v),
+          _Choice<ThemeMode>(
+            icon: Icons.brightness_6_outlined,
+            title: l.theme,
+            value: s.themeMode,
+            onChanged: (v) => s.update(themeMode: v),
+            options: [
+              (ThemeMode.system, l.themeSystem, null),
+              (ThemeMode.light, l.themeLight, null),
+              (ThemeMode.dark, l.themeDark, null),
+            ],
           ),
-        ),
-        _Row(
-          icon: Icons.animation_rounded,
-          label: l.homeAnimations,
-          value: l.homeAnimationsSubtitle,
-          child: Switch(
-            value: s.animationsEnabled,
-            onChanged: (v) => s.update(animationsEnabled: v),
+          if (!Platform.isAndroid)
+            _Choice<CloseAction>(
+              icon: Icons.close_rounded,
+              title: l.closeBehavior,
+              value: s.closeAction,
+              onChanged: (v) => s.update(closeAction: v),
+              options: [
+                (CloseAction.ask, l.closeAsk, null),
+                (CloseAction.tray, l.closeTray, null),
+                (CloseAction.quit, l.closeQuit, null),
+              ],
+            ),
+          _Row(
+            icon: Icons.visibility_outlined,
+            label: l.showPublicIp,
+            child: Switch(
+              value: s.showPublicIp,
+              onChanged: (v) => s.update(showPublicIp: v),
+            ),
           ),
-        ),
-        if (Platform.isAndroid)
-          ValueListenableBuilder(
-            valueListenable: AndroidCore.showSpeed,
-            builder: (context, on, _) => _Row(
-              icon: Icons.speed_rounded,
-              label: l.speedInNotification,
+          if (Platform.isAndroid)
+            _Row(
+              icon: Icons.apps_rounded,
+              label: l.showAppModeSwitch,
               child: Switch(
-                value: on,
-                onChanged: (v) => runShowingErrors(
-                  context,
-                  () => AndroidCore.setShowSpeed(v),
+                value: s.showAppModeSwitch,
+                onChanged: (v) => s.update(showAppModeSwitch: v),
+              ),
+            ),
+          if (Platform.isAndroid)
+            ValueListenableBuilder(
+              valueListenable: AndroidCore.showSpeed,
+              builder: (context, on, _) => _Row(
+                icon: Icons.speed_rounded,
+                label: l.speedInNotification,
+                child: Switch(
+                  value: on,
+                  onChanged: (v) => runShowingErrors(
+                    context,
+                    () => AndroidCore.setShowSpeed(v),
+                  ),
                 ),
               ),
             ),
-          ),
-        if (Platform.isWindows || Platform.isLinux || Platform.isMacOS)
-          _Row(
-            icon: Icons.power_settings_new_rounded,
-            label: l.startOnBoot,
-            child: Switch(
-              value: s.autostart,
-              onChanged: (v) => s.update(autostart: v),
-            ),
-          ),
-        // Only with the start at sign-in: dimmed without it.
-        if (Platform.isWindows || Platform.isLinux || Platform.isMacOS)
-          Opacity(
-            opacity: s.autostart ? 1 : 0.5,
-            child: _Row(
-              icon: Icons.link_rounded,
-              label: l.connectOnStartup,
+          if (Platform.isWindows || Platform.isLinux || Platform.isMacOS)
+            _Row(
+              icon: Icons.power_settings_new_rounded,
+              label: l.startOnBoot,
               child: Switch(
-                value: s.autoConnect,
-                onChanged: s.autostart ? (v) => s.update(autoConnect: v) : null,
+                value: s.autostart,
+                onChanged: (v) => s.update(autostart: v),
               ),
             ),
+          // Only with the start at sign-in: dimmed without it. Both rows are
+          // under the one condition: an `if` covers only the element after it.
+          if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) ...[
+            Opacity(
+              opacity: s.autostart ? 1 : 0.5,
+              child: _Row(
+                under: true,
+                icon: Icons.open_in_new_rounded,
+                label: l.autostartShowsWindow,
+                child: Switch(
+                  value: s.autostartShowsWindow,
+                  onChanged: s.autostart
+                      ? (v) => s.update(autostartShowsWindow: v)
+                      : null,
+                ),
+              ),
+            ),
+            Opacity(
+              opacity: s.autostart ? 1 : 0.5,
+              child: _Row(
+                under: true,
+                icon: Icons.link_rounded,
+                label: l.connectOnStartup,
+                child: Switch(
+                  value: s.autoConnect,
+                  onChanged: s.autostart
+                      ? (v) => s.update(autoConnect: v)
+                      : null,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+
+    final glassNow = ZedGlass.of(context);
+    Widget sw(bool value, ValueChanged<bool> onChanged) => glassNow != null
+        ? GlassSwitch(tokens: glassNow, value: value, onChanged: onChanged)
+        : Switch(value: value, onChanged: onChanged);
+    Widget boolRow(
+      IconData icon, {
+      required String label,
+      required bool value,
+      required ValueChanged<bool> onChanged,
+    }) => _Row(icon: icon, label: label, child: sw(value, onChanged));
+
+    Widget bentoLook(ZedPrefs prefs, VoidCallback save) {
+      final b = prefs.bento;
+      return Column(
+        children: [
+          _Choice<BentoPalette>(
+            icon: Icons.color_lens_outlined,
+            title: l.zedPalette,
+            value: b.palette,
+            onChanged: (v) {
+              b.palette = v;
+              save();
+            },
+            options: [
+              for (final p in BentoPalette.values)
+                (p, bentoPaletteName(p), null),
+            ],
           ),
-      ],
+          _Choice<BentoCorners>(
+            icon: Icons.rounded_corner,
+            title: l.zedCorners,
+            value: b.corners,
+            onChanged: (v) {
+              b.corners = v;
+              save();
+            },
+            options: [
+              for (final c in BentoCorners.values)
+                (c, bentoCornersName(c), null),
+            ],
+          ),
+          _Choice<BentoTitleSize>(
+            icon: Icons.text_fields_rounded,
+            title: l.zedTitleSize,
+            value: b.title,
+            onChanged: (v) {
+              b.title = v;
+              save();
+            },
+            options: [
+              for (final t in BentoTitleSize.values)
+                (t, bentoTitleSizeName(t), null),
+            ],
+          ),
+          _Choice<BentoDensity>(
+            icon: Icons.density_medium_rounded,
+            title: l.zedDensity,
+            value: b.density,
+            onChanged: (v) {
+              b.density = v;
+              save();
+            },
+            options: [
+              for (final d in BentoDensity.values)
+                (d, bentoDensityName(d), null),
+            ],
+          ),
+          _Choice<BentoConnect>(
+            icon: Icons.power_settings_new_rounded,
+            title: l.zedConnectStyle,
+            value: b.connect,
+            onChanged: (v) {
+              b.connect = v;
+              save();
+            },
+            options: [
+              for (final c in BentoConnect.values)
+                (c, bentoConnectName(c), null),
+            ],
+          ),
+          _Choice<BentoDockLabels>(
+            icon: Icons.label_outline_rounded,
+            title: l.zedDockLabels,
+            value: b.dockLabels,
+            onChanged: (v) {
+              b.dockLabels = v;
+              save();
+            },
+            options: [
+              for (final d in BentoDockLabels.values)
+                (d, bentoDockLabelsName(d), null),
+            ],
+          ),
+          _Choice<ZedNavStyle>(
+            icon: Icons.dock_outlined,
+            title: l.zedNavStyle,
+            value: b.navStyle,
+            onChanged: (v) {
+              b.navStyle = v;
+              save();
+            },
+            options: [
+              for (final n in ZedNavStyle.values) (n, zedNavStyleName(n), null),
+            ],
+          ),
+          boolRow(
+            Icons.visibility_off_outlined,
+            label: l.zedDockAutoHide,
+            value: b.dockAutoHide,
+            onChanged: (v) {
+              b.dockAutoHide = v;
+              save();
+            },
+          ),
+          boolRow(
+            Icons.auto_awesome_outlined,
+            label: l.zedMotifs,
+            value: b.motifs,
+            onChanged: (v) {
+              b.motifs = v;
+              save();
+            },
+          ),
+          boolRow(
+            Icons.touch_app_outlined,
+            label: l.zedPlayfulTouch,
+            value: b.playfulTouch,
+            onChanged: (v) {
+              b.playfulTouch = v;
+              save();
+            },
+          ),
+          boolRow(
+            Icons.format_list_numbered_rounded,
+            label: l.zedIndexes,
+            value: b.indexes,
+            onChanged: (v) {
+              b.indexes = v;
+              save();
+            },
+          ),
+          boolRow(
+            Icons.grid_view_rounded,
+            label: l.zedLiveTiles,
+            value: b.liveTiles,
+            onChanged: (v) {
+              b.liveTiles = v;
+              save();
+            },
+          ),
+          boolRow(
+            Icons.waves_rounded,
+            label: l.zedWave,
+            value: b.wave,
+            onChanged: (v) {
+              b.wave = v;
+              save();
+            },
+          ),
+          boolRow(
+            Icons.speed_rounded,
+            label: l.zedHomeSpeed,
+            value: b.homeSpeed,
+            onChanged: (v) {
+              b.homeSpeed = v;
+              save();
+            },
+          ),
+          boolRow(
+            Icons.schedule_rounded,
+            label: l.zedHomeSession,
+            value: b.homeSession,
+            onChanged: (v) {
+              b.homeSession = v;
+              save();
+            },
+          ),
+          boolRow(
+            Icons.bolt_rounded,
+            label: l.zedHomeQuick,
+            value: b.homeQuick,
+            onChanged: (v) {
+              b.homeQuick = v;
+              save();
+            },
+          ),
+          boolRow(
+            Icons.label_rounded,
+            label: l.zedHomeChips,
+            value: b.homeChips,
+            onChanged: (v) {
+              b.homeChips = v;
+              save();
+            },
+          ),
+          boolRow(
+            Icons.brightness_1_outlined,
+            label: l.zedAmoled,
+            value: b.amoled,
+            onChanged: (v) {
+              b.amoled = v;
+              save();
+            },
+          ),
+        ],
+      );
+    }
+
+    Widget pixelLook(ZedPrefs prefs, PixelPrefs p, VoidCallback save) {
+      final glass = ZedGlass.of(context);
+      Widget sw(bool value, ValueChanged<bool> onChanged) => glass != null
+          ? GlassSwitch(tokens: glass, value: value, onChanged: onChanged)
+          : Switch(value: value, onChanged: onChanged);
+      return Column(
+        children: [
+          ZedSwatchRow(
+            title: l.zedAccent,
+            colors: pixelAccents,
+            selected: p.accentIndex,
+            onSelect: (i) {
+              p.accentIndex = i;
+              save();
+            },
+          ),
+          _Choice<PixelColorStyle>(
+            icon: Icons.style_outlined,
+            title: l.zedColorStyle,
+            value: p.colorStyle,
+            onChanged: (v) {
+              p.colorStyle = v;
+              save();
+            },
+            options: [
+              for (final c in PixelColorStyle.values)
+                (c, pixelColorStyleName(c), null),
+            ],
+          ),
+          _Choice<PixelContrast>(
+            icon: Icons.contrast_rounded,
+            title: l.zedContrast,
+            value: p.contrast,
+            onChanged: (v) {
+              p.contrast = v;
+              save();
+            },
+            options: [
+              for (final c in PixelContrast.values)
+                (c, pixelContrastName(c), null),
+            ],
+          ),
+          _Choice<CardCornerStyle>(
+            icon: Icons.rounded_corner,
+            title: l.zedCornerStyle,
+            value: p.cornerStyle,
+            onChanged: (v) {
+              p.cornerStyle = v;
+              save();
+            },
+            options: [
+              for (final c in CardCornerStyle.values)
+                (c, cardCornerStyleName(c), null),
+            ],
+          ),
+          _Choice<PixelConnect>(
+            icon: Icons.power_settings_new_rounded,
+            title: l.zedConnectStyle,
+            value: p.connect,
+            onChanged: (v) {
+              p.connect = v;
+              save();
+            },
+            options: [
+              for (final c in PixelConnect.values)
+                (c, pixelConnectName(c), null),
+            ],
+          ),
+          _Choice<TrafficCardStyle>(
+            icon: Icons.traffic_outlined,
+            title: l.zedTrafficStyle,
+            value: p.trafficStyle,
+            onChanged: (v) {
+              p.trafficStyle = v;
+              save();
+            },
+            options: [
+              for (final t in TrafficCardStyle.values)
+                (t, trafficCardStyleName(t), null),
+            ],
+          ),
+          _Choice<TrafficTileSize>(
+            icon: Icons.view_module_outlined,
+            title: l.zedTrafficTileSize,
+            value: p.trafficTileSize,
+            onChanged: (v) {
+              p.trafficTileSize = v;
+              save();
+            },
+            options: [
+              for (final t in TrafficTileSize.values)
+                (t, trafficTileSizeName(t), null),
+            ],
+          ),
+          _Choice<String>(
+            icon: Icons.collections_outlined,
+            title: l.zedProfile,
+            value: zedProfileOf(p.profileId) != null ? p.profileId : '',
+            onChanged: (id) {
+              final profile = zedProfileOf(id);
+              if (profile != null) applyZedProfile(p, profile);
+              save();
+            },
+            options: [
+              ('', l.zedCustom, null),
+              for (final profile in zedProfiles)
+                (profile.id, profile.name, null),
+            ],
+          ),
+          _Row(
+            icon: Icons.brightness_1_outlined,
+            label: l.zedAmoled,
+            child: sw(p.amoled, (v) {
+              p.amoled = v;
+              save();
+            }),
+          ),
+          ZedSectionHeader(title: l.zedCustomColors),
+          _zedColorRow(
+            l,
+            icon: Icons.arrow_downward_rounded,
+            label: l.zedCustomDownload,
+            value: p.customDownload,
+            onChanged: (v) {
+              p.customDownload = v;
+              save();
+            },
+          ),
+          _zedColorRow(
+            l,
+            icon: Icons.arrow_upward_rounded,
+            label: l.zedCustomUpload,
+            value: p.customUpload,
+            onChanged: (v) {
+              p.customUpload = v;
+              save();
+            },
+          ),
+          _zedColorRow(
+            l,
+            icon: Icons.download_rounded,
+            label: l.zedCustomDownloadTile,
+            value: p.customDownloadTile,
+            onChanged: (v) {
+              p.customDownloadTile = v;
+              save();
+            },
+          ),
+          _zedColorRow(
+            l,
+            icon: Icons.upload_rounded,
+            label: l.zedCustomUploadTile,
+            value: p.customUploadTile,
+            onChanged: (v) {
+              p.customUploadTile = v;
+              save();
+            },
+          ),
+          _zedColorRow(
+            l,
+            icon: Icons.power_settings_new_rounded,
+            label: l.zedCustomConnect,
+            value: p.customConnect,
+            onChanged: (v) {
+              p.customConnect = v;
+              save();
+            },
+          ),
+          _zedColorRow(
+            l,
+            icon: Icons.check_circle_outline_rounded,
+            label: l.zedCustomConnected,
+            value: p.customConnected,
+            onChanged: (v) {
+              p.customConnected = v;
+              save();
+            },
+          ),
+          _zedColorRow(
+            l,
+            icon: Icons.touch_app_outlined,
+            label: l.zedCustomTapHint,
+            value: p.customTapHint,
+            onChanged: (v) {
+              p.customTapHint = v;
+              save();
+            },
+          ),
+          _zedColorRow(
+            l,
+            icon: Icons.dns_outlined,
+            label: l.zedCustomServerCard,
+            value: p.customServerCard,
+            onChanged: (v) {
+              p.customServerCard = v;
+              save();
+            },
+          ),
+          _zedColorRow(
+            l,
+            icon: Icons.dns_rounded,
+            label: l.zedCustomServerActive,
+            value: p.customServerActive,
+            onChanged: (v) {
+              p.customServerActive = v;
+              save();
+            },
+          ),
+          _zedColorRow(
+            l,
+            icon: Icons.article_outlined,
+            label: l.zedCustomConfigCard,
+            value: p.customConfigCard,
+            onChanged: (v) {
+              p.customConfigCard = v;
+              save();
+            },
+          ),
+          _zedColorRow(
+            l,
+            icon: Icons.text_fields_rounded,
+            label: l.zedCustomConfigCardText,
+            value: p.customConfigCardText,
+            onChanged: (v) {
+              p.customConfigCardText = v;
+              save();
+            },
+          ),
+        ],
+      );
+    }
+
+    Widget glassLook(ZedPrefs prefs, VoidCallback save, bool dark) {
+      final g = prefs.glass;
+      return Column(
+        children: [
+          ZedSwatchRow(
+            title: l.zedTint,
+            colors: [for (final t in GlassTint.values) glassTintColor(t, dark)],
+            selected: g.tint.index,
+            onSelect: (i) {
+              g.tint = GlassTint.values[i];
+              save();
+            },
+          ),
+          _Choice<GlassMaterial>(
+            icon: Icons.blur_on_rounded,
+            title: l.zedMaterial,
+            value: g.material,
+            onChanged: (v) {
+              g.material = v;
+              save();
+            },
+            options: [
+              for (final m in GlassMaterial.values)
+                (m, glassMaterialName(m), null),
+            ],
+          ),
+          _Choice<GlassWallpaper>(
+            icon: Icons.wallpaper_rounded,
+            title: l.zedWallpaper,
+            value: g.wallpaper,
+            onChanged: (v) {
+              g.wallpaper = v;
+              save();
+            },
+            options: [
+              for (final w in GlassWallpaper.values)
+                (w, glassWallpaperName(w), null),
+            ],
+          ),
+          _Choice<GlassConnect>(
+            icon: Icons.power_settings_new_rounded,
+            title: l.zedConnectStyle,
+            value: g.connect,
+            onChanged: (v) {
+              g.connect = v;
+              save();
+            },
+            options: [
+              for (final c in GlassConnect.values)
+                (c, glassConnectName(c), null),
+            ],
+          ),
+          boolRow(
+            Icons.list_alt_rounded,
+            label: l.zedGlassLists,
+            value: g.glassLists,
+            onChanged: (v) {
+              g.glassLists = v;
+              save();
+            },
+          ),
+          boolRow(
+            Icons.vertical_align_bottom_rounded,
+            label: l.zedShrinkTabBar,
+            value: g.shrinkTabBar,
+            onChanged: (v) {
+              g.shrinkTabBar = v;
+              save();
+            },
+          ),
+          boolRow(
+            Icons.highlight_rounded,
+            label: l.zedMotionHighlights,
+            value: g.motionHighlights,
+            onChanged: (v) {
+              g.motionHighlights = v;
+              save();
+            },
+          ),
+          boolRow(
+            Icons.opacity_rounded,
+            label: l.zedReduceTransparency,
+            value: g.reduceTransparency,
+            onChanged: (v) {
+              g.reduceTransparency = v;
+              save();
+            },
+          ),
+          boolRow(
+            Icons.speed_rounded,
+            label: l.zedHomeSpeed,
+            value: g.homeSpeed,
+            onChanged: (v) {
+              g.homeSpeed = v;
+              save();
+            },
+          ),
+          boolRow(
+            Icons.schedule_rounded,
+            label: l.zedHomeTimer,
+            value: g.homeTimer,
+            onChanged: (v) {
+              g.homeTimer = v;
+              save();
+            },
+          ),
+          boolRow(
+            Icons.credit_card_rounded,
+            label: l.zedHomeCard,
+            value: g.homeCard,
+            onChanged: (v) {
+              g.homeCard = v;
+              save();
+            },
+          ),
+        ],
+      );
+    }
+
+    Widget interfacePanel() {
+      final prefs = s.zedPrefs;
+      void save() => s.setZed(prefs);
+      final dark = Theme.of(context).brightness == Brightness.dark;
+      return Panel(
+        title: l.zedInterface,
+        icon: Icons.palette_outlined,
+        child: Column(
+          children: [
+            _Choice<ZedDesign>(
+              icon: Icons.design_services_outlined,
+              title: l.zedDesign,
+              value: prefs.design,
+              onChanged: (v) {
+                prefs.design = v;
+                save();
+              },
+              options: [
+                for (final d in ZedDesign.values) (d, zedDesignName(d), null),
+              ],
+            ),
+            _Choice<ZedTransition>(
+              icon: Icons.animation_rounded,
+              title: l.zedTransition,
+              value: prefs.transition,
+              onChanged: (v) {
+                prefs.transition = v;
+                save();
+              },
+              options: [
+                for (final t in ZedTransition.values)
+                  (t, zedTransitionName(t), null),
+              ],
+            ),
+            _Choice<ZedNavStyle>(
+              icon: Icons.navigation_outlined,
+              title: l.zedNavStyle,
+              value: prefs.navStyle,
+              onChanged: (v) {
+                prefs.navStyle = v;
+                save();
+              },
+              options: [
+                for (final n in ZedNavStyle.values)
+                  (n, zedNavStyleName(n), null),
+              ],
+            ),
+            boolRow(
+              Icons.motion_photos_off_outlined,
+              label: l.zedReduceMotion,
+              value: prefs.reduceMotion,
+              onChanged: (v) {
+                prefs.reduceMotion = v;
+                save();
+              },
+            ),
+            switch (prefs.design) {
+              ZedDesign.bento => bentoLook(prefs, save),
+              ZedDesign.pixel => pixelLook(prefs, prefs.pixel, save),
+              ZedDesign.old => pixelLook(prefs, prefs.old, save),
+              ZedDesign.glass => glassLook(prefs, save, dark),
+            },
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [generalPanel, const SizedBox(height: 16), interfacePanel()],
+    );
+  }
+
+  Widget _zedColorRow(
+    AppLocalizations l, {
+    required IconData icon,
+    required String label,
+    required int? value,
+    required ValueChanged<int?> onChanged,
+  }) => _Row(
+    icon: icon,
+    label: label,
+    value: value == null
+        ? l.zedNone
+        : '#${value.toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}',
+    onTap: () async {
+      final picked = await _pickZedColor(label, value, l);
+      if (picked != null) onChanged(picked == -1 ? null : picked);
+    },
+    child: Container(
+      width: 26,
+      height: 26,
+      decoration: BoxDecoration(
+        color: value == null ? null : Color(value),
+        shape: BoxShape.circle,
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: value == null
+          ? Icon(
+              Icons.block_rounded,
+              size: 15,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            )
+          : null,
     ),
   );
+
+  /// The custom-colour picker: a preset spread plus "None". Returns
+  /// the picked ARGB, -1 for "None", or null when dismissed.
+  Future<int?> _pickZedColor(String title, int? current, AppLocalizations l) {
+    const palette = <int>[
+      0xFF5B5BD6,
+      0xFF1E63D0,
+      0xFF0091FF,
+      0xFF00897E,
+      0xFF2E7D32,
+      0xFF7CB342,
+      0xFFB4690E,
+      0xFFF08C00,
+      0xFFE5484D,
+      0xFFC0362C,
+      0xFFC4326B,
+      0xFFFF5FA2,
+      0xFF8E24AA,
+      0xFF7A5CFF,
+      0xFF00838F,
+      0xFF37E0D8,
+      0xFF4A5B7A,
+      0xFF212121,
+    ];
+    return showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            for (final c in palette)
+              InkWell(
+                onTap: () => Navigator.pop(context, c),
+                borderRadius: BorderRadius.circular(999),
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: Color(c),
+                    shape: BoxShape.circle,
+                    border: current == c
+                        ? Border.all(
+                            color: Theme.of(context).colorScheme.primary,
+                            width: 3,
+                          )
+                        : null,
+                  ),
+                  child: current == c
+                      ? const Icon(
+                          Icons.check_rounded,
+                          size: 18,
+                          color: Colors.white,
+                        )
+                      : null,
+                ),
+              ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, -1),
+            child: Text(l.zedNone),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(MaterialLocalizations.of(context).cancelButtonLabel),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _connection(AppLocalizations l) {
     final status = _core.status;
@@ -552,16 +1540,78 @@ class _SettingsPageState extends State<SettingsPage> {
               _Choice<String>(
                 icon: Icons.http_rounded,
                 title: l.transport,
-                value: _str(['proxy', 'transport']) == 'h2' ? 'h2' : 'h3',
+                value: switch (_str(['proxy', 'transport'])) {
+                  'h3' => 'h3',
+                  'h1' => 'h1',
+                  _ => 'h2',
+                },
                 onChanged: _saving
                     ? null
                     : (v) => _save({
                         ['proxy', 'transport']: v,
                       }),
+                // In the order of the protocols; HTTP/2 stays the default.
                 options: [
+                  // A TLS connection per site connection: for networks
+                  // that slow or cut long connections.
+                  ('h1', l.transportH1, null),
                   ('h2', l.transportH2, null),
                   ('h3', l.transportH3, null),
                 ],
+              ),
+              // The connection to Mozilla's servers alone: the sign-in and
+              // the DNS keep their own way.
+              _Choice<String>(
+                icon: Icons.lan_outlined,
+                title: l.ipVersion,
+                value: switch (_str(['proxy', 'ip_version'])) {
+                  final v
+                      when const [
+                        'dual',
+                        'ipv6_first',
+                        'ipv4',
+                        'ipv6',
+                      ].contains(v) =>
+                    v,
+                  _ => 'auto',
+                },
+                onChanged: _saving
+                    ? null
+                    : (v) => _save({
+                        ['proxy', 'ip_version']: v,
+                      }),
+                options: [
+                  ('auto', l.ipVersionAuto, null),
+                  ('dual', l.ipVersionDual, null),
+                  ('ipv6_first', l.ipVersionV6First, null),
+                  ('ipv4', l.ipVersionV4, null),
+                  ('ipv6', l.ipVersionV6, null),
+                ],
+              ),
+              // tun.mtu: the VPN interface's MTU (the phone's VPN, the
+              // computer's TUN); empty keeps each one's own.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                child: _TextSetting(
+                  label: l.tunMtu,
+                  hint: l.tunMtuHint,
+                  // Unset, the field shows this device's own MTU: the
+                  // phone's VPN 1500, the computer's TUN 9000.
+                  value: switch (_get(['tun', 'mtu'])) {
+                    final num n when n > 0 => '${n.toInt()}',
+                    _ => Platform.isAndroid ? '1500' : '9000',
+                  },
+                  validator: (v) {
+                    final n = int.tryParse(v.trim());
+                    return v.trim().isEmpty ||
+                            (n != null && n >= 1280 && n <= 9000)
+                        ? null
+                        : l.tunMtuInvalid;
+                  },
+                  onSave: (v) => _save({
+                    ['tun', 'mtu']: int.tryParse(v.trim()) ?? 0,
+                  }),
+                ),
               ),
               // The phone never sleeps (the core turns it off there).
               if (!Platform.isAndroid) _sleepChoice(l),
@@ -659,24 +1709,66 @@ class _SettingsPageState extends State<SettingsPage> {
   /// for the sign-in, accounts, and server list (network.api_relay). The
   /// core hides its name with Encrypted Client Hello by itself where the
   /// relay's name has a key (network.api_relay_ech, config.json only).
-  Widget _bypass(AppLocalizations l) => Panel(
-    title: l.sectionBypass,
-    icon: Icons.shield_outlined,
-    child: _TextSetting(
-      label: l.apiRelay,
-      hint: l.apiRelayHint,
-      value: _str(['network', 'api_relay']),
-      validator: (v) {
-        final u = Uri.tryParse(v.trim());
-        return v.trim().isEmpty ||
-                (u != null && u.scheme == 'https' && u.host.isNotEmpty)
-            ? null
-            : l.apiRelayInvalid;
-      },
-      onSave: (v) => _save({
-        ['network', 'api_relay']: v.trim(),
-      }),
-    ),
+  /// Personal and shared relays have independent switches. A personal
+  /// relay needs an address; shared recovery is available without one.
+  Widget _bypass(AppLocalizations l) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Panel(
+        title: l.sharedRelay,
+        icon: Icons.groups_outlined,
+        trailing: Semantics(
+          label: l.sharedRelay,
+          child: Switch(
+            value: _bool(['network', 'shared_relay_enabled']),
+            onChanged: _saving
+                ? null
+                : (on) => _save({
+                    ['network', 'shared_relay_enabled']: on,
+                  }),
+          ),
+        ),
+        child: Text(
+          l.sharedRelayHint,
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+      ),
+      const SizedBox(height: 16),
+      Panel(
+        title: l.personalRelay,
+        icon: Icons.shield_outlined,
+        trailing: Semantics(
+          label: l.apiRelayUse,
+          child: Switch(
+            value:
+                _bool(['network', 'api_relay_enabled']) &&
+                _str(['network', 'api_relay']).isNotEmpty,
+            onChanged: _saving || _str(['network', 'api_relay']).isEmpty
+                ? null
+                : (on) => _save({
+                    ['network', 'api_relay_enabled']: on,
+                  }),
+          ),
+        ),
+        child: _TextSetting(
+          label: l.apiRelay,
+          hint: l.apiRelayHint,
+          value: _str(['network', 'api_relay']),
+          validator: (v) {
+            final u = Uri.tryParse(v.trim());
+            return v.trim().isEmpty ||
+                    (u != null && u.scheme == 'https' && u.host.isNotEmpty)
+                ? null
+                : l.apiRelayInvalid;
+          },
+          onSave: (v) => _save({
+            ['network', 'api_relay']: v.trim(),
+          }),
+          testLabel: l.testRelay,
+          onTest: (v) => showRelayTestDialog(context, _core, v.trim()),
+        ),
+      ),
+    ],
   );
 
   /// The way to Mozilla through the user's own SOCKS5 proxy, for a network
@@ -706,7 +1798,7 @@ class _SettingsPageState extends State<SettingsPage> {
       title: l.tlsFragment,
       icon: Icons.content_cut_rounded,
       child: RadioGroup<String>(
-        groupValue: mode.isEmpty ? 'off' : mode,
+        groupValue: mode.isEmpty ? 'auto' : mode,
         onChanged: (v) {
           if (v == null || _saving) return;
           _save({
@@ -717,6 +1809,7 @@ class _SettingsPageState extends State<SettingsPage> {
           children: [
             for (final (value, label, hint) in [
               ('off', l.tlsFragmentOff, l.tlsFragmentOffHint),
+              ('auto', l.tlsFragmentAuto, l.tlsFragmentAutoHint),
               (
                 'first-byte',
                 l.tlsFragmentFirstByte,
@@ -1509,6 +2602,7 @@ class _Row extends StatelessWidget {
     this.value,
     this.child,
     this.onTap,
+    this.under = false,
   });
 
   final IconData icon;
@@ -1516,6 +2610,10 @@ class _Row extends StatelessWidget {
   final String? value;
   final Widget? child;
   final VoidCallback? onTap;
+
+  /// Belongs to the row above it: set in from the start edge, so the two
+  /// read as one setting and what it can do.
+  final bool under;
 
   @override
   Widget build(BuildContext context) {
@@ -1525,8 +2623,21 @@ class _Row extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+      child: Container(
+        padding: EdgeInsetsDirectional.fromSTEB(under ? 28 : 4, 10, 4, 10),
+        margin: EdgeInsetsDirectional.only(start: under ? 10 : 0),
+        // A line down the start edge ties the row to the one it belongs to,
+        // which an indent alone leaves to the eye to guess.
+        decoration: under
+            ? BoxDecoration(
+                border: BorderDirectional(
+                  start: BorderSide(
+                    width: 2,
+                    color: theme.colorScheme.primary.withValues(alpha: 0.35),
+                  ),
+                ),
+              )
+            : null,
         child: Row(
           children: [
             Icon(icon, color: muted),
@@ -1766,6 +2877,8 @@ class _TextSetting extends StatefulWidget {
     this.hint,
     this.multiline = false,
     this.validator,
+    this.testLabel,
+    this.onTest,
   });
 
   final String label;
@@ -1774,6 +2887,8 @@ class _TextSetting extends StatefulWidget {
   final String? hint;
   final bool multiline;
   final String? Function(String value)? validator;
+  final String? testLabel;
+  final Future<void> Function(String value)? onTest;
 
   @override
   State<_TextSetting> createState() => _TextSettingState();
@@ -1787,8 +2902,11 @@ class _TextSettingState extends State<_TextSetting> {
   @override
   void didUpdateWidget(_TextSetting old) {
     super.didUpdateWidget(old);
-    // A saved value comes back from the core; keep unsaved typing.
-    if (old.value != widget.value && _controller.text == old.value) {
+    // A saved value comes back from the core; keep unsaved typing. A field
+    // emptied and saved shows what the empty value stands for (MTU: this
+    // device's own).
+    if (old.value != widget.value &&
+        (_controller.text == old.value || _controller.text.trim().isEmpty)) {
       _controller.text = widget.value;
     }
   }
@@ -1844,7 +2962,36 @@ class _TextSettingState extends State<_TextSetting> {
       children: [
         field,
         const SizedBox(height: 8),
-        Align(alignment: AlignmentDirectional.centerEnd, child: button),
+        Row(
+          children: [
+            if (widget.onTest != null)
+              Expanded(
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: OutlinedButton.icon(
+                    onPressed: _saving || _controller.text.trim().isEmpty
+                        ? null
+                        : () {
+                            final error = widget.validator?.call(
+                              _controller.text,
+                            );
+                            setState(() => _error = error);
+                            if (error == null) {
+                              FocusScope.of(context).unfocus();
+                              widget.onTest!(_controller.text);
+                            }
+                          },
+                    icon: const Icon(Icons.health_and_safety_outlined),
+                    label: Text(widget.testLabel ?? ''),
+                  ),
+                ),
+              )
+            else
+              const Spacer(),
+            const SizedBox(width: 8),
+            button,
+          ],
+        ),
       ],
     );
   }

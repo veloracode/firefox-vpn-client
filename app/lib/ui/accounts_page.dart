@@ -1,21 +1,44 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 
+import '../app_settings.dart';
+import 'zed/zed_prefs.dart';
 import '../core/core_api.dart';
 import '../core/core_controller.dart';
 import '../core/models.dart';
 import '../l10n/app_localizations.dart';
+import 'backup.dart';
+import 'browser_signin.dart';
 import 'format.dart';
 import 'signin_dialog.dart';
 import 'widgets.dart';
 
-class AccountsPage extends StatelessWidget {
-  const AccountsPage({super.key, required this.core});
+class AccountsPage extends StatefulWidget {
+  const AccountsPage({super.key, required this.core, required this.settings});
 
   final CoreController core;
+  final AppSettings settings;
+
+  @override
+  State<AccountsPage> createState() => _AccountsPageState();
+}
+
+class _AccountsPageState extends State<AccountsPage> {
+  @override
+  void initState() {
+    super.initState();
+    // A quota figure a day old or more is read again when this page opens:
+    // an account that is not in use is read nowhere else, so its figure would
+    // keep a limit that no longer applies.
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => widget.core.refreshStaleQuotas(),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final core = widget.core;
+    final settings = widget.settings;
     final l = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final list = core.accounts?.accounts ?? const <Account>[];
@@ -27,28 +50,34 @@ class AccountsPage extends StatelessWidget {
           children: [
             Expanded(child: PageTitle(l.navAccounts)),
             FilledButton.icon(
-              onPressed: () => showSignInDialog(context, core),
+              onPressed: () => startAddAccount(context, core, settings),
               icon: const Icon(Icons.add_rounded),
               label: Text(l.addAccount),
             ),
+            const SizedBox(width: 4),
+            BackupMenuButton(core: core),
           ],
         ),
         const SizedBox(height: 20),
         if (core.accounts == null)
           const Center(child: CircularProgressIndicator())
-        else if (list.isEmpty)
-          const NoAccountsPanel()
         else ...[
-          for (var i = 0; i < list.length; i++) ...[
-            if (i > 0) const SizedBox(height: 12),
-            _AccountCard(
-              core: core,
-              account: list[i],
-              threshold: threshold,
-              first: i == 0,
-              last: i == list.length - 1,
-            ),
-          ],
+          if (list.isEmpty)
+            const NoAccountsPanel()
+          else
+            for (var i = 0; i < list.length; i++) ...[
+              if (i > 0) const SizedBox(height: 12),
+              _AccountCard(
+                core: core,
+                settings: settings,
+                account: list[i],
+                threshold: threshold,
+                first: i == 0,
+                last: i == list.length - 1,
+              ),
+            ],
+          const SizedBox(height: 12),
+          _SignInMethodRow(settings: settings),
           // Nothing to switch to with one account.
           if (list.length > 1) ...[
             const SizedBox(height: 12),
@@ -70,8 +99,12 @@ class AccountsPage extends StatelessWidget {
             Expanded(
               child: Text(
                 [
-                  l.accountsGuide(_allowance(list)),
-                  if (list.length > 1) l.accountsOrderNote(threshold.round()),
+                  if (_noLimitNow(list))
+                    l.accountsGuideUnlimited
+                  else
+                    l.accountsGuide(_allowance(list)),
+                  if (list.length > 1 && !_noLimitNow(list))
+                    l.accountsOrderNote(threshold.round()),
                 ].join(' '),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
@@ -85,6 +118,74 @@ class AccountsPage extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Chooses which sign-in flow Add account opens.
+class _SignInMethodRow extends StatelessWidget {
+  const _SignInMethodRow({required this.settings});
+
+  final AppSettings settings;
+
+  static String _label(AppLocalizations l, SignInMethod method) =>
+      switch (method) {
+        SignInMethod.browser => l.signInMethodBrowser,
+        SignInMethod.api => l.signInMethodApi,
+      };
+
+  Future<void> _change(BuildContext context) async {
+    final l = AppLocalizations.of(context);
+    final picked = await showDialog<SignInMethod>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(l.signInMethod),
+        contentPadding: const EdgeInsets.symmetric(vertical: 12),
+        content: SizedBox(
+          width: 360,
+          child: RadioGroup<SignInMethod>(
+            groupValue: settings.signInMethod,
+            onChanged: (v) => Navigator.pop(context, v),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final method in SignInMethod.values)
+                  RadioListTile<SignInMethod>(
+                    value: method,
+                    title: Text(_label(l, method)),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(l.cancel),
+          ),
+        ],
+      ),
+    );
+    if (picked != null) settings.update(signInMethod: picked);
+  }
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: settings,
+    builder: (context, _) => Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: ListTile(
+        leading: const Icon(Icons.login_rounded),
+        title: Text(AppLocalizations.of(context).signInMethod),
+        // The value goes under the title: too long beside it on a phone.
+        subtitle: Text(
+          _label(AppLocalizations.of(context), settings.signInMethod),
+        ),
+        // Mirrors itself in right-to-left languages.
+        trailing: const Icon(Icons.chevron_right_rounded),
+        onTap: () => _change(context),
+      ),
+    ),
+  );
 }
 
 /// How much of an account's data is used before the next one takes over
@@ -203,25 +304,30 @@ class _SwitchThresholdDialogState extends State<_SwitchThresholdDialog> {
 /// core's English for a reason the app does not know; null for none.
 /// [threshold] is the account-switch setting, in percent.
 String? accountReason(AppLocalizations l, Account a, double threshold) {
-  final time = a.retryAt == null ? null : formatTime(a.retryAt!.toLocal());
-  final detail = a.reasonDetail.isEmpty ? null : ltr(a.reasonDetail);
   final known = switch (a.reasonCode) {
     'quota_threshold' => l.reasonQuotaThreshold(
       (threshold > 0 ? threshold : 95).round(),
     ),
     'quota_exhausted' => l.reasonQuotaExhausted,
-    'signin_required' => l.reasonSignInRequired,
-    'signin_confirm' => l.reasonSignInConfirm,
-    'signin_failed' when detail != null => l.reasonSignInFailed(detail),
-    'signin_wait' when time != null => l.reasonSignInWait(time),
-    'signin_retry' when detail != null && time != null => l.reasonSignInRetry(
-      detail,
-      time,
-    ),
+    'signin_required' ||
+    'signin_confirm' ||
+    'signin_failed' ||
+    'signin_wait' ||
+    'signin_retry' => l.reasonSignInRequired,
     'not_entitled' => l.reasonNotEntitled,
     _ => null,
   };
   return known ?? (a.reason.isEmpty ? null : a.reason);
+}
+
+/// Whether every account that has been read reports no limit, in which case
+/// the note must not name a monthly allowance that is not being applied.
+bool _noLimitNow(List<Account> list) {
+  final read = [
+    for (final a in list)
+      if (a.usage != null) a.usage!,
+  ];
+  return read.isNotEmpty && read.every((u) => u.unlimited);
 }
 
 /// An account's monthly allowance as the accounts report it (50 GB until
@@ -287,6 +393,7 @@ class _CreateAccountGuide extends StatelessWidget {
 class _AccountCard extends StatelessWidget {
   const _AccountCard({
     required this.core,
+    required this.settings,
     required this.account,
     required this.threshold,
     required this.first,
@@ -294,6 +401,7 @@ class _AccountCard extends StatelessWidget {
   });
 
   final CoreController core;
+  final AppSettings settings;
   final Account account;
   final double threshold;
   final bool first;
@@ -309,197 +417,226 @@ class _AccountCard extends StatelessWidget {
       color: theme.colorScheme.onSurfaceVariant,
     );
     final usage = a.usage;
+    // Pixel/Old: the user's custom config-card colours, when set.
+    final zp = settings.zedPrefs;
+    final pixelish = zp.design == ZedDesign.pixel || zp.design == ZedDesign.old;
+    final cardColor = pixelish && zp.activePixel.customConfigCard != null
+        ? Color(zp.activePixel.customConfigCard!)
+        : null;
+    final cardText = pixelish && zp.activePixel.customConfigCardText != null
+        ? Color(zp.activePixel.customConfigCardText!)
+        : null;
     return Opacity(
       opacity: a.enabled ? 1 : 0.6,
       child: Card(
         margin: EdgeInsets.zero,
+        color: cardColor,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
           side: a.active
               ? BorderSide(color: theme.colorScheme.primary, width: 1.5)
               : BorderSide.none,
         ),
-        child: LayoutBuilder(
-          builder: (context, box) {
-            // A phone: the controls go under the account.
-            final narrow = box.maxWidth < 520;
-            // What the account needs now, beside its name on a computer, so
-            // every card's bar is as wide and the threshold marks line up.
-            final Widget? action = busy
-                ? const Padding(
-                    padding: EdgeInsets.all(8),
-                    child: SizedBox.square(
-                      dimension: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                  )
-                : a.needsSignIn
-                ? FilledButton.tonal(
-                    onPressed: () => _signInAgain(context),
-                    child: Text(l.signInAgain),
-                  )
-                : !a.active && a.enabled && a.status == AccountStatus.ready
-                ? OutlinedButton(
-                    onPressed: () =>
-                        runShowingErrors(context, () => core.activate(a)),
-                    child: Text(l.useNow),
-                  )
-                : null;
-            final controls = <Widget>[
-              Tooltip(
-                message: a.enabled ? l.statusEnabled : l.statusDisabled,
-                child: Switch(
-                  value: a.enabled,
-                  onChanged: busy
-                      ? null
-                      : (v) => runShowingErrors(
-                          context,
-                          () => core.setEnabled(a, v),
-                        ),
+        child: DefaultTextStyle.merge(
+          style: cardText == null ? null : TextStyle(color: cardText),
+          child: LayoutBuilder(
+            builder: (context, box) {
+              // A phone: the controls go under the account.
+              final narrow = box.maxWidth < 520;
+              // What the account needs now, beside its name on a computer, so
+              // every card's bar is as wide and the threshold marks line up.
+              final Widget? action = busy
+                  ? const Padding(
+                      padding: EdgeInsets.all(8),
+                      child: SizedBox.square(
+                        dimension: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  : a.needsSignIn
+                  ? FilledButton.tonal(
+                      onPressed: () => _signInAgain(context),
+                      child: Text(l.signInAgain),
+                    )
+                  : !a.active && a.enabled && a.status == AccountStatus.ready
+                  ? OutlinedButton(
+                      onPressed: () =>
+                          runShowingErrors(context, () => core.activate(a)),
+                      child: Text(l.useNow),
+                    )
+                  : null;
+              final controls = <Widget>[
+                Tooltip(
+                  message: a.enabled ? l.statusEnabled : l.statusDisabled,
+                  child: Switch(
+                    value: a.enabled,
+                    onChanged: busy
+                        ? null
+                        : (v) => runShowingErrors(
+                            context,
+                            () => core.setEnabled(a, v),
+                          ),
+                  ),
                 ),
-              ),
-              PopupMenuButton<String>(
-                tooltip: l.more,
-                enabled: !busy,
-                onSelected: (v) => switch (v) {
-                  'refresh' => runShowingErrors(
-                    context,
-                    () => core.refreshQuota(a),
-                  ),
-                  'remove' => _remove(context),
-                  _ => null,
-                },
-                itemBuilder: (_) => [
-                  PopupMenuItem(
-                    value: 'refresh',
-                    child: ListTile(
-                      leading: const Icon(Icons.sync_rounded),
-                      title: Text(l.refreshQuota),
+                PopupMenuButton<String>(
+                  tooltip: l.more,
+                  enabled: !busy,
+                  onSelected: (v) => switch (v) {
+                    'refresh' => runShowingErrors(
+                      context,
+                      () => core.refreshQuota(a),
                     ),
-                  ),
-                  PopupMenuItem(
-                    value: 'remove',
-                    child: ListTile(
-                      leading: const Icon(Icons.delete_outline_rounded),
-                      title: Text(l.remove),
+                    'remove' => _remove(context),
+                    _ => null,
+                  },
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      value: 'refresh',
+                      child: ListTile(
+                        leading: const Icon(Icons.sync_rounded),
+                        title: Text(l.refreshQuota),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ];
-            return Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(8, 14, 16, 14),
-              child: Row(
-                children: [
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        visualDensity: VisualDensity.compact,
-                        tooltip: l.moveUp,
-                        onPressed: first || busy
-                            ? null
-                            : () => runShowingErrors(
-                                context,
-                                () => core.move(a, -1),
-                              ),
-                        icon: const Icon(Icons.keyboard_arrow_up_rounded),
+                    PopupMenuItem(
+                      value: 'remove',
+                      child: ListTile(
+                        leading: const Icon(Icons.delete_outline_rounded),
+                        title: Text(l.remove),
                       ),
-                      Text('${a.position}', style: theme.textTheme.titleMedium),
-                      IconButton(
-                        visualDensity: VisualDensity.compact,
-                        tooltip: l.moveDown,
-                        onPressed: last || busy
-                            ? null
-                            : () => runShowingErrors(
-                                context,
-                                () => core.move(a, 1),
-                              ),
-                        icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    ),
+                  ],
+                ),
+              ];
+              return Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(8, 14, 16, 14),
+                child: Row(
+                  children: [
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Row(
-                          children: [
-                            // The name takes all the room the button leaves.
-                            Expanded(
-                              child: Row(
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      a.name,
-                                      style: theme.textTheme.titleMedium,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  _StatusPill(account: a),
-                                ],
-                              ),
-                            ),
-                            if (!narrow && action != null) ...[
-                              const SizedBox(width: 12),
-                              action,
-                            ],
-                          ],
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          tooltip: l.moveUp,
+                          onPressed: first || busy
+                              ? null
+                              : () => runShowingErrors(
+                                  context,
+                                  () => core.move(a, -1),
+                                ),
+                          icon: const Icon(Icons.keyboard_arrow_up_rounded),
                         ),
-                        if (a.name != a.email && a.email.isNotEmpty)
-                          Text(a.email, style: muted),
-                        if (accountReason(l, a, threshold)
-                            case final reason?) ...[
-                          const SizedBox(height: 4),
-                          Text(reason, style: muted),
-                        ],
-                        const SizedBox(height: 12),
-                        if (usage == null)
-                          Text(l.quotaNotRead, style: muted)
-                        else if (usage.unlimited)
-                          Text(l.unlimitedQuota, style: muted)
-                        else ...[
-                          QuotaBar(
-                            percent: a.usedPercent,
-                            threshold: threshold,
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            [
-                              l.usedOf(
-                                formatBytes(usage.usedBytes),
-                                formatBytes(usage.limitBytes),
-                              ),
-                              if (usage.resetAt != null)
-                                l.resets(formatDate(l, usage.resetAt!)),
-                            ].join(' · '),
-                            style: muted,
-                          ),
-                        ],
-                        if (narrow) ...[
-                          const SizedBox(height: 8),
-                          Wrap(
-                            alignment: WrapAlignment.end,
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            children: [
-                              if (action != null) ...[
-                                action,
-                                const SizedBox(width: 8),
-                              ],
-                              ...controls,
-                            ],
-                          ),
-                        ],
+                        Text(
+                          '${a.position}',
+                          style: theme.textTheme.titleMedium,
+                        ),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          tooltip: l.moveDown,
+                          onPressed: last || busy
+                              ? null
+                              : () => runShowingErrors(
+                                  context,
+                                  () => core.move(a, 1),
+                                ),
+                          icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                        ),
                       ],
                     ),
-                  ),
-                  if (!narrow) ...[const SizedBox(width: 16), ...controls],
-                ],
-              ),
-            );
-          },
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              // The name takes all the room the button leaves.
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        a.name,
+                                        style: theme.textTheme.titleMedium,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    _StatusPill(account: a),
+                                  ],
+                                ),
+                              ),
+                              if (!narrow && action != null) ...[
+                                const SizedBox(width: 12),
+                                action,
+                              ],
+                            ],
+                          ),
+                          if (a.name != a.email && a.email.isNotEmpty)
+                            Text(a.email, style: muted),
+                          if (accountReason(l, a, threshold)
+                              case final reason?) ...[
+                            const SizedBox(height: 4),
+                            Text(reason, style: muted),
+                          ],
+                          const SizedBox(height: 12),
+                          if (usage?.unlimited == true) ...[
+                            const QuotaBar(percent: 100, unlimited: true),
+                            const SizedBox(height: 6),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.all_inclusive_rounded,
+                                  size: 14,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(l.unlimitedQuota, style: muted),
+                              ],
+                            ),
+                          ] else ...[
+                            QuotaBar(
+                              percent: usage == null ? 0 : a.usedPercent,
+                              threshold: threshold,
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              usage == null
+                                  ? ltr('0 MB')
+                                  : [
+                                      l.usedOf(
+                                        formatBytes(usage.usedBytes),
+                                        formatBytes(usage.limitBytes),
+                                      ),
+                                      if (usage.resetAt != null)
+                                        l.resets(formatDate(l, usage.resetAt!)),
+                                    ].join(' · '),
+                              style: muted,
+                            ),
+                          ],
+                          if (narrow) ...[
+                            const SizedBox(height: 8),
+                            Wrap(
+                              alignment: WrapAlignment.end,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                if (action != null) ...[
+                                  action,
+                                  const SizedBox(width: 8),
+                                ],
+                                ...controls,
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    if (!narrow) ...[const SizedBox(width: 16), ...controls],
+                  ],
+                ),
+              );
+            },
+          ),
         ),
       ),
     );
@@ -517,7 +654,9 @@ class _AccountCard extends StatelessWidget {
     } on CoreApiException catch (e) {
       if (!context.mounted) return;
       if (e.statusCode == 409) {
-        await showSignInDialog(context, core, email: account.email);
+        // No stored password (a browser-added or Google/Apple account):
+        // the whole sign-in again, the way the settings say.
+        await startAddAccount(context, core, settings, email: account.email);
       } else {
         showError(context, e.message);
       }

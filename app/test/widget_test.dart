@@ -1,22 +1,28 @@
+import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:firefox_vpn/app_info.dart';
-import 'package:firefox_vpn/app_settings.dart';
-import 'package:firefox_vpn/core/core_api.dart';
-import 'package:firefox_vpn/core/core_controller.dart';
-import 'package:firefox_vpn/core/models.dart';
-import 'package:firefox_vpn/core/tun_service.dart';
-import 'package:firefox_vpn/core/updates.dart';
-import 'package:firefox_vpn/desktop/close_dialog.dart';
-import 'package:firefox_vpn/l10n/app_localizations.dart';
-import 'package:firefox_vpn/ui/app.dart';
-import 'package:firefox_vpn/ui/settings_page.dart'
+import 'package:arman_vpn/app_info.dart';
+import 'package:arman_vpn/app_settings.dart';
+import 'package:arman_vpn/core/core_api.dart';
+import 'package:arman_vpn/core/core_controller.dart';
+import 'package:arman_vpn/core/models.dart';
+import 'package:arman_vpn/core/relay_test.dart';
+import 'package:arman_vpn/core/tun_service.dart';
+import 'package:arman_vpn/core/updates.dart';
+import 'package:arman_vpn/core/announcements.dart';
+import 'package:arman_vpn/core/android_core.dart';
+import 'package:arman_vpn/desktop/close_dialog.dart';
+import 'package:arman_vpn/l10n/app_localizations.dart';
+import 'package:arman_vpn/ui/app.dart';
+import 'package:arman_vpn/ui/settings_page.dart'
     show SettingsGroup, pickProgramFile;
-import 'package:firefox_vpn/ui/signin_dialog.dart';
-import 'package:firefox_vpn/ui/widgets.dart';
+import 'package:arman_vpn/ui/signin_dialog.dart';
+import 'package:arman_vpn/ui/widgets.dart';
+import 'package:arman_vpn/ui/zed/zed_kit.dart' show BentoDock;
+import 'package:arman_vpn/ui/zed/zed_connect.dart' show BentoSlideConnect;
 
 Map<String, Object?> _account(
   String id,
@@ -56,6 +62,8 @@ class FakeApi implements CoreApi {
   /// The failure code of a failed connection test.
   String testErrorCode = '';
 
+  bool connectPending = false;
+
   /// Why the last connect was given up (`connect_failure`).
   String connectFailure = '';
 
@@ -86,8 +94,14 @@ class FakeApi implements CoreApi {
     'total_ms': 280,
   };
 
+  int tests = 0;
+
   @override
-  Future<ConnectionTest> test() async => ConnectionTest.fromJson(_lastTest);
+  Future<ConnectionTest> test() async {
+    tests++;
+    return ConnectionTest.fromJson(_lastTest);
+  }
+
   bool portTaken = false;
   String location = '';
   Map<String, Object?> config = {
@@ -120,6 +134,7 @@ class FakeApi implements CoreApi {
     'system_proxy': systemProxySupported || tunSupported ? mode : 'clear',
     'system_proxy_supported': systemProxySupported,
     'selection': location,
+    if (connectPending) 'connect_pending': true,
     if (connectFailure.isNotEmpty) 'connect_failure': connectFailure,
     if (exitMismatch != null) 'exit_mismatch': exitMismatch,
     if (systemProxyTakenBy != null)
@@ -186,11 +201,16 @@ class FakeApi implements CoreApi {
   /// asked of it.
   Map<String, Object?>? update;
   final downloads = <String>[];
+  final downloadSources = <Map<String, Object?>?>[];
   final installs = <(String, List<String>)>[];
 
   @override
-  Future<void> downloadUpdate(String version) async {
+  Future<void> downloadUpdate(
+    String version, {
+    Map<String, Object?>? source,
+  }) async {
     downloads.add(version);
+    downloadSources.add(source);
     update = {
       'state': 'downloading',
       'version': version,
@@ -236,7 +256,10 @@ class FakeApi implements CoreApi {
   int pings = 0;
 
   @override
-  Future<LocationList> pingLocations(List<String> codes) async {
+  Future<LocationList> pingLocations(
+    List<String> codes, {
+    bool fresh = false,
+  }) async {
     pings++;
     return locations();
   }
@@ -313,6 +336,15 @@ class FakeApi implements CoreApi {
   Future<void> saveSettings(Map<String, Object?> config) async =>
       this.config = config;
 
+  String? relayTestAddress;
+  Stream<RelayTestEvent> relayEvents = const Stream.empty();
+
+  @override
+  Stream<RelayTestEvent> testRelay(String url) {
+    relayTestAddress = url;
+    return relayEvents;
+  }
+
   /// The programs running on the computer (GET /api/tun/programs).
   List<Map<String, Object?>> running = [];
 
@@ -328,6 +360,9 @@ class FakeApi implements CoreApi {
   /// core's is, and the next read finds the password accepted and an email
   /// code asked for.
   Map<String, Object?>? signInOutcome;
+
+  /// Overrides the usual email-code step when the sign-in is polled.
+  Map<String, Object?>? signInProgress;
 
   @override
   Future<SignInState> startSignIn(String email, String password) async {
@@ -346,6 +381,7 @@ class FakeApi implements CoreApi {
     'email': signInEmail,
     'step': SignInStep.needEmailCode,
     'password_accepted': true,
+    ...?signInProgress,
   });
 
   @override
@@ -364,6 +400,7 @@ void stillMotion(WidgetTester tester) {
 }
 
 void main() {
+  _connectingRingTests();
   testWidgets('shows the state, turns the VPN off, lists accounts', (
     tester,
   ) async {
@@ -437,7 +474,7 @@ void main() {
     final core = CoreController(
       () async => throw const CoreUnavailable(
         CoreProblem.noCore,
-        'C:/x/firefox-vpn-core.exe',
+        'C:/x/arman-vpn-core.exe',
       ),
       pollInterval: const Duration(hours: 1),
     );
@@ -448,7 +485,7 @@ void main() {
     expect(find.text("Can't reach the core"), findsOneWidget);
     expect(
       find.text(
-        'The core program was not found next to the app (C:/x/firefox-vpn-core.exe).',
+        'The core program was not found next to the app (C:/x/arman-vpn-core.exe).',
       ),
       findsOneWidget,
     );
@@ -524,7 +561,7 @@ void main() {
     core.start();
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: VpnApp.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Builder(
           builder: (context) => TextButton(
@@ -600,6 +637,113 @@ void main() {
     core.dispose();
   });
 
+  testWidgets('direct sign-in shows a 406 only after the final failure', (
+    tester,
+  ) async {
+    stillMotion(tester);
+    final api = FakeApi()
+      ..signInOutcome = {
+        'password_accepted': true,
+        'error': 'Token request returned HTTP 406.',
+        'error_code': SignInError.tokenBlocked,
+      };
+    final core = CoreController(
+      () async => api,
+      pollInterval: const Duration(hours: 1),
+    );
+    core.start();
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: VpnApp.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => showSignInDialog(context, core),
+            child: const Text('add'),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('add'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).at(0), 'me@example.com');
+    await tester.enterText(find.byType(TextField).at(1), 'pw');
+    await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
+    await tester.pump();
+    await tester.pump();
+
+    final l = lookupAppLocalizations(const Locale('en'));
+    expect(find.text(l.signingIn), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.textContaining('406'), findsNothing);
+
+    api.signInProgress = {...api.signInOutcome!, 'step': SignInStep.failed};
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+    expect(find.text(l.browserSignInBlocked), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+
+    await tester.pumpWidget(const SizedBox());
+    core.dispose();
+  });
+
+  testWidgets('a blocked browser sign-in retries in the browser', (
+    tester,
+  ) async {
+    stillMotion(tester);
+    final core = CoreController(() async => FakeApi());
+    addTearDown(core.dispose);
+    const rawError =
+        "Mozilla's security check refused this sign-in from here. "
+        'Sign in with the browser in the Arman VPN app instead.';
+    final state = SignInState.fromJson({
+      'email': 'me@example.com',
+      'step': SignInStep.failed,
+      'error': rawError,
+      'error_code': 'blocked',
+    });
+    var retries = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en'),
+        localizationsDelegates: VpnApp.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () => showSignInDialog(
+              context,
+              core,
+              started: state,
+              onBrowserRetry: () => retries++,
+            ),
+            child: const Text('add'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('add'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'Mozilla did not complete the final step of adding the account '
+        '(HTTP 406).',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text(rawError), findsNothing);
+    expect(retries, 0);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Try again'));
+    await tester.pumpAndSettle();
+
+    expect(retries, 1);
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.byType(TextField), findsNothing);
+  });
+
   testWidgets('an email without an account says so and how to make one', (
     tester,
   ) async {
@@ -619,7 +763,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('fa'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: VpnApp.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Builder(
           builder: (context) => TextButton(
@@ -669,7 +813,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('fa'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: VpnApp.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Builder(
           builder: (context) => TextButton(
@@ -714,7 +858,7 @@ void main() {
     core.start();
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: VpnApp.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Builder(
           builder: (context) => TextButton(
@@ -787,7 +931,7 @@ void main() {
     CloseChoice? choice;
     await tester.pumpWidget(
       MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        localizationsDelegates: VpnApp.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: Builder(
           builder: (context) => TextButton(
@@ -844,6 +988,76 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     core.dispose();
   });
+
+  testWidgets(
+    'Android first-run routing saves the detected country and keeps English',
+    (tester) async {
+      stillMotion(tester);
+      tester.view.physicalSize = const Size(1200, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final api = FakeApi();
+      final core = CoreController(
+        () async => api,
+        pollInterval: const Duration(hours: 1),
+      );
+      final settings = AppSettings()
+        ..firstRun = true
+        ..language = 'en'
+        ..firstRunRegion = 'ir';
+      await tester.pumpWidget(VpnApp(core: core, settings: settings));
+      core.start();
+      await tester.pumpAndSettle();
+      expect(find.text('Iran'), findsOneWidget);
+      await tester.tap(find.text('Start'));
+      await tester.pumpAndSettle();
+      expect(settings.language, 'en');
+      expect(settings.firstRun, isFalse);
+      expect(api.config['routing'], {'enabled': true, 'region': 'ir'});
+      await tester.pumpWidget(const SizedBox());
+      core.dispose();
+    },
+  );
+
+  testWidgets(
+    'Android first-run country stays independent of language and permits a manual region',
+    (tester) async {
+      stillMotion(tester);
+      tester.view.physicalSize = const Size(1200, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final api = FakeApi();
+      final core = CoreController(
+        () async => api,
+        pollInterval: const Duration(hours: 1),
+      );
+      final settings = AppSettings()
+        ..firstRun = true
+        ..language = 'en'
+        ..firstRunRegion = 'tr';
+      await tester.pumpWidget(VpnApp(core: core, settings: settings));
+      core.start();
+      await tester.pumpAndSettle();
+      expect(find.text('Turkey'), findsOneWidget);
+      await tester.tap(find.text('English'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('فارسی').last);
+      await tester.pumpAndSettle();
+      expect(find.text('ترکیه'), findsOneWidget);
+      expect(find.text('ایران'), findsNothing);
+      await tester.tap(find.text('ترکیه'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('ایران').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('شروع'));
+      await tester.pumpAndSettle();
+      expect(settings.language, 'fa');
+      expect(settings.firstRun, isFalse);
+      expect(api.config['routing'], {'enabled': true, 'region': 'ir'});
+      await tester.pumpWidget(const SizedBox());
+      core.dispose();
+    },
+  );
 
   testWidgets('offers another port when the proxy port is taken', (
     tester,
@@ -1024,7 +1238,9 @@ void main() {
     core.start();
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Servers'));
+    // The hero's quick action is a second "Servers" route; the
+    // first match is the rail item this test means.
+    await tester.tap(find.text('Servers').first);
     await tester.pumpAndSettle();
     // Never measured: the page measures the delays as it opens.
     expect(api.pings, 1);
@@ -1069,7 +1285,7 @@ void main() {
     await tester.pumpWidget(VpnApp(core: core, settings: AppSettings()));
     core.start();
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Settings'));
+    await tester.tap(find.bySemanticsLabel('Settings'));
     await tester.pumpAndSettle();
 
     final tops = [
@@ -1110,7 +1326,7 @@ void main() {
     core.dispose();
   });
 
-  testWidgets('the accounts page has the switching with a second account', (
+  testWidgets('the accounts page offers saving and taking in a backup', (
     tester,
   ) async {
     stillMotion(tester);
@@ -1118,9 +1334,8 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
-    final api = FakeApi();
     final core = CoreController(
-      () async => api,
+      () async => FakeApi(),
       pollInterval: const Duration(hours: 1),
     );
     await tester.pumpWidget(VpnApp(core: core, settings: AppSettings()));
@@ -1129,44 +1344,88 @@ void main() {
     await tester.tap(find.text('Accounts').first);
     await tester.pumpAndSettle();
 
-    final row = find.text('Account switching');
-    expect(row, findsOneWidget);
-    expect(
-      find.descendant(
-        of: find.ancestor(of: row, matching: find.byType(ListTile)),
-        matching: find.textContaining('90%'),
-      ),
-      findsOneWidget,
-    );
-
-    await tester.tap(row);
+    // Beside Add account, in plain sight.
+    final more = find.byIcon(Icons.more_vert_rounded);
+    expect(more, findsOneWidget);
+    await tester.tap(more);
     await tester.pumpAndSettle();
-    final field = find.descendant(
-      of: find.byType(AlertDialog),
-      matching: find.byType(TextField),
-    );
-    expect(tester.widget<TextField>(field).controller!.text, '90');
-    await tester.enterText(field, '0');
-    await tester.tap(find.text('Save'));
+    expect(find.text('Save a backup'), findsOneWidget);
+    expect(find.text('Import a backup'), findsOneWidget);
+    expect(find.text('Backup'), findsNothing);
+    await tester.tapAt(Offset.zero);
     await tester.pumpAndSettle();
-    expect(find.textContaining('from 1 to 100'), findsOneWidget);
-    expect(api.config['accounts'], isNull);
-    await tester.enterText(field, '70');
-    await tester.tap(find.text('Save'));
-    await tester.pumpAndSettle();
-    expect(find.byType(AlertDialog), findsNothing);
-    final accounts = api.config['accounts'] as Map<String, Object?>;
-    expect(accounts['switch_threshold_percent'], 70);
-
-    // One account: nothing to switch to.
-    api.accountsJson.removeLast();
-    await core.refresh(accountsToo: true);
-    await tester.pumpAndSettle();
-    expect(row, findsNothing);
+    expect(find.text('Save a backup'), findsNothing);
 
     await tester.pumpWidget(const SizedBox());
     core.dispose();
   });
+
+  testWidgets(
+    'the accounts page shows quota bars and switching for two accounts',
+    (tester) async {
+      stillMotion(tester);
+      tester.view.physicalSize = const Size(1200, 1400);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      final api = FakeApi();
+      api.accountsJson.last.remove('usage');
+      final core = CoreController(
+        () async => api,
+        pollInterval: const Duration(hours: 1),
+      );
+      await tester.pumpWidget(VpnApp(core: core, settings: AppSettings()));
+      core.start();
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Accounts').first);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('0 MB'), findsOneWidget);
+      expect(
+        tester
+            .widgetList<QuotaBar>(find.byType(QuotaBar))
+            .map((bar) => bar.percent),
+        [40.0, 0.0],
+      );
+      final row = find.text('Account switching');
+      expect(row, findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.ancestor(of: row, matching: find.byType(ListTile)),
+          matching: find.textContaining('90%'),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(row);
+      await tester.pumpAndSettle();
+      final field = find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.byType(TextField),
+      );
+      expect(tester.widget<TextField>(field).controller!.text, '90');
+      await tester.enterText(field, '0');
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('from 1 to 100'), findsOneWidget);
+      expect(api.config['accounts'], isNull);
+      await tester.enterText(field, '70');
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsNothing);
+      final accounts = api.config['accounts'] as Map<String, Object?>;
+      expect(accounts['switch_threshold_percent'], 70);
+
+      // One account: nothing to switch to.
+      api.accountsJson.removeLast();
+      await core.refresh(accountsToo: true);
+      await tester.pumpAndSettle();
+      expect(row, findsNothing);
+
+      await tester.pumpWidget(const SizedBox());
+      core.dispose();
+    },
+  );
 
   testWidgets('a computer lists the settings in the same groups', (
     tester,
@@ -1236,7 +1495,8 @@ void main() {
     await tester.tap(find.text('Relay server'));
     await tester.pumpAndSettle();
 
-    expect(find.text('If Mozilla is blocked'), findsOneWidget);
+    expect(find.text('Shared relay'), findsOneWidget);
+    expect(find.text('Personal relay'), findsOneWidget);
     final field = find.widgetWithText(TextField, 'Relay server');
     // Save goes under the field on a computer too: long addresses need the width.
     final save = find.widgetWithText(FilledButton, 'Save');
@@ -1254,6 +1514,364 @@ void main() {
 
     // ECH works by itself: there is nothing to choose.
     expect(find.textContaining('ECH'), findsNothing);
+
+    await tester.pumpWidget(const SizedBox());
+    core.dispose();
+  });
+
+  for (final size in [const Size(430, 1000), const Size(1200, 1400)]) {
+    testWidgets('shared and personal relay switches are independent at $size', (
+      tester,
+    ) async {
+      stillMotion(tester);
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final api = FakeApi();
+      api.config['network'] = <String, Object?>{
+        'api_relay_enabled': false,
+        'shared_relay_enabled': true,
+        'api_relay': '',
+      };
+      final core = CoreController(
+        () async => api,
+        pollInterval: const Duration(hours: 1),
+      );
+      await tester.pumpWidget(VpnApp(core: core, settings: AppSettings()));
+      core.start();
+      await tester.pumpAndSettle();
+      // Phone: the dock tab by its semantics label. Desktop: the
+      // rail's text label.
+      final settingsTab = find.bySemanticsLabel('Settings');
+      await tester.tap(
+        settingsTab.evaluate().isNotEmpty
+            ? settingsTab
+            : find.text('Settings'),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Relay server'));
+      await tester.pumpAndSettle();
+      final shared = find.descendant(
+        of: find.widgetWithText(Panel, 'Shared relay'),
+        matching: find.byType(Switch),
+      );
+      final personal = find.descendant(
+        of: find.widgetWithText(Panel, 'Personal relay'),
+        matching: find.byType(Switch),
+      );
+      Map<String, Object?> network() =>
+          api.config['network']! as Map<String, Object?>;
+      expect(tester.widget<Switch>(shared).value, isTrue);
+      expect(tester.widget<Switch>(shared).onChanged, isNotNull);
+      expect(tester.widget<Switch>(personal).value, isFalse);
+      expect(tester.widget<Switch>(personal).onChanged, isNull);
+      await tester.tap(shared);
+      await tester.pumpAndSettle();
+      expect(network()['shared_relay_enabled'], isFalse);
+      expect(network()['api_relay_enabled'], isFalse);
+      await tester.tap(shared);
+      await tester.pumpAndSettle();
+      expect(network()['shared_relay_enabled'], isTrue);
+      final field = find.widgetWithText(TextField, 'Relay server');
+      await tester.ensureVisible(field);
+      await tester.enterText(field, 'https://personal.example/');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(personal);
+      await tester.tap(personal);
+      await tester.pumpAndSettle();
+      expect(network()['api_relay_enabled'], isTrue);
+      expect(network()['shared_relay_enabled'], isTrue);
+      await tester.ensureVisible(shared);
+      await tester.tap(shared);
+      await tester.pumpAndSettle();
+      expect(network()['shared_relay_enabled'], isFalse);
+      expect(network()['api_relay_enabled'], isTrue);
+      await tester.ensureVisible(personal);
+      await tester.tap(personal);
+      await tester.pumpAndSettle();
+      expect(network()['api_relay_enabled'], isFalse);
+      expect(network()['shared_relay_enabled'], isFalse);
+      expect(network()['api_relay'], 'https://personal.example/');
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      core.dispose();
+    });
+  }
+
+  testWidgets('the IP version is Auto until another is chosen', (tester) async {
+    stillMotion(tester);
+    tester.view.physicalSize = const Size(1200, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final api = FakeApi();
+    final core = CoreController(
+      () async => api,
+      pollInterval: const Duration(hours: 1),
+    );
+    await tester.pumpWidget(VpnApp(core: core, settings: AppSettings()));
+    core.start();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Connection').first);
+    await tester.pumpAndSettle();
+
+    final row = find.text('IP version');
+    await tester.ensureVisible(row);
+    await tester.pumpAndSettle();
+    expect(find.text('Auto (IPv4, then IPv6)'), findsOneWidget);
+    await tester.tap(row);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('IPv6 only'));
+    await tester.pumpAndSettle();
+    expect((api.config['proxy'] as Map<String, Object?>)['ip_version'], 'ipv6');
+
+    await tester.pumpWidget(const SizedBox());
+    core.dispose();
+  });
+
+  for (final size in [
+    const Size(320, 568),
+    const Size(430, 1000),
+    const Size(1200, 1400),
+  ]) {
+    testWidgets(
+      'relay diagnostics use the unsaved address and show live logs at $size',
+      (tester) async {
+        stillMotion(tester);
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        final language = size.width == 320 ? 'fa' : 'en';
+        final l = lookupAppLocalizations(Locale(language));
+        final events = StreamController<RelayTestEvent>();
+        addTearDown(() => unawaited(events.close()));
+        final api = FakeApi()..relayEvents = events.stream;
+        api.config['network'] = {
+          'api_relay': '',
+          'api_relay_enabled': false,
+          'shared_relay_enabled': true,
+        };
+        final before = jsonEncode(api.config);
+        final core = CoreController(
+          () async => api,
+          pollInterval: const Duration(hours: 1),
+        );
+        await tester.pumpWidget(
+          VpnApp(core: core, settings: AppSettings()..language = language),
+        );
+        core.start();
+        await tester.pumpAndSettle();
+        final settingsTab = find.bySemanticsLabel(l.navSettings);
+        await tester.tap(
+          settingsTab.evaluate().isNotEmpty
+              ? settingsTab
+              : find.text(l.navSettings),
+        );
+        await tester.pumpAndSettle();
+        final relayRow = find.text(l.apiRelay);
+        await tester.scrollUntilVisible(
+          relayRow,
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(relayRow);
+        await tester.pumpAndSettle();
+        final button = find.widgetWithText(OutlinedButton, l.testRelay);
+        expect(tester.widget<OutlinedButton>(button).onPressed, isNull);
+        await tester.enterText(
+          find.widgetWithText(TextField, l.apiRelay),
+          'https://relay.example/?secret=fixture-secret',
+        );
+        await tester.pump();
+        await tester.ensureVisible(button);
+        await tester.pumpAndSettle();
+        await tester.tap(button);
+        await tester.pump(const Duration(milliseconds: 300));
+        final dialog = find.byType(AlertDialog);
+        expect(
+          find.descendant(of: dialog, matching: find.text(l.relayTestTitle)),
+          findsOneWidget,
+        );
+        expect(
+          api.relayTestAddress,
+          'https://relay.example/?secret=fixture-secret',
+        );
+        final step = {
+          'stage': 'tls_ech',
+          'status': 'warning',
+          'code': 'eof',
+          'detail': 'TLS connection closed (EOF).',
+          'elapsed_ms': 100,
+        };
+        events.add(RelayTestEvent.fromJson({'step': step}));
+        await tester.pump();
+        expect(
+          find.textContaining('TLS connection closed (EOF).'),
+          findsOneWidget,
+        );
+        final failure = {
+          'stage': 'health',
+          'status': 'error',
+          'code': 'http_429',
+          'detail': 'HTTP 429: the hosting service is rate limiting requests.',
+          'elapsed_ms': 120,
+        };
+        events.add(
+          RelayTestEvent.fromJson({
+            'result': {
+              'ok': false,
+              'host': 'relay.example',
+              'total_ms': 120,
+              'steps': [step, failure],
+            },
+          }),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          find.text(l.relayTestFailed),
+          findsOneWidget,
+        );
+        expect(find.textContaining('HTTP 429:'), findsOneWidget);
+        final closeButton = find.widgetWithText(FilledButton, l.close);
+        final copyLabel = tester.getRect(find.text(l.relayTestCopy));
+        final retryLabel = tester.getRect(find.text(l.retry));
+        final closeRect = tester.getRect(closeButton);
+        if (size.width < 480) {
+          expect(copyLabel.center.dy, closeTo(retryLabel.center.dy, 1));
+          expect(closeRect.top, greaterThan(copyLabel.bottom));
+          expect(closeRect.width, greaterThan(size.width * .75));
+        } else {
+          expect(closeRect.center.dy, closeTo(copyLabel.center.dy, 1));
+        }
+        expect(
+          find.descendant(
+            of: dialog,
+            matching: find.textContaining('fixture-secret'),
+          ),
+          findsNothing,
+        );
+        String? copiedReport;
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          (call) async {
+            if (call.method == 'Clipboard.setData') {
+              copiedReport = (call.arguments as Map)['text'] as String;
+            }
+            return null;
+          },
+        );
+        addTearDown(
+          () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            SystemChannels.platform,
+            null,
+          ),
+        );
+        await tester.tap(find.text(l.relayTestCopy));
+        await tester.pump();
+        expect(copiedReport, contains('HTTP 429:'));
+        expect(copiedReport, isNot(contains('fixture-secret')));
+        expect(jsonEncode(api.config), before);
+        expect(tester.takeException(), isNull);
+        await tester.tap(closeButton);
+        await tester.pumpAndSettle();
+        await tester.pumpWidget(const SizedBox());
+        core.dispose();
+      },
+    );
+  }
+
+  testWidgets(
+    'closing relay diagnostics cancels the test and keeps the core available',
+    (tester) async {
+      stillMotion(tester);
+      var cancelled = false;
+      final events = StreamController<RelayTestEvent>(
+        onCancel: () => cancelled = true,
+      );
+      addTearDown(events.close);
+      final api = FakeApi()..relayEvents = events.stream;
+      api.config['network'] = {
+        'api_relay': 'https://relay.example/',
+        'api_relay_enabled': false,
+        'shared_relay_enabled': true,
+      };
+      final core = CoreController(
+        () async => api,
+        pollInterval: const Duration(hours: 1),
+      );
+      await tester.pumpWidget(VpnApp(core: core, settings: AppSettings()));
+      core.start();
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Settings'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Relay server'));
+      await tester.pumpAndSettle();
+      final button = find.text('Test relay health');
+      await tester.ensureVisible(button);
+      await tester.tap(button);
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Testing…'), findsOneWidget);
+      await tester.pump();
+      await tester.tap(find.widgetWithText(FilledButton, 'Close'));
+      await tester.pumpAndSettle();
+      expect(cancelled, isTrue);
+      await core.refresh();
+      expect(core.status, isNotNull);
+      expect(api.on, isTrue);
+      await tester.pumpWidget(const SizedBox());
+      core.dispose();
+    },
+  );
+
+  testWidgets('the MTU field shows the device default until one is set', (
+    tester,
+  ) async {
+    stillMotion(tester);
+    tester.view.physicalSize = const Size(1200, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final api = FakeApi();
+    final core = CoreController(
+      () async => api,
+      pollInterval: const Duration(hours: 1),
+    );
+    await tester.pumpWidget(VpnApp(core: core, settings: AppSettings()));
+    core.start();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Connection').first);
+    await tester.pumpAndSettle();
+
+    final field = find.widgetWithText(TextField, 'MTU');
+    await tester.ensureVisible(field);
+    await tester.pumpAndSettle();
+    // A computer's TUN: 9000 (the tests run on a desktop).
+    String shown() => tester.widget<TextField>(field).controller!.text;
+    expect(shown(), '9000');
+
+    Future<void> save(String text) async {
+      await tester.enterText(field, text);
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.ancestor(of: field, matching: find.byType(Column)).first,
+          matching: find.widgetWithText(FilledButton, 'Save'),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    await save('1400');
+    expect((api.config['tun'] as Map<String, Object?>)['mtu'], 1400);
+    await save('');
+    expect((api.config['tun'] as Map<String, Object?>)['mtu'], 0);
+    expect(shown(), '9000');
 
     await tester.pumpWidget(const SizedBox());
     core.dispose();
@@ -1278,13 +1896,17 @@ void main() {
     await tester.tap(find.text('TLS fragmentation'));
     await tester.pumpAndSettle();
 
-    // Off by default.
+    // Automatic by default.
     bool selected(String label) =>
         tester
             .widget<RadioGroup<String>>(find.byType(RadioGroup<String>).last)
             .groupValue ==
         label;
-    expect(selected('off'), isTrue);
+    expect(selected('auto'), isTrue);
+    expect(
+      find.text('Tries other methods if the normal connection fails.'),
+      findsOneWidget,
+    );
     expect(find.text('Normal TLS connection'), findsOneWidget);
     expect(
       find.text('Splits the TLS header at the first byte (0x16)'),
@@ -1592,7 +2214,9 @@ void main() {
     core.start();
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Servers'));
+    // The hero's quick action is a second "Servers" route; the
+    // first match is the rail item this test means.
+    await tester.tap(find.text('Servers').first);
     await tester.pumpAndSettle();
     // No delay test, which would fail without an account; the notice
     // with its button instead, and the locations still to choose from.
@@ -1797,8 +2421,9 @@ void main() {
     // The proxy login: one form, both fields saved together.
     await tester.tap(find.text('Proxy login'));
     await tester.pumpAndSettle();
-    // Its form's Save, before the Worker's at the end of the page.
-    final save = find.widgetWithText(FilledButton, 'Save').first;
+    // Its form's Save: after the MTU's in the connection section, before
+    // the Worker's at the end of the page.
+    final save = find.widgetWithText(FilledButton, 'Save').at(1);
     await tester.enterText(
       find.widgetWithText(TextField, 'Proxy username'),
       'user',
@@ -1852,6 +2477,80 @@ void main() {
     core.dispose();
   });
 
+  testWidgets(
+    'a tile home request leaves nested pages and selects Home without changing VPN power',
+    (tester) async {
+      stillMotion(tester);
+      tester.view.physicalSize = const Size(400, 860);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final api = FakeApi();
+      final core = CoreController(
+        () async => api,
+        pollInterval: const Duration(hours: 1),
+      );
+      await tester.pumpWidget(VpnApp(core: core, settings: AppSettings()));
+      core.start();
+      await tester.pumpAndSettle();
+      await tester.tap(find.bySemanticsLabel('Settings'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Accounts'));
+      await tester.pumpAndSettle();
+      expect(find.byType(AppBar), findsOneWidget);
+      final wasOn = api.on;
+      AndroidCore.homeRequests.value++;
+      await tester.pumpAndSettle();
+      expect(find.byType(AppBar), findsNothing);
+      expect(tester.widget<BentoDock>(find.byType(BentoDock)).index, 0);
+      expect(find.text('Data used'), findsOneWidget);
+      expect(api.on, wasOn);
+      await tester.pumpWidget(const SizedBox());
+      core.dispose();
+    },
+  );
+
+  testWidgets(
+    'Windows sidebar labels retain the resolved app font in both themes',
+    (tester) async {
+      stillMotion(tester);
+      tester.view.physicalSize = const Size(1200, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final settings = AppSettings();
+      final core = CoreController(
+        () async => FakeApi(),
+        pollInterval: const Duration(hours: 1),
+      );
+      await tester.pumpWidget(VpnApp(core: core, settings: settings));
+      core.start();
+      await tester.pumpAndSettle();
+      for (final language in ['en', 'fa']) {
+        for (final mode in [ThemeMode.light, ThemeMode.dark]) {
+          settings.update(language: language, themeMode: mode);
+          await tester.pumpAndSettle();
+          final rail = find.byType(NavigationRail);
+          final theme = Theme.of(tester.element(rail));
+          final expected = language == 'en' ? 'Inter' : 'Vazirmatn';
+          expect(theme.textTheme.labelLarge!.fontFamily, expected);
+          for (final label
+              in language == 'en'
+                  ? ['Overview', 'Accounts']
+                  : ['نمای کلی', 'حساب‌ها']) {
+            final text = find.descendant(of: rail, matching: find.text(label));
+            expect(
+              DefaultTextStyle.of(tester.element(text)).style.fontFamily,
+              expected,
+            );
+          }
+          expect(tester.takeException(), isNull);
+        }
+      }
+      await tester.pumpWidget(const SizedBox());
+      core.dispose();
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.windows),
+  );
+
   testWidgets('a phone gets Home and Settings, and pages with a back bar', (
     tester,
   ) async {
@@ -1868,11 +2567,13 @@ void main() {
     core.start();
     await tester.pumpAndSettle();
 
+    // The design's dock labels only the active tab in text; the
+    // inactive tab is present by its semantics label.
     expect(find.text('Home'), findsOneWidget);
-    expect(find.text('Settings'), findsOneWidget);
+    expect(find.bySemanticsLabel('Settings'), findsOneWidget);
     expect(find.text('Logs'), findsNothing);
 
-    await tester.tap(find.text('Settings'));
+    await tester.tap(find.bySemanticsLabel('Settings'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Accounts'));
     await tester.pumpAndSettle();
@@ -1891,7 +2592,7 @@ void main() {
     expect(find.text('Data used'), findsOneWidget);
 
     // Logs cleared stay cleared when the page opens again.
-    await tester.tap(find.text('Settings'));
+    await tester.tap(find.bySemanticsLabel('Settings'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Logs'));
     await tester.pumpAndSettle();
@@ -1929,7 +2630,7 @@ void main() {
     core.start();
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('تنظیمات').last);
+    await tester.tap(find.bySemanticsLabel('تنظیمات'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('عمومی').last);
     await tester.pumpAndSettle();
@@ -1942,7 +2643,11 @@ void main() {
     expect((control.center.dy - label.center.dy).abs(), lessThan(24));
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('سرور رله'), 200);
+    await tester.scrollUntilVisible(
+      find.text('سرور رله'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.tap(find.text('سرور رله'));
     await tester.pumpAndSettle();
     // A text setting's Save goes under its field, which keeps the width.
@@ -2063,6 +2768,69 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     core.dispose();
   });
+
+  for (final desktop in [false, true]) {
+    final layout = desktop ? 'desktop' : 'phone';
+    testWidgets('the $layout home waits for the final connect result', (
+      tester,
+    ) async {
+      stillMotion(tester);
+      tester.view.physicalSize = desktop
+          ? const Size(1200, 900)
+          : const Size(400, 860);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      final l = await AppLocalizations.delegate.load(const Locale('en'));
+      final api = FakeApi()
+        ..systemProxySupported = desktop
+        ..on = false
+        ..online = false
+        ..testErrorCode = Failure.unreachable;
+      final core = CoreController(
+        () async => api,
+        pollInterval: const Duration(hours: 1),
+        turnOn: (on) async => api.connectPending = on,
+      );
+      await tester.pumpWidget(VpnApp(core: core, settings: AppSettings()));
+      core.start();
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.byTooltip(desktop ? l.tapToConnect : l.tapToConnectPhone),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(l.stateConnecting), findsOneWidget);
+      expect(api.on, isFalse, reason: 'the engine has not started yet');
+
+      api.on = true;
+      await core.refresh();
+      await tester.pumpAndSettle();
+      expect(find.text(l.stateConnecting), findsOneWidget);
+      expect(find.text(l.failUnreachable), findsNothing);
+      expect(api.tests, 0, reason: 'the core owns the pending attempt');
+
+      api.noNetwork = true;
+      await core.refresh();
+      await tester.pumpAndSettle();
+      expect(find.text(l.stateConnecting), findsOneWidget);
+      expect(find.text(l.noNetwork), findsNothing);
+
+      // A different final reason wins even before the engine stops.
+      api
+        ..connectPending = false
+        ..connectFailure = Failure.noNetwork;
+      await core.refresh();
+      await tester.pumpAndSettle();
+      expect(find.text(l.stateOff), findsOneWidget);
+      expect(find.text(l.failNoInternet), findsOneWidget);
+      expect(find.text(l.failUnreachable), findsNothing);
+      expect(api.tests, 0);
+
+      await tester.pumpWidget(const SizedBox());
+      core.dispose();
+    }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
+  }
 
   testWidgets('a nearly used account suggests another one, for a minute', (
     tester,
@@ -2277,6 +3045,7 @@ void main() {
       Map<String, Object?>? update,
       List<String> args = const [],
       Release? found,
+      String known = '',
     }) async {
       stillMotion(tester);
       tester.view.physicalSize = const Size(1200, 900);
@@ -2287,7 +3056,7 @@ void main() {
         () async => api,
         pollInterval: const Duration(hours: 1),
       );
-      final settings = AppSettings();
+      final settings = AppSettings()..updateVersion = known;
       Updates.start(core, settings, args: args);
       Updates.available.value = found;
       await tester.pumpWidget(VpnApp(core: core, settings: settings));
@@ -2303,6 +3072,121 @@ void main() {
       core.dispose();
     }
 
+    testWidgets(
+      'an announcement opens the in-app update section and acknowledges its action',
+      (tester) async {
+        final (_, core, _) = await pumpUpdates(
+          tester,
+          found: const Release('9.9.9', page),
+        );
+        Updates.receiveAnnouncements(
+          parseAnnouncements([
+            {
+              'id': 'update-action',
+              'enabled': true,
+              'priority': 100,
+              'dismissible': false,
+              'title': {'en': 'Important service notice'},
+              'message': {'en': 'Please check the available update.'},
+              'display': {'mode': 'until_acknowledged'},
+              'action': {
+                'type': 'navigate',
+                'target': 'updates',
+                'label': {'en': 'Go to updates'},
+              },
+            },
+          ]),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('Important service notice'), findsOneWidget);
+        await tester.tap(find.text('Go to updates'));
+        await tester.pumpAndSettle();
+        expect(find.text('Important service notice'), findsNothing);
+        expect(
+          find.widgetWithText(OutlinedButton, 'Check for updates'),
+          findsOneWidget,
+        );
+        expect(find.text('Download'), findsOneWidget);
+        expect(
+          Updates
+              .announcements
+              .value!
+              .settings
+              .announcementAcknowledged['update-action'],
+          1,
+        );
+        await done(tester, core);
+      },
+    );
+
+    testWidgets(
+      'Android manual checks do not postpone daily checks or lose newer offers',
+      (tester) async {
+        final (_, core, settings) = await pumpUpdates(tester);
+        final lastDailyCheck = DateTime(2026, 11, 8);
+        settings.update(updateCheckedAt: lastDailyCheck);
+        Updates.found(
+          const Release('9.9.9', page),
+          check: UpdateCheck.manual,
+          os: 'android',
+        );
+        expect(settings.updateCheckedAt, lastDailyCheck);
+        expect(settings.updateVersion, '9.9.9');
+
+        Updates.found(
+          const Release(
+            '9.9.8',
+            'https://example.invalid/9.9.8',
+            mandatory: true,
+          ),
+          os: 'android',
+        );
+        expect(Updates.available.value?.version, '9.9.9');
+        expect(Updates.available.value?.mandatory, isTrue);
+        expect(settings.updateCheckedAt!.isAfter(lastDailyCheck), isTrue);
+        expect(settings.updateVersion, '9.9.9');
+        expect(releaseFromJson(settings.updateDetails)?.version, '9.9.9');
+
+        Updates.found(null, os: 'android');
+        expect(Updates.available.value?.version, '9.9.9');
+        Updates.found(null, check: UpdateCheck.manual, os: 'android');
+        expect(Updates.available.value, isNull);
+        expect(settings.updateVersion, isEmpty);
+        await done(tester, core);
+      },
+    );
+
+    testWidgets(
+      'a long Persian announcement fits a narrow phone and can be closed',
+      (tester) async {
+        final (_, core, settings) = await pumpUpdates(tester);
+        tester.view.physicalSize = const Size(390, 700);
+        settings.update(language: 'fa');
+        Updates.receiveAnnouncements(
+          parseAnnouncements([
+            {
+              'id': 'persian',
+              'enabled': true,
+              'title': {'fa': 'اطلاعیه سرویس'},
+              'message': {
+                'fa': List.filled(
+                  12,
+                  'این یک پیام نمونه برای بررسی نمایش اطلاعیه در برنامه است.',
+                ).join(' '),
+              },
+            },
+          ]),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('اطلاعیه سرویس'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tester.tap(find.byTooltip('بستن'));
+        await tester.pumpAndSettle();
+        expect(find.text('اطلاعیه سرویس'), findsNothing);
+        await done(tester, core);
+      },
+    );
+
     testWidgets('a copy that does not update itself offers the download', (
       tester,
     ) async {
@@ -2315,6 +3199,69 @@ void main() {
       expect(find.text('Update'), findsNothing);
       await done(tester, core);
     });
+
+    testWidgets(
+      'mandatory updates cannot be dismissed and do not block connections',
+      (tester) async {
+        final (api, core, settings) = await pumpUpdates(
+          tester,
+          found: const Release('9.9.9', page, mandatory: true),
+        );
+        settings.update(dismissedUpdate: '9.9.9');
+        await tester.pump();
+        expect(
+          find.text('Please update to version 9.9.9. This update is required.'),
+          findsOneWidget,
+        );
+        expect(find.byTooltip('Dismiss'), findsNothing);
+        expect(api.on, isTrue);
+        await core.setOn(false);
+        await core.setOn(true);
+        expect(api.on, isTrue);
+        await done(tester, core);
+      },
+    );
+
+    testWidgets('background updates pass the manifest archive to the core', (
+      tester,
+    ) async {
+      final (api, core, _) = await pumpUpdates(
+        tester,
+        update: {'state': 'idle'},
+        found: const Release(
+          '9.9.9',
+          page,
+          checksumsUrl: 'https://cdn.example/sums',
+          signatureUrl: 'https://cdn.example/signature',
+          downloads: {
+            'archive-x64': ReleaseDownload(
+              'Arman-VPN-Windows-x64.zip',
+              'https://cdn.example/package',
+            ),
+            'archive': ReleaseDownload(
+              'Arman-VPN-Windows-x64.zip',
+              'https://cdn.example/package',
+            ),
+            'amd64': ReleaseDownload(
+              'Arman-VPN-Windows-x64.zip',
+              'https://cdn.example/package',
+            ),
+            'arm64': ReleaseDownload(
+              'Arman-VPN-Windows-x64.zip',
+              'https://cdn.example/package',
+            ),
+          },
+        ),
+      );
+      await tester.pump();
+      expect(api.downloadSources.single, {
+        'file': 'Arman-VPN-Windows-x64.zip',
+        'url': 'https://cdn.example/package',
+        'checksums_url': 'https://cdn.example/sums',
+        'signature_url': 'https://cdn.example/signature',
+      });
+      await done(tester, core);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
 
     testWidgets('a version found downloads by itself; Update installs it', (
       tester,
@@ -2372,6 +3319,26 @@ void main() {
       expect(api.installs.single.$2, ['--autostart', '--data-dir=elsewhere']);
       expect(Updates.installingAtStart.value, isTrue);
       expect(quit, 1);
+      await done(tester, core);
+    });
+
+    testWidgets('a download that a newer release replaced is not installed', (
+      tester,
+    ) async {
+      var quit = 0;
+      Updates.quitApp = () async => quit++;
+      // 9.9.8 was downloaded and left; 9.9.9 has been found since.
+      final (api, core, _) = await pumpUpdates(
+        tester,
+        update: {'state': 'ready', 'version': '9.9.8'},
+        known: '9.9.9',
+        found: const Release('9.9.9', page),
+      );
+      expect(api.installs, isEmpty);
+      expect(Updates.installingAtStart.value, isFalse);
+      expect(quit, 0);
+      // The newer one is fetched instead.
+      expect(api.downloads, contains('9.9.9'));
       await done(tester, core);
     });
 
@@ -2543,12 +3510,11 @@ void main() {
       expect(find.byType(SegmentedButton<String>), findsNothing);
       await tester.tap(find.text('TUN'));
       await tester.pumpAndSettle();
-      expect(service.starts, 1);
-      expect(service.installs, 0);
+      expect(service.installs, 1);
       // The reason macOS' prompt shows, in the app's language.
       expect(
         service.prompt,
-        'Firefox VPN wants to install the service for TUN mode.',
+        'Arman VPN wants to install the service for TUN mode.',
       );
       expect(api.mode, 'tun');
       api.tun = {'state': 'on', 'installed': true};
@@ -2558,14 +3524,12 @@ void main() {
         find.text('All Windows traffic goes through the VPN.'),
         findsOneWidget,
       );
-      // Choosing it again only makes sure it runs (the service never
-      // starts with the computer): the program itself, finding it
-      // running, asks for nothing.
+      // Installed: choosing it again asks for nothing.
       await tester.tap(find.text('Proxy').first);
       await tester.pumpAndSettle();
       await tester.tap(find.text('TUN'));
       await tester.pumpAndSettle();
-      expect(service.starts, 2);
+      expect(service.installs, 1);
       expect(api.mode, 'tun');
       await done(tester, core);
     }, variant: TargetPlatformVariant.only(TargetPlatform.windows));
@@ -2577,7 +3541,7 @@ void main() {
       expect(find.text('System proxy'), findsNothing);
       await tester.tap(find.text('TUN'));
       await tester.pumpAndSettle();
-      expect(service.starts, 1);
+      expect(service.installs, 1);
       expect(api.mode, 'tun');
       api.tun = {'state': 'on', 'installed': true};
       await core.refresh();
@@ -2623,7 +3587,7 @@ void main() {
       expect(service.removals, 1);
       expect(
         service.prompt,
-        'Firefox VPN wants to remove the service for TUN mode.',
+        'Arman VPN wants to remove the service for TUN mode.',
       );
       expect(find.text('The TUN service was removed.'), findsOneWidget);
       expect(api.tun?['installed'], isFalse);
@@ -2821,7 +3785,7 @@ void main() {
       );
       await tester.tap(find.text('TUN'));
       await tester.pumpAndSettle();
-      expect(service.starts, 1);
+      expect(service.installs, 1);
       expect(api.mode, 'clear');
       expect(
         find.text(
@@ -2846,7 +3810,7 @@ void main() {
       );
       await tester.tap(find.text('Install again'));
       await tester.pumpAndSettle();
-      expect(service.starts, 1);
+      expect(service.installs, 1);
 
       for (final (code, text, button) in [
         (
@@ -2860,7 +3824,7 @@ void main() {
           'The TUN service is newer than this app. Update the app to use TUN mode.',
           null,
         ),
-        ('busy', 'Another copy of Firefox VPN is using TUN mode.', null),
+        ('busy', 'Another copy of Arman VPN is using TUN mode.', null),
         (
           'no_driver',
           "The system's TUN driver isn't available. Restart the computer and try again.",
@@ -2916,35 +3880,24 @@ void main() {
   });
 }
 
-/// The TUN service's program, without the system's: a start that works
-/// makes the core report it installed (a start installs it when it is
-/// missing). It notes the reason it was given for macOS' prompt.
+/// The TUN service's program, without the system's: an install that works
+/// makes the core report it installed. It notes the reason it was given for
+/// macOS' prompt.
 class FakeTunService implements TunService {
   FakeTunService(this.api, this.result);
 
   final FakeApi api;
   final TunServiceResult result;
   int installs = 0;
-  int starts = 0;
   int removals = 0;
   String? prompt;
 
   @override
-  String get executable => 'firefox-vpn-tun.exe';
+  String get executable => 'arman-vpn-tun.exe';
 
   @override
   Future<TunServiceResult> install({String? prompt}) async {
     installs++;
-    this.prompt = prompt;
-    if (result is TunServiceDone) {
-      api.tun = {...?api.tun, 'installed': true};
-    }
-    return result;
-  }
-
-  @override
-  Future<TunServiceResult> start({String? prompt}) async {
-    starts++;
     this.prompt = prompt;
     if (result is TunServiceDone) {
       api.tun = {...?api.tun, 'installed': true};
@@ -2961,4 +3914,112 @@ class FakeTunService implements TunService {
     }
     return result;
   }
+}
+
+// Connecting can take half a minute when Mozilla is slow, and the button
+// used to sit still through it, which reads as a tap that did nothing. A
+// ring moves while it waits. It must exist only while connecting, so a
+// connected or idle app animates nothing, and it must respect the system's
+// "reduce motion" setting.
+void _connectingRingTests() {
+  // The stock orb and its connecting ring are gone: the design's
+  // connect control carries the busy state now. These tests assert
+  // the same contract through it — progress shows only while
+  // connecting, and with motion off nothing keeps animating.
+  Finder busyControl() => find.byWidgetPredicate(
+    (w) => w is BentoSlideConnect && w.spec.busy,
+  );
+
+  for (final desktop in [false, true]) {
+    final layout = desktop ? 'desktop' : 'phone';
+    testWidgets('the $layout home shows progress only while connecting', (
+      tester,
+    ) async {
+      stillMotion(tester);
+      tester.view.physicalSize = desktop
+          ? const Size(1200, 900)
+          : const Size(400, 860);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      final l = await AppLocalizations.delegate.load(const Locale('en'));
+      final api = FakeApi()
+        ..systemProxySupported = desktop
+        ..on = false;
+      final core = CoreController(
+        () async => api,
+        pollInterval: const Duration(hours: 1),
+        turnOn: (on) async => api.connectPending = on,
+      );
+      await tester.pumpWidget(VpnApp(core: core, settings: AppSettings()));
+      core.start();
+      await tester.pumpAndSettle();
+
+      // Off: the control is not busy.
+      expect(busyControl(), findsNothing);
+
+      await tester.tap(
+        find.byTooltip(desktop ? l.tapToConnect : l.tapToConnectPhone),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(l.stateConnecting), findsOneWidget);
+      expect(
+        busyControl(),
+        findsOneWidget,
+        reason: 'the wait must show progress',
+      );
+
+      // Connected and confirmed: the busy state goes away again.
+      api
+        ..on = true
+        ..connectPending = false;
+      await core.refresh();
+      await core.runTest();
+      await tester.pumpAndSettle();
+      expect(find.text(l.stateConnected), findsOneWidget);
+      expect(
+        busyControl(),
+        findsNothing,
+        reason: 'a connected app must not show a busy control',
+      );
+
+      await tester.pumpWidget(const SizedBox());
+      core.dispose();
+    });
+  }
+
+  // A repeating animation would hang pumpAndSettle, and a user who
+  // turned motion off should not have a busy animation running either.
+  testWidgets('the connecting state stands still when motion is off', (
+    tester,
+  ) async {
+    stillMotion(tester);
+    tester.view.physicalSize = const Size(400, 860);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final api = FakeApi()..on = false;
+    final core = CoreController(
+      () async => api,
+      pollInterval: const Duration(hours: 1),
+      turnOn: (on) async => api.connectPending = on,
+    );
+    await tester.pumpWidget(VpnApp(core: core, settings: AppSettings()));
+    core.start();
+    await tester.pumpAndSettle();
+
+    api.connectPending = true;
+    await core.refresh();
+    // It settles: with motion off the control schedules no frames.
+    await tester.pumpAndSettle();
+    expect(busyControl(), findsOneWidget);
+    expect(
+      tester.binding.hasScheduledFrame,
+      isFalse,
+      reason: 'motion off must leave no animation running',
+    );
+
+    await tester.pumpWidget(const SizedBox());
+    core.dispose();
+  });
 }

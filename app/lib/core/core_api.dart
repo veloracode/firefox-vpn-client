@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'models.dart';
+import 'relay_test.dart';
 
 /// Where the core's API listens and the local token that authorizes the
 /// app (`X-Local-Token`, read from `local-api.token` in the data folder).
@@ -68,7 +69,7 @@ abstract final class CoreLocator {
   static const _defaultPort = 10820;
 
   /// The folder name under the per-user data location (macOS).
-  static const appFolder = 'Firefox VPN Client';
+  static const appFolder = 'Arman VPN';
 
   /// The file next to the app that makes it portable: its data stays in
   /// `user-data` beside it instead of the per-user location.
@@ -94,24 +95,18 @@ abstract final class CoreLocator {
     return dir;
   }
 
-  /// The per-user data folders of the versions before upstream 1.0.9, by
-  /// the folder's name now: beside it. This fork kept the program's name,
-  /// so the old and the new folder are the same and this map is the
-  /// identity: [moveLegacyDataDir] can never move a folder (when the old
-  /// folder exists it IS [dir], which the function's first check leaves
-  /// alone; when it does not, there is nothing to move). It is kept, in
-  /// upstream's shape, so an install of this fork upgrades in place with
-  /// its accounts and settings untouched.
+  /// The per-user data folders of the versions before 1.0.9, when the
+  /// program was called Firefox VPN, by the new folder's name: beside it.
   static const legacyFolders = {
-    appFolder: appFolder,
-    linuxFolder: linuxFolder,
+    appFolder: 'Firefox VPN Client',
+    linuxFolder: 'firefox-vpn-client',
   };
 
   /// The folder name under the per-user data location (Linux).
-  static const linuxFolder = 'firefox-vpn-client';
+  static const linuxFolder = 'arman-vpn';
 
-  /// Moves the data folder of a version before upstream 1.0.9 to [dir] when
-  /// only the old one exists (the core does the same: MoveLegacyDataDir in
+  /// Moves the data folder of a version before 1.0.9 to [dir] when only the
+  /// old one exists (the core does the same: MoveLegacyDataDir in
   /// core/internal/config).
   static void moveLegacyDataDir(String dir) {
     final sep = Platform.pathSeparator;
@@ -153,7 +148,7 @@ abstract final class CoreLocator {
     };
   }
 
-  static Future<CoreEndpoint> locate(String dataDir) async {
+  static Future<CoreEndpoint> locate(String dataDir, {String? listen}) async {
     final sep = Platform.pathSeparator;
     final tokenPath = File('$dataDir$sep$tokenFile');
     String token;
@@ -165,8 +160,10 @@ abstract final class CoreLocator {
     if (token.isEmpty) {
       throw CoreUnavailable(CoreProblem.notAnswering, tokenPath.path);
     }
-    final listen = await dashboardListen(dataDir);
-    return CoreEndpoint(listenUri(listen), token);
+    return CoreEndpoint(
+      listenUri(listen ?? await dashboardListen(dataDir)),
+      token,
+    );
   }
 
   /// The loopback URL that reaches a listen address; a wildcard host
@@ -281,6 +278,39 @@ class CoreApi {
         }),
       );
 
+  /// Adds an account from a browser sign-in: the webview took the person
+  /// through accounts.firefox.com and captured the session token; the core
+  /// exchanges it for the account's tokens. Polled like any sign-in.
+  Future<SignInState> startBrowserSignIn(
+    String email,
+    String sessionToken,
+  ) async => SignInState.fromJson(
+    await _json('POST', '/api/signin/browser', {
+      'email': email,
+      'session_token': sessionToken,
+    }),
+  );
+
+  /// Opens the core's proxy for the browser sign-in and gives its address
+  /// ("127.0.0.1:port"): it reaches Mozilla's sign-in pages the way the
+  /// core's own account requests do, with no account and the VPN off.
+  /// [port] is the port the browser view was started with, which the core
+  /// takes again when it can.
+  Future<String> openSignInProxy({int port = 0}) async {
+    final reply = await _json('POST', '/api/signin/browser/proxy', {
+      'port': port,
+    });
+    final address = reply['address'];
+    if (address is! String || address.isEmpty) {
+      throw const CoreApiException(0, 'no sign-in proxy address');
+    }
+    return address;
+  }
+
+  /// The sign-in page closed: the proxy stops serving.
+  Future<void> closeSignInProxy() =>
+      _json('DELETE', '/api/signin/browser/proxy');
+
   /// Signs an account in again with its stored password; 409 when the core
   /// has none, and the user must type it.
   Future<SignInState> startSignInAgain(String accountId) async =>
@@ -337,8 +367,11 @@ class CoreApi {
 
   /// Starts downloading [version] of the app (the desktop app's core; 409
   /// for a copy that does not update itself).
-  Future<void> downloadUpdate(String version) =>
-      _json('POST', '/api/update/download', {'version': version});
+  Future<void> downloadUpdate(String version, {Map<String, Object?>? source}) =>
+      _json('POST', '/api/update/download', {
+        'version': version,
+        'source': ?source,
+      });
 
   /// Installs the downloaded [version]: the core starts the installation,
   /// which waits for this app ([pid]) and its core to quit, then starts the
@@ -367,10 +400,17 @@ class CoreApi {
 
   /// Tests the real delay of [codes] (all when empty) through the tunnel;
   /// the proxy must run (409 otherwise). It can take two minutes.
-  Future<LocationList> pingLocations(List<String> codes) async =>
-      LocationList.fromJson(
-        await _json('POST', '/api/locations/ping', {'codes': codes}, _slowest),
-      );
+  /// [fresh] measures every location: a person pressed the button. Without
+  /// it the core keeps the last figure of a location that was slow lately.
+  Future<LocationList> pingLocations(
+    List<String> codes, {
+    bool fresh = false,
+  }) async => LocationList.fromJson(
+    await _json('POST', '/api/locations/ping', {
+      'codes': codes,
+      'fresh': fresh,
+    }, _slowest),
+  );
 
   /// Chooses the location: a country code, `fastest`, or empty for the
   /// recommended one. The proxy restarts.
@@ -430,6 +470,131 @@ class CoreApi {
         if (r is Map<String, Object?>) DnsTestHost.fromJson(r),
     ];
   }
+
+  /// Uses a separate connection so closing the diagnostic dialog cancels
+  /// this request without interrupting status polling or the VPN.
+  Stream<RelayTestEvent> testRelay(String url) {
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 3)
+      ..findProxy = (_) => 'DIRECT';
+    late final StreamController<RelayTestEvent> events;
+    var cancelled = false;
+    events = StreamController<RelayTestEvent>(
+      onListen: () async {
+        try {
+          final req = await client
+              .postUrl(endpoint.baseUri.replace(path: '/api/relay/test'))
+              .timeout(_normal);
+          req.headers.set('X-Local-Token', endpoint.token);
+          req.headers.contentType = ContentType.json;
+          req.write(jsonEncode({'url': url, 'stream': true}));
+          final res = await req.close().timeout(_slow);
+          if (res.statusCode != 200) {
+            // Never expose an echoed input address from an older API.
+            throw CoreApiException(
+              res.statusCode,
+              'Relay diagnostics API returned HTTP ${res.statusCode}.',
+            );
+          }
+          await for (final line
+              in res
+                  .transform(utf8.decoder)
+                  .transform(const LineSplitter())
+                  .timeout(const Duration(seconds: 40))) {
+            if (cancelled) break;
+            if (line.isEmpty) continue;
+            final event = jsonDecode(line);
+            if (event is Map<String, Object?>) {
+              events.add(RelayTestEvent.fromJson(event));
+            }
+          }
+        } catch (error) {
+          if (!cancelled) {
+            events.addError(
+              error is CoreApiException
+                  ? error
+                  : const CoreApiException(
+                      0,
+                      'The relay diagnostic connection ended unexpectedly.',
+                    ),
+            );
+          }
+        } finally {
+          client.close(force: true);
+          if (!cancelled) unawaited(events.close());
+        }
+      },
+      onCancel: () {
+        cancelled = true;
+        client.close(force: true);
+      },
+    );
+    return events.stream;
+  }
+
+  /// The backup file: the data folder (accounts and settings) as a zip,
+  /// and the name the core gives it.
+  Future<({String name, Uint8List bytes})> exportBackup() async {
+    final uri = endpoint.baseUri.replace(path: '/api/backup');
+    try {
+      final req = await _client.getUrl(uri).timeout(_slow);
+      req.headers.set('X-Local-Token', endpoint.token);
+      final res = await req.close().timeout(_slow);
+      final bytes =
+          (await res
+                  .fold<BytesBuilder>(
+                    BytesBuilder(),
+                    (b, chunk) => b..add(chunk),
+                  )
+                  .timeout(_slow))
+              .takeBytes();
+      if (res.statusCode != 200) {
+        final message = switch (jsonDecode(utf8.decode(bytes))) {
+          {'error': final String e} => e,
+          _ => 'HTTP ${res.statusCode}',
+        };
+        throw CoreApiException(res.statusCode, message);
+      }
+      final disposition = res.headers.value('content-disposition') ?? '';
+      final name =
+          RegExp(r'filename="([^"]+)"').firstMatch(disposition)?.group(1) ??
+          'Arman-VPN-backup.zip';
+      return (name: name, bytes: bytes);
+    } on SocketException catch (e) {
+      throw CoreUnavailable(
+        CoreProblem.notAnswering,
+        '${endpoint.baseUri}: ${e.message}',
+      );
+    } on HttpException catch (e) {
+      throw CoreUnavailable(CoreProblem.notAnswering, e.message);
+    } on TimeoutException {
+      throw CoreUnavailable(
+        CoreProblem.notAnswering,
+        '${endpoint.baseUri}: timeout',
+      );
+    } on FormatException {
+      throw const CoreUnavailable(
+        CoreProblem.notAnswering,
+        'unreadable answer',
+      );
+    }
+  }
+
+  /// Which accounts a backup file holds; 400 when it is no backup.
+  Future<BackupContents> inspectBackup(Uint8List zip) async =>
+      BackupContents.fromJson(
+        await _json('POST', '/api/backup/inspect', {
+          'data': base64Encode(zip),
+        }, _slow),
+      );
+
+  /// Adds the accounts of a backup file.
+  Future<BackupImported> importBackup(Uint8List zip) async =>
+      BackupImported.fromJson(
+        await _json('POST', '/api/backup/import', {
+          'data': base64Encode(zip),
+        }, _slow),
+      );
 
   /// A country's flag (SVG) by its two-letter code, from the core: built
   /// in there, or downloaded once and kept. Null when it has none.

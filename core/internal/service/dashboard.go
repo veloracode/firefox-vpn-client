@@ -21,8 +21,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/armanlife/firefox-vpn-client/core/internal/config"
-	"github.com/armanlife/firefox-vpn-client/core/internal/logx"
+	"github.com/armanlife/arman-vpn-client/core/internal/config"
+	"github.com/armanlife/arman-vpn-client/core/internal/logx"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -84,7 +84,7 @@ func (s *dashboardServer) sessionToken(cfg config.Dashboard, expiry time.Time) s
 
 // start listens on addr and serves in the background.
 func (s *dashboardServer) start(addr string) error {
-	if dashboardExposedWithoutLogin(s.d.config()) {
+	if !s.d.privateDashboard && dashboardExposedWithoutLogin(s.d.config()) {
 		// Without a login the dashboard answers this computer only.
 		if _, port, err := net.SplitHostPort(addr); err == nil {
 			addr = net.JoinHostPort("127.0.0.1", port)
@@ -220,8 +220,16 @@ func (s *dashboardServer) handler() http.Handler {
 	mux.HandleFunc("POST /api/accounts/{id}/enabled", s.handleAccountEnabled)
 	mux.HandleFunc("POST /api/accounts/{id}/refresh", s.handleAccountRefresh)
 	mux.HandleFunc("DELETE /api/accounts/{id}", s.handleAccountRemove)
+	mux.HandleFunc("GET /api/backup", s.handleBackupExport)
+	mux.HandleFunc("POST /api/backup/inspect", s.handleBackupInspect)
+	mux.HandleFunc("POST /api/backup/import", s.handleBackupImport)
 
 	mux.HandleFunc("POST /api/signin", s.handleSignInStart)
+	// The literal path wins over the {id} patterns below; ids are 24 hex
+	// characters, never "browser".
+	mux.HandleFunc("POST /api/signin/browser", s.handleSignInBrowser)
+	mux.HandleFunc("POST /api/signin/browser/proxy", s.handleSignInProxyOpen)
+	mux.HandleFunc("DELETE /api/signin/browser/proxy", s.handleSignInProxyClose)
 	mux.HandleFunc("GET /api/signin/{id}", s.handleSignInGet)
 	mux.HandleFunc("POST /api/signin/{id}", s.handleSignInAnswer)
 	mux.HandleFunc("DELETE /api/signin/{id}", s.handleSignInCancel)
@@ -232,6 +240,7 @@ func (s *dashboardServer) handler() http.Handler {
 	mux.HandleFunc("POST /api/locations/ping", s.handleLocationPing)
 	mux.HandleFunc("POST /api/location", s.handleSetLocation)
 	mux.HandleFunc("POST /api/dns/test", s.handleDNSTest)
+	mux.HandleFunc("POST /api/relay/test", s.handleRelayTest)
 	mux.HandleFunc("GET /api/routing", s.handleRouting)
 	mux.HandleFunc("POST /api/routing/update", s.handleRoutingUpdate)
 	mux.HandleFunc("POST /api/routing/test", s.handleRoutingTest)

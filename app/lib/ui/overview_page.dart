@@ -3,7 +3,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter/services.dart';
 
 import '../app_settings.dart';
@@ -14,11 +14,16 @@ import '../core/models.dart';
 import '../core/ports.dart';
 import '../l10n/app_localizations.dart';
 import '../platform.dart';
+import 'browser_signin.dart';
+import 'bypass_apps_page.dart';
 import 'connection_mode.dart';
 import 'format.dart';
 import 'port_dialog.dart';
-import 'signin_dialog.dart';
 import 'widgets.dart';
+import 'zed/zed_connect.dart';
+import 'zed/zed_home.dart';
+import 'zed/zed_prefs.dart';
+import 'zed/zed_theme.dart';
 
 /// The home page: the switch, the state, where the traffic goes, and the
 /// data used; the phone's (_PhoneHome) and the computer's (_DesktopHome)
@@ -80,7 +85,7 @@ class OverviewPage extends StatelessWidget {
 }
 
 /// Opens the connection settings under "Mozilla's servers are blocked":
-/// HTTP/2 or HTTP/3, one of which a network may let through.
+/// HTTP/2, HTTP/3, or HTTP/1.1, one of which a network may let through.
 class _ConnectionSettingsButton extends StatelessWidget {
   const _ConnectionSettingsButton({required this.onPressed, this.label});
 
@@ -242,16 +247,24 @@ class _ProblemBox extends StatelessWidget {
 void _openAccounts(
   BuildContext context,
   CoreController core,
+  AppSettings settings,
   VoidCallback? onOpenAccounts,
 ) {
   if (onOpenAccounts != null) {
     onOpenAccounts();
   } else {
-    showSignInDialog(context, core);
+    startAddAccount(context, core, settings);
   }
 }
 
-/// The phone home's colors, light or dark with the app's theme.
+/// The core handles the initial connection while an explicit attempt is pending.
+void _testAfterPowerOn(CoreController core) {
+  final status = core.status;
+  if (status != null && status.proxyOn && !status.connectPending) {
+    unawaited(core.runTest().catchError((_) {}));
+  }
+}
+
 /// The computer's home: the phone's look with the computer's logic. The
 /// button turns the proxy on or off (off closes its port and gives Windows
 /// its own proxy setting back); the mode chooses who uses it: Proxy, apps
@@ -282,12 +295,24 @@ class _DesktopHome extends StatelessWidget {
   final VoidCallback? onOpenConnection;
   final VoidCallback? onOpenUpstreamProxy;
 
+  /// The connection mode shown as chosen; changing it (chooseConnectionMode)
+  /// keeps the proxy running and connected.
+  String get _mode => connectionModeShown(status);
+
+  /// The button: off, or on with a test that confirms the connection.
+  Future<void> _power(bool on) async {
+    await core.setOn(on);
+    if (on) _testAfterPowerOn(core);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final base = Theme.of(context);
-    final p = base.brightness == Brightness.dark
-        ? _HomePalette.night
-        : _HomePalette.day;
+    final p = _zedHomePalette(context, settings);
+    // Bento motifs: the soft background lights, off when the design's
+    // motifs are off (other designs always show theirs).
+    final motifs =
+        settings.zedPrefs.design != ZedDesign.bento ||
+        settings.zedPrefs.bento.motifs;
     final page = DecoratedBox(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -298,33 +323,36 @@ class _DesktopHome extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          Positioned(
-            top: -140,
-            left: -120,
-            child: _Glow(
-              color: _accent(p),
-              size: 420,
-              alpha: p.dark ? 0.20 : 0.18,
+          if (motifs)
+            Positioned(
+              top: -140,
+              left: -120,
+              child: _Glow(
+                color: _accent(p),
+                size: 420,
+                alpha: p.dark ? 0.20 : 0.18,
+              ),
             ),
-          ),
-          Positioned(
-            top: 120,
-            right: -160,
-            child: _Glow(
-              color: p.second,
-              size: 360,
-              alpha: p.dark ? 0.12 : 0.15,
+          if (motifs)
+            Positioned(
+              top: 120,
+              right: -160,
+              child: _Glow(
+                color: p.second,
+                size: 360,
+                alpha: p.dark ? 0.12 : 0.15,
+              ),
             ),
-          ),
-          Positioned(
-            bottom: -120,
-            left: 40,
-            child: _Glow(
-              color: p.third,
-              size: 320,
-              alpha: p.dark ? 0.10 : 0.10,
+          if (motifs)
+            Positioned(
+              bottom: -120,
+              left: 40,
+              child: _Glow(
+                color: p.third,
+                size: 320,
+                alpha: p.dark ? 0.10 : 0.10,
+              ),
             ),
-          ),
           Positioned.fill(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
@@ -339,15 +367,19 @@ class _DesktopHome extends StatelessWidget {
         ],
       ),
     );
-    return p.dark ? Theme(data: midnightTheme(base), child: page) : page;
+    return page;
   }
 
   bool get _running => status.state.phase == Phase.running;
 
-  /// The proxy runs but no test since it started passed.
-  bool get _confirming => _running && !connectionLive(status, core.lastTest);
+  /// The core is connecting, or the proxy still needs a passing test.
+  bool get _confirming =>
+      status.connectPending ||
+      (status.proxyOn && _running && !status.confirmedBy(core.lastTest));
 
   Color _accent(_HomePalette p) => switch (status.state.phase) {
+    _ when status.connectPending => p.busy,
+    _ when !status.proxyOn => p.idle,
     Phase.error => p.error,
     Phase.running when _confirming => p.busy,
     Phase.running => p.connected,
@@ -359,17 +391,28 @@ class _DesktopHome extends StatelessWidget {
     final l = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final look = PhaseLook.of(l, status);
+    // Pixel/Old: the user's custom tap-hint colour, when set.
+    final tapHintColor =
+        (settings.zedPrefs.design == ZedDesign.pixel ||
+                settings.zedPrefs.design == ZedDesign.old) &&
+            settings.zedPrefs.activePixel.customTapHint != null
+        ? Color(settings.zedPrefs.activePixel.customTapHint!)
+        : p.muted;
+
     final proxy = status.proxy;
-    final on = engineOn(status);
+    final on = status.proxyOn;
     final confirming = _confirming;
+    final test = status.isCurrentTest(core.lastTest) ? core.lastTest : null;
+    final noNetwork = !status.connectPending && status.noNetwork && on;
     final failing =
+        !status.connectPending &&
         confirming &&
-        ((proxy?.wakeError.isNotEmpty ?? false) || core.lastTest?.ok == false);
+        ((proxy?.wakeError.isNotEmpty ?? false) || test?.ok == false);
     // The real reason; a long press or hover shows the core's own text.
-    final failure = failing ? failureText(l, proxy, core.lastTest) : null;
+    final failure = failing ? failureText(l, proxy, test) : null;
     // The last connect was given up: why, until the next one.
     final gaveUp = !on && status.connectFailure.isNotEmpty;
-    final connected = connectionLive(status, core.lastTest);
+    final connected = on && _running && !confirming;
     final accent = _accent(p);
     final ip = !showIp
         ? ''
@@ -378,14 +421,19 @@ class _DesktopHome extends StatelessWidget {
         : status.exit?.ipv6 ?? '';
     final place = homeLocation(l, status, connected: connected);
     final mismatch = exitMismatchText(l, status);
+    // Glass homeCard off hides the server module card.
+    final showPlaceCard =
+        settings.zedPrefs.design != ZedDesign.glass ||
+        settings.zedPrefs.glass.homeCard;
     final cards = [
-      _PlaceCard(
-        palette: p,
-        compact: true,
-        place: place,
-        accent: accent,
-        onTap: onOpenServers,
-      ),
+      if (showPlaceCard)
+        _PlaceCard(
+          palette: p,
+          compact: true,
+          place: place,
+          accent: accent,
+          onTap: onOpenServers,
+        ),
       _HomeData(
         status: status,
         palette: p,
@@ -396,34 +444,33 @@ class _DesktopHome extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Center(
-          child: _PowerOrb(
-            palette: p,
+        ZedHero(
+          prefs: settings.zedPrefs,
+          spec: _zedSpec(
+            l: l,
+            status: status,
             on: on,
-            accent: accent,
             busy: core.switchingProxy,
-            tooltip: on ? l.tapToDisconnect : l.tapToConnect,
-            // The one power behavior every home shares; no account yet:
-            // the accounts page, which explains them.
-            onPressed: () => homePowerPressed(
-              context,
-              core,
-              onNoAccounts: () => _openAccounts(context, core, onOpenAccounts),
-            ),
+            connecting: confirming || status.state.phase == Phase.starting,
+            connected: connected,
+            stateLabel: confirming
+                ? l.stateConnecting
+                : connected
+                ? l.stateConnected
+                : look.label,
+            hint: on ? l.tapToDisconnect : l.tapToConnect,
+            onToggle: () => status.totalAccounts == 0
+                ? _openAccounts(context, core, settings, onOpenAccounts)
+                : runShowingErrors(context, () => _power(!on)),
           ),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          confirming
-              ? l.stateConnecting
-              : connected
-              ? l.stateConnected
-              : look.label,
-          textAlign: TextAlign.center,
-          style: theme.textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.w800,
-            color: on ? accent : p.text,
-          ),
+          upText: formatRate(status.traffic?.upRate ?? 0),
+          downText: formatRate(status.traffic?.downRate ?? 0),
+          upRate: (status.traffic?.upRate ?? 0).toDouble(),
+          downRate: (status.traffic?.downRate ?? 0).toDouble(),
+          onOpenServers: onOpenServers,
+          onOpenAccounts: onOpenAccounts,
+          serversLabel: l.navServers,
+          accountsLabel: l.navAccounts,
         ),
         const SizedBox(height: 8),
         if (connected)
@@ -449,29 +496,29 @@ class _DesktopHome extends StatelessWidget {
                 ),
             ],
           )
-        else if (failing || (status.noNetwork && on) || gaveUp)
+        else if (failing || noNetwork || gaveUp)
           // Not connecting stands out from the ordinary hints.
           _ProblemBox(
-            text: status.noNetwork && on
+            text: noNetwork
                 ? l.noNetwork
                 : failure != null
                 ? failure.text
                 : failureCodeText(l, status.connectFailure),
             color: p.error,
             icon: Icons.error_outline_rounded,
-            tooltip: status.noNetwork ? '' : failure?.detail ?? '',
+            tooltip: noNetwork ? '' : failure?.detail ?? '',
           )
         else
           // A start failure's hint is general; the core's reason is on
           // hover or a long press.
           Tooltip(
-            message: status.state.phase == Phase.error
+            message: !status.connectPending && status.state.phase == Phase.error
                 ? status.state.message
                 : '',
             child: Text(
               !on ? l.tapToConnect : look.hint,
               textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(color: p.muted),
+              style: theme.textTheme.bodyMedium?.copyWith(color: tapHintColor),
             ),
           ),
         if (failure?.code == Failure.unreachable && onOpenConnection != null)
@@ -523,18 +570,43 @@ class _DesktopHome extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 16),
-        // The same selector as every home shows, by name, where this
+        // The same choice as the button and the tray, by name, where this
         // computer has more than proxy only.
         if (status.systemProxySupported || status.tunSupported)
           Center(
-            child: ConnectionModeSelector(
-              core: core,
-              status: status,
-              card: p.card,
-              cardBorder: p.cardBorder,
-              text: p.text,
-              muted: p.muted,
+            child: _ModeSwitch(
+              palette: p,
               accent: accent,
+              selected: _mode,
+              onSelected: core.switchingProxy || core.installingTun
+                  ? null
+                  : (mode) => chooseConnectionMode(context, core, mode),
+              modes: [
+                (
+                  value: 'clear',
+                  icon: Icons.settings_ethernet_rounded,
+                  label: l.modeProxy,
+                  // Where apps set up by hand find the proxy, which always
+                  // runs.
+                  tooltip: _running && proxy != null
+                      ? '${l.proxyServiceActive} · ${proxy.listen}'
+                      : '',
+                ),
+                if (status.systemProxySupported)
+                  (
+                    value: 'set',
+                    icon: Icons.computer_rounded,
+                    label: l.systemProxy,
+                    tooltip: '',
+                  ),
+                if (status.tunSupported)
+                  (
+                    value: 'tun',
+                    icon: Icons.vpn_lock_rounded,
+                    label: l.modeTun,
+                    tooltip: '',
+                  ),
+              ],
             ),
           ),
         const SizedBox(height: 8),
@@ -650,6 +722,185 @@ class _UpstreamProxyPill extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// A connection mode in [_ModeSwitch]; an empty tooltip shows none.
+typedef _Mode = ({String value, IconData icon, String label, String tooltip});
+
+/// The connection modes as one rounded track with no lines between them:
+/// the chosen mode sits on a pill that slides to the one tapped. The modes
+/// are equally wide (the widest one's width), and the whole track shrinks
+/// to fit a narrow window. A tap on the chosen mode changes nothing.
+class _ModeSwitch extends StatelessWidget {
+  const _ModeSwitch({
+    required this.palette,
+    required this.accent,
+    required this.modes,
+    required this.selected,
+    required this.onSelected,
+    this.onTapSelected,
+  });
+
+  final _HomePalette palette;
+  final Color accent;
+  final List<_Mode> modes;
+  final String selected;
+
+  /// Null while a change is under way.
+  final ValueChanged<String>? onSelected;
+
+  /// Called when the already-chosen mode is tapped (e.g. to open its settings).
+  final ValueChanged<String>? onTapSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = palette;
+    final theme = Theme.of(context);
+    final n = modes.length;
+    final index = modes.indexWhere((m) => m.value == selected);
+    final still = MediaQuery.of(context).disableAnimations;
+    final onSelected = this.onSelected;
+    Widget option(_Mode m) {
+      final chosen = m.value == selected;
+      final color = chosen ? p.text : p.muted;
+      Widget child = InkWell(
+        customBorder: const StadiumBorder(),
+        onTap: onSelected == null
+            ? null
+            : chosen
+            ? (onTapSelected != null ? () => onTapSelected!(m.value) : null)
+            : () => onSelected(m.value),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(m.icon, size: 18, color: color),
+              const SizedBox(width: 8),
+              Text(
+                m.label,
+                maxLines: 1,
+                softWrap: false,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: color,
+                  fontWeight: chosen ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      if (m.tooltip.isNotEmpty) {
+        child = Tooltip(message: m.tooltip, child: child);
+      }
+      return Semantics(
+        button: true,
+        selected: chosen,
+        enabled: onSelected != null,
+        child: child,
+      );
+    }
+
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: AnimatedOpacity(
+        opacity: onSelected == null ? 0.6 : 1,
+        duration: const Duration(milliseconds: 150),
+        child: DecoratedBox(
+          decoration: ShapeDecoration(
+            color: p.card,
+            shape: StadiumBorder(side: BorderSide(color: p.cardBorder)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            // The row is as wide as its widest mode times their number
+            // (each mode Expanded under IntrinsicWidth), so the pill is one
+            // mode wide wherever it is.
+            child: IntrinsicWidth(
+              child: Stack(
+                children: [
+                  if (index >= 0)
+                    Positioned.fill(
+                      child: AnimatedAlign(
+                        alignment: AlignmentDirectional(
+                          n == 1 ? 0 : -1 + 2 * index / (n - 1),
+                          0,
+                        ),
+                        duration: still
+                            ? Duration.zero
+                            : const Duration(milliseconds: 240),
+                        curve: Curves.easeOutCubic,
+                        child: FractionallySizedBox(
+                          widthFactor: 1 / n,
+                          heightFactor: 1,
+                          child: DecoratedBox(
+                            decoration: ShapeDecoration(
+                              color: accent.withValues(alpha: 0.2),
+                              shape: StadiumBorder(
+                                side: BorderSide(
+                                  color: accent.withValues(alpha: 0.35),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  // A line between two modes, so each reads as a button of
+                  // its own; none beside the pill, which marks its mode.
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: Row(
+                        children: [
+                          for (var i = 0; i < n; i++)
+                            Expanded(
+                              child: Align(
+                                alignment: AlignmentDirectional.centerEnd,
+                                child: i == n - 1
+                                    ? null
+                                    : AnimatedOpacity(
+                                        opacity: i == index || i + 1 == index
+                                            ? 0
+                                            : 1,
+                                        duration: still
+                                            ? Duration.zero
+                                            : const Duration(milliseconds: 180),
+                                        child: Container(
+                                          width: 1.2,
+                                          height: 22,
+                                          decoration: BoxDecoration(
+                                            color: p.muted.withValues(
+                                              alpha: 0.45,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              1,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Material(
+                    type: MaterialType.transparency,
+                    child: Row(
+                      children: [
+                        for (final m in modes) Expanded(child: option(m)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Where the traffic goes: the flag and the country, under how the
@@ -774,41 +1025,129 @@ class _HomePalette {
   final Color third;
   final List<Color> discOff;
   final Color discOffEdge;
+}
 
-  static const night = _HomePalette(
-    dark: true,
-    top: Midnight.top,
-    bottom: Midnight.bottom,
-    text: Colors.white,
-    muted: Midnight.muted,
-    card: Color(0x10FFFFFF),
-    cardBorder: Color(0x14FFFFFF),
-    idle: Midnight.idle,
-    connected: Midnight.connected,
-    busy: Midnight.busy,
-    error: Midnight.error,
-    second: Color(0xFF2EA8FF),
-    third: Color(0xFFB45CFF),
-    discOff: [Color(0xFF262E5A), Color(0xFF161C3C)],
-    discOffEdge: Color(0x1FFFFFFF),
-  );
+/// Session elapsed text from the engine state's start time.
+String _fmtElapsed(DateTime? since) {
+  if (since == null) return '';
+  final d = DateTime.now().difference(since);
+  if (d.isNegative) return '';
+  String two(int v) => v.toString().padLeft(2, '0');
+  final m = d.inMinutes % 60;
+  final s = d.inSeconds % 60;
+  return d.inHours > 0
+      ? '${d.inHours}:${two(m)}:${two(s)}'
+      : '${two(d.inMinutes)}:${two(s)}';
+}
 
-  static const day = _HomePalette(
-    dark: false,
-    top: Color(0xFFE9EEFF),
-    bottom: Color(0xFFF9FAFF),
-    text: Color(0xFF151A35),
-    muted: Color(0xFF646C92),
-    card: Color(0xD9FFFFFF),
-    cardBorder: Color(0x12202A66),
-    idle: Color(0xFF6A5CF0),
-    connected: Color(0xFF0DB37C),
-    busy: Color(0xFFF08C00),
-    error: Color(0xFFE5484D),
-    second: Color(0xFF38B6FF),
-    third: Color(0xFFFF7EB6),
-    discOff: [Colors.white, Color(0xFFF0F2FF)],
-    discOffEdge: Color(0x336A5CF0),
+/// The home palette of the active ZedSecure design: the stock day /
+/// night palettes are gone — every design paints its home from its
+/// own tokens (Bento ground + tones, Pixel scheme, Glass tokens over
+/// the shell's wallpaper).
+_HomePalette _zedHomePalette(BuildContext context, AppSettings settings) {
+  final prefs = settings.zedPrefs;
+  final theme = Theme.of(context);
+  final dark = theme.brightness == Brightness.dark;
+  switch (prefs.design) {
+    case ZedDesign.bento:
+      final t = bentoTokensFor(
+        prefs.bento.palette,
+        dark,
+        amoled: prefs.bento.amoled,
+        seedArgb: pixelAccents[prefs.pixel.accentIndex.clamp(0, 9)].toARGB32(),
+      );
+      return _HomePalette(
+        dark: t.dark,
+        top: t.ground,
+        bottom: t.ground,
+        text: t.ink,
+        muted: t.muted,
+        card: t.surface,
+        cardBorder: t.line,
+        idle: t.violet.container,
+        connected: t.lime,
+        busy: t.mid,
+        error: t.danger,
+        second: t.blue.container,
+        third: t.pink.container,
+        discOff: [t.surface2, t.surface],
+        discOffEdge: t.line,
+      );
+    case ZedDesign.glass:
+      final g = glassTokensFor(prefs.glass, dark);
+      return _HomePalette(
+        dark: g.dark,
+        top: Colors.transparent,
+        bottom: Colors.transparent,
+        text: g.label,
+        muted: g.label2,
+        card: g.module,
+        cardBorder: g.separator,
+        idle: g.tint,
+        connected: g.green,
+        busy: g.orange,
+        error: g.red,
+        second: g.tint,
+        third: const Color(0xFFE05BE6),
+        discOff: [g.cell, g.cell],
+        discOffEdge: g.separator,
+      );
+    case ZedDesign.pixel || ZedDesign.old:
+      final scheme = theme.colorScheme;
+      final p = prefs.activePixel;
+      final connectedColor = p.customConnected != null
+          ? Color(p.customConnected!)
+          : scheme.tertiary;
+      return _HomePalette(
+        dark: dark,
+        top: dark ? const Color(0xFF111218) : const Color(0xFFF5F5FA),
+        bottom: dark ? const Color(0xFF0D0E13) : const Color(0xFFECECF4),
+        text: scheme.onSurface,
+        muted: scheme.onSurfaceVariant,
+        card: scheme.surfaceContainerLow,
+        cardBorder: scheme.outlineVariant.withValues(alpha: 0.4),
+        idle: p.customConnect != null
+            ? Color(p.customConnect!)
+            : scheme.primary,
+        connected: connectedColor,
+        busy: const Color(0xFFF08C00),
+        error: scheme.error,
+        second: scheme.secondary,
+        third: scheme.tertiary,
+        discOff: [scheme.surfaceContainerHigh, scheme.surfaceContainer],
+        discOffEdge: scheme.outlineVariant,
+      );
+  }
+}
+
+/// The connect-control spec for the hero, from the same state the
+/// stock orb was fed with.
+ZedConnectSpec _zedSpec({
+  required AppLocalizations l,
+  required CoreStatus status,
+  required bool on,
+  required bool busy,
+  required bool connecting,
+  required bool connected,
+  required String stateLabel,
+  required String hint,
+  required VoidCallback onToggle,
+}) {
+  final phase = status.state.phase == Phase.error && on
+      ? ZedPhase.error
+      : connected
+      ? ZedPhase.on
+      : (busy || connecting)
+      ? ZedPhase.busy
+      : ZedPhase.off;
+  return ZedConnectSpec(
+    phase: phase,
+    stateLabel: stateLabel,
+    actionLabel: hint,
+    hint: hint,
+    serverName: status.proxy?.countryName ?? '',
+    elapsed: connected ? _fmtElapsed(status.state.since) : '',
+    onToggle: onToggle,
   );
 }
 
@@ -840,26 +1179,42 @@ class _PhoneHome extends StatelessWidget {
   final VoidCallback? onOpenUpstreamProxy;
 
   Future<void> _toggle(bool on) async {
-    if (status.systemProxySupported) {
-      await core.setSystemProxy(on ? 'clear' : 'set');
-      // The mode alone connects nothing: the system proxy is applied only
-      // while the engine runs, so the orb powers the engine too, as every
-      // other home's does (homePowerPressed). Without this, on a computer
-      // this surface showed "on" with the engine off and nothing ever
-      // connected.
-      await core.setOn(!on);
-    } else {
-      await core.setOn(!on);
+    await core.setOn(!on);
+    if (!on) _testAfterPowerOn(core);
+  }
+
+  void _openBypassApps(BuildContext context) {
+    Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => const BypassAppsPage()))
+        .then((_) async {
+          try {
+            final r = await AndroidCore.appRouting();
+            AndroidCore.appRoutingMode.value =
+                (r.onlyChosen || r.bypass.isNotEmpty) ? 'selected' : 'all';
+            AndroidCore.selectedAppsCount.value = r.chosenCount;
+          } catch (_) {}
+        });
+  }
+
+  Future<void> _openPortSettings(
+    BuildContext context,
+    CoreStatus status,
+  ) async {
+    final port = await showPortDialog(context, taken: status.state.address);
+    if (port != null && context.mounted) {
+      await runShowingErrors(context, () => core.setProxyPort(port));
     }
-    if (!on) unawaited(core.runTest().catchError((_) {}));
+  }
+
+  void _openAllAppsSettings() {
+    if (onOpenConnection != null) {
+      onOpenConnection!();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final base = Theme.of(context);
-    final p = base.brightness == Brightness.dark
-        ? _HomePalette.night
-        : _HomePalette.day;
+    final p = _zedHomePalette(context, settings);
     final page = AnnotatedRegion<SystemUiOverlayStyle>(
       value: (p.dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
           .copyWith(statusBarColor: Colors.transparent),
@@ -881,49 +1236,70 @@ class _PhoneHome extends StatelessWidget {
         ),
       ),
     );
-    return p.dark ? Theme(data: midnightTheme(base), child: page) : page;
+    return page;
   }
 
   Widget _content(BuildContext context, _HomePalette p, BoxConstraints box) {
     final l = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final look = PhaseLook.of(l, status);
+    // Pixel/Old: the user's custom tap-hint colour, when set.
+    final tapHintColor =
+        (settings.zedPrefs.design == ZedDesign.pixel ||
+                settings.zedPrefs.design == ZedDesign.old) &&
+            settings.zedPrefs.activePixel.customTapHint != null
+        ? Color(settings.zedPrefs.activePixel.customTapHint!)
+        : p.muted;
+
     final running = status.state.phase == Phase.running;
+    // Connecting, or connected but still waiting on a passing test: the
+    // same orange state the label shows, so the ring moves with it.
+    final connecting =
+        status.connectPending ||
+        status.state.phase == Phase.starting ||
+        (status.proxyOn && running && !status.confirmedBy(core.lastTest));
     final canSwitch = status.systemProxySupported;
     final width = box.maxWidth;
-    // A wide, low screen (a TV, 960 x 540): a smaller switch and the two
-    // cards side by side, so that all of it shows without scrolling.
-    final short = box.maxHeight < 560 && width >= 600;
+    // Not enough height for the switch at its full size: it shrinks and
+    // the spacing tightens, so the location and the quota still show
+    // without scrolling. A window pinned to the side of a screen is as
+    // short as a TV is (960 x 540), and narrower.
+    final short = box.maxHeight < 700;
+    // The two cards fit beside each other only when the width is there;
+    // narrower, each would be too narrow for its own name and would break
+    // the words. They stay one above the other then, which the smaller
+    // switch has made room for.
+    final sideBySide = short && width >= 600;
     // On a tablet the content keeps about a phone's width in the middle (the
     // colors still reach the edges), and the problem boxes their own limit.
     // Both as padding, since IntrinsicHeight measures through padding but
     // not through a width limit.
-    final side = math.max(20.0, (width - (short ? 720 : 560)) / 2);
+    final side = math.max(20.0, (width - (sideBySide ? 720 : 560)) / 2);
     final boxSide = math.max(0.0, (width - 2 * side - _problemBoxWidth) / 2);
     Widget problem(Widget box) => Padding(
       padding: EdgeInsets.symmetric(horizontal: boxSide),
       child: box,
     );
-    // A computer's narrow window: on while the system proxy or TUN mode
-    // carries the apps.
-    final on = canSwitch
-        ? status.systemProxySet || status.tunMode
-        : status.state.phase != Phase.off;
+    final on = status.proxyOn;
     final proxy = status.proxy;
     // The phone's VPN is "Connecting", in orange, until a test confirms it
     // works (the controller tests again meanwhile): with no internet it
     // does not claim to be connected.
     final confirming =
-        on && running && !canSwitch && !status.confirmedBy(core.lastTest);
+        status.connectPending ||
+        (on && running && !canSwitch && !status.confirmedBy(core.lastTest));
+    final test = status.isCurrentTest(core.lastTest) ? core.lastTest : null;
+    final noNetwork = !status.connectPending && status.noNetwork && on;
     final failing =
+        !status.connectPending &&
         confirming &&
-        ((proxy?.wakeError.isNotEmpty ?? false) || core.lastTest?.ok == false);
+        ((proxy?.wakeError.isNotEmpty ?? false) || test?.ok == false);
     // The real reason; a long press or hover shows the core's own text.
-    final failure = failing ? failureText(l, proxy, core.lastTest) : null;
+    final failure = failing ? failureText(l, proxy, test) : null;
     // The last connect was given up: why, until the next one.
     final gaveUp = !on && status.connectFailure.isNotEmpty;
     final connected =
-        running && (status.computerUsesVpn || !canSwitch) && !confirming;
+        on && running && (status.computerUsesVpn || !canSwitch) && !confirming;
     final ip = !showIp
         ? ''
         : status.exit?.ipv4.isNotEmpty == true
@@ -940,32 +1316,47 @@ class _PhoneHome extends StatelessWidget {
             _ => p.busy,
           };
     final label = confirming ? l.stateConnecting : look.label;
-    // A TV's remote presses OK; a phone is tapped.
-    final tv = Platform.isAndroid && AndroidCore.isTv;
-    final press = on
-        ? (tv ? l.tapToDisconnectTv : l.tapToDisconnectPhone)
-        : (tv ? l.tapToConnectTv : l.tapToConnectPhone);
+    final press = on ? l.tapToDisconnectPhone : l.tapToConnectPhone;
     final place = homeLocation(l, status, connected: connected);
+    // Glass homeCard off hides the server module card.
+    final showPlaceCard =
+        settings.zedPrefs.design != ZedDesign.glass ||
+        settings.zedPrefs.glass.homeCard;
     final mismatch = exitMismatchText(l, status);
     final top = MediaQuery.paddingOf(context).top;
+    // Bento motifs gate the soft background lights (see desktop).
+    final motifs =
+        settings.zedPrefs.design != ZedDesign.bento ||
+        settings.zedPrefs.bento.motifs;
     return Stack(
       children: [
         // Soft lights in the state's color and two others.
-        Positioned(
-          top: -120,
-          left: -100,
-          child: _Glow(color: accent, size: 360, alpha: p.dark ? 0.22 : 0.20),
-        ),
-        Positioned(
-          top: 160,
-          right: -140,
-          child: _Glow(color: p.second, size: 320, alpha: p.dark ? 0.12 : 0.16),
-        ),
-        Positioned(
-          bottom: -80,
-          left: -60,
-          child: _Glow(color: p.third, size: 300, alpha: p.dark ? 0.10 : 0.12),
-        ),
+        if (motifs)
+          Positioned(
+            top: -120,
+            left: -100,
+            child: _Glow(color: accent, size: 360, alpha: p.dark ? 0.22 : 0.20),
+          ),
+        if (motifs)
+          Positioned(
+            top: 160,
+            right: -140,
+            child: _Glow(
+              color: p.second,
+              size: 320,
+              alpha: p.dark ? 0.12 : 0.16,
+            ),
+          ),
+        if (motifs)
+          Positioned(
+            bottom: -80,
+            left: -60,
+            child: _Glow(
+              color: p.third,
+              size: 300,
+              alpha: p.dark ? 0.10 : 0.12,
+            ),
+          ),
         Padding(
           padding: EdgeInsets.fromLTRB(side, top + 14, side, 20),
           child: Column(
@@ -973,6 +1364,8 @@ class _PhoneHome extends StatelessWidget {
             children: [
               Row(
                 children: [
+                  const AppLogo(size: 28),
+                  const SizedBox(width: 8),
                   Text(
                     l.appTitle,
                     style: theme.textTheme.titleMedium?.copyWith(
@@ -984,31 +1377,29 @@ class _PhoneHome extends StatelessWidget {
               ),
               const Spacer(),
               SizedBox(height: short ? 4 : 16),
-              Center(
-                child: _PowerOrb(
-                  palette: p,
-                  scale: short ? 0.68 : 1,
-                  // A TV starts on the switch, its ring showing.
-                  autofocus: Platform.isAndroid && AndroidCore.isTv,
+              ZedHero(
+                prefs: settings.zedPrefs,
+                spec: _zedSpec(
+                  l: l,
+                  status: status,
                   on: on,
-                  accent: accent,
                   busy: core.switchingProxy,
-                  tooltip: press,
-                  // No account yet: the accounts page, which explains
-                  // them and links to Mozilla's sign-up.
-                  onPressed: () => status.totalAccounts == 0
-                      ? _openAccounts(context, core, onOpenAccounts)
+                  connecting: connecting,
+                  connected: connected,
+                  stateLabel: label,
+                  hint: press,
+                  onToggle: () => status.totalAccounts == 0
+                      ? _openAccounts(context, core, settings, onOpenAccounts)
                       : runShowingErrors(context, () => _toggle(on)),
                 ),
-              ),
-              SizedBox(height: short ? 8 : 14),
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: on ? accent : p.text,
-                ),
+                upText: formatRate(status.traffic?.upRate ?? 0),
+                downText: formatRate(status.traffic?.downRate ?? 0),
+                upRate: (status.traffic?.upRate ?? 0).toDouble(),
+                downRate: (status.traffic?.downRate ?? 0).toDouble(),
+                onOpenServers: onOpenServers,
+                onOpenAccounts: onOpenAccounts,
+                serversLabel: l.navServers,
+                accountsLabel: l.navAccounts,
               ),
               const SizedBox(height: 8),
               if (connected)
@@ -1036,31 +1427,35 @@ class _PhoneHome extends StatelessWidget {
                       ),
                   ],
                 )
-              else if (failing || (status.noNetwork && on) || gaveUp)
+              else if (failing || noNetwork || gaveUp)
                 // Not connecting stands out from the ordinary hints.
                 problem(
                   _ProblemBox(
-                    text: status.noNetwork && on
+                    text: noNetwork
                         ? l.noNetwork
                         : failure != null
                         ? failure.text
                         : failureCodeText(l, status.connectFailure),
                     color: p.error,
                     icon: Icons.error_outline_rounded,
-                    tooltip: status.noNetwork ? '' : failure?.detail ?? '',
+                    tooltip: noNetwork ? '' : failure?.detail ?? '',
                   ),
                 )
               else
                 // A start failure's hint is general; the core's reason is
                 // on a long press.
                 Tooltip(
-                  message: status.state.phase == Phase.error
+                  message:
+                      !status.connectPending &&
+                          status.state.phase == Phase.error
                       ? status.state.message
                       : '',
                   child: Text(
                     look.hint.isNotEmpty ? look.hint : press,
                     textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium?.copyWith(color: p.muted),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: tapHintColor,
+                    ),
                   ),
                 ),
               // Where to find the proxy, on a line of its own under the delay.
@@ -1144,6 +1539,267 @@ class _PhoneHome extends StatelessWidget {
                 Center(child: _LanChip(port: portOf(proxy.listen) ?? 10810)),
               ],
               const Spacer(),
+              if (settings.showAppModeSwitch && Platform.isAndroid) ...[
+                ListenableBuilder(
+                  listenable: Listenable.merge([
+                    AndroidCore.mode,
+                    AndroidCore.appRoutingMode,
+                    AndroidCore.selectedAppsCount,
+                  ]),
+                  builder: (context, _) {
+                    final mode = AndroidCore.mode.value;
+                    final routing = AndroidCore.appRoutingMode.value;
+                    final selected = mode == 'proxy' ? 'proxy' : routing;
+                    final port =
+                        portOf(proxy?.listen ?? '') ??
+                        portOf(status.state.address) ??
+                        10810;
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Center(
+                          child: _ModeSwitch(
+                            palette: p,
+                            accent: accent,
+                            selected: selected,
+                            onSelected: core.switchingProxy
+                                ? null
+                                : (newMode) async {
+                                    if (newMode == 'proxy') {
+                                      await runShowingErrors(
+                                        context,
+                                        () => AndroidCore.setMode('proxy'),
+                                      );
+                                    } else if (newMode == 'selected') {
+                                      if (AndroidCore.mode.value != 'vpn') {
+                                        await runShowingErrors(
+                                          context,
+                                          () => AndroidCore.setMode('vpn'),
+                                        );
+                                      }
+                                      await AndroidCore.setRoutingEnabled(true);
+                                      AndroidCore.appRoutingMode.value =
+                                          'selected';
+                                      try {
+                                        final r =
+                                            await AndroidCore.appRouting();
+                                        AndroidCore.selectedAppsCount.value =
+                                            r.chosenCount;
+                                      } catch (_) {}
+                                    } else if (newMode == 'all') {
+                                      if (AndroidCore.mode.value != 'vpn') {
+                                        await runShowingErrors(
+                                          context,
+                                          () => AndroidCore.setMode('vpn'),
+                                        );
+                                      }
+                                      await AndroidCore.setRoutingEnabled(
+                                        false,
+                                      );
+                                      AndroidCore.appRoutingMode.value = 'all';
+                                    }
+                                  },
+                            onTapSelected: (modeValue) {
+                              if (modeValue == 'proxy') {
+                                _openPortSettings(context, status);
+                              } else if (modeValue == 'all') {
+                                _openAllAppsSettings();
+                              }
+                            },
+                            modes: [
+                              (
+                                value: 'all',
+                                icon: Icons.public_rounded,
+                                label: l.modeAllApps,
+                                tooltip: l.modeAllAppsHint,
+                              ),
+                              (
+                                value: 'selected',
+                                icon: Icons.apps_rounded,
+                                label: l.modeSelectedApps,
+                                tooltip: l.modeSelectedAppsHint,
+                              ),
+                              (
+                                value: 'proxy',
+                                icon: Icons.settings_ethernet_rounded,
+                                label: l.modeProxy,
+                                tooltip: '${l.proxyPort}: $port',
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        if (selected == 'proxy')
+                          Center(
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () => _openPortSettings(context, status),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 6,
+                                ),
+                                decoration: ShapeDecoration(
+                                  color: p.card,
+                                  shape: StadiumBorder(
+                                    side: BorderSide(color: p.cardBorder),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.tune_rounded,
+                                      size: 14,
+                                      color: accent,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      '${l.proxyPort}: $port',
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: p.text,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Icon(
+                                      Icons.edit_outlined,
+                                      size: 13,
+                                      color: p.muted,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          )
+                        else if (selected == 'selected')
+                          Center(
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: () => _openBypassApps(context),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 6,
+                                ),
+                                decoration: ShapeDecoration(
+                                  color: p.card,
+                                  shape: StadiumBorder(
+                                    side: BorderSide(color: p.cardBorder),
+                                  ),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.apps_rounded,
+                                      size: 14,
+                                      color: accent,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      l.selectedAppsCount(
+                                        '${AndroidCore.selectedAppsCount.value}',
+                                      ),
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: p.text,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Icon(
+                                      Icons.chevron_left_rounded,
+                                      size: 16,
+                                      color: p.muted,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          Center(
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
+                              onTap: _openAllAppsSettings,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                child: Text(
+                                  l.allTrafficThroughVpn,
+                                  textAlign: TextAlign.center,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: p.muted,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                ),
+              ] else if (settings.showAppModeSwitch &&
+                  (status.systemProxySupported || status.tunSupported)) ...[
+                Center(
+                  child: _ModeSwitch(
+                    palette: p,
+                    accent: accent,
+                    selected: connectionModeShown(status),
+                    onSelected: core.switchingProxy || core.installingTun
+                        ? null
+                        : (mode) => chooseConnectionMode(context, core, mode),
+                    modes: [
+                      (
+                        value: 'clear',
+                        icon: Icons.settings_ethernet_rounded,
+                        label: l.modeProxy,
+                        tooltip: running && proxy != null
+                            ? '${l.proxyServiceActive} · ${proxy.listen}'
+                            : '',
+                      ),
+                      if (status.systemProxySupported)
+                        (
+                          value: 'set',
+                          icon: Icons.computer_rounded,
+                          label: l.systemProxy,
+                          tooltip: '',
+                        ),
+                      if (status.tunSupported)
+                        (
+                          value: 'tun',
+                          icon: Icons.vpn_lock_rounded,
+                          label: l.modeTun,
+                          tooltip: '',
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  connectionModeHint(
+                    l,
+                    status,
+                    installing: core.installingTun,
+                    windows: defaultTargetPlatform == TargetPlatform.windows,
+                  ),
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall?.copyWith(color: p.muted),
+                ),
+                TunNote(
+                  core: core,
+                  box: (text, tooltip) => _ProblemBox(
+                    text: text,
+                    color: StatusColors.busy,
+                    icon: Icons.warning_amber_rounded,
+                    tooltip: tooltip,
+                  ),
+                ),
+              ],
               SizedBox(height: short ? 12 : 20),
               _UpdateNotice(core: core, settings: settings, palette: p),
               _UdpNotice(status: status, settings: settings, palette: p),
@@ -1155,21 +1811,23 @@ class _PhoneHome extends StatelessWidget {
                 connected: connected,
                 palette: p,
               ),
-              if (short)
+              if (sideBySide)
                 IntrinsicHeight(
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(
-                        child: _PlaceCard(
-                          palette: p,
-                          place: place,
-                          accent: accent,
-                          onTap: onOpenServers,
-                          compact: true,
+                      if (showPlaceCard) ...[
+                        Expanded(
+                          child: _PlaceCard(
+                            palette: p,
+                            place: place,
+                            accent: accent,
+                            onTap: onOpenServers,
+                            compact: true,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
+                        const SizedBox(width: 12),
+                      ],
                       Expanded(
                         child: _HomeData(
                           status: status,
@@ -1182,13 +1840,15 @@ class _PhoneHome extends StatelessWidget {
                   ),
                 )
               else ...[
-                _PlaceCard(
-                  palette: p,
-                  place: place,
-                  accent: accent,
-                  onTap: onOpenServers,
-                ),
-                const SizedBox(height: 12),
+                if (showPlaceCard) ...[
+                  _PlaceCard(
+                    palette: p,
+                    place: place,
+                    accent: accent,
+                    onTap: onOpenServers,
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 _HomeData(status: status, palette: p, onTap: onOpenAccounts),
               ],
             ],
@@ -1290,6 +1950,9 @@ class _HomeDelay extends StatelessWidget {
     final l = AppLocalizations.of(context);
     final theme = Theme.of(context);
     final test = core.lastTest;
+    // The core settles a figure taken during the apps' rush before it
+    // reports one (proxy.settledResponseMS), so what arrives here is
+    // already the figure that holds and is shown as it is.
     final (text, color) = switch (test) {
       null => (l.testConnection, palette.muted),
       final t when !t.ok => (l.testFailed, palette.error),
@@ -1338,180 +2001,6 @@ class _HomeDelay extends StatelessWidget {
 /// over wavy contour lines. It stays still: an endless animation redraws the
 /// window every frame, and kept a CPU core busy even with the window hidden
 /// in the tray.
-class _PowerOrb extends StatelessWidget {
-  const _PowerOrb({
-    required this.palette,
-    this.scale = 1,
-    this.autofocus = false,
-    required this.on,
-    required this.accent,
-    required this.busy,
-    required this.tooltip,
-    required this.onPressed,
-  });
-
-  final _HomePalette palette;
-
-  /// The size against a phone's: smaller on a low screen (a TV).
-  final double scale;
-  final bool autofocus;
-  final bool on;
-  final Color accent;
-  final bool busy;
-  final String tooltip;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final p = palette;
-    final area = 250.0 * scale;
-    final ring = 186.0 * scale;
-    final disc = 148.0 * scale;
-    final reach = 70.0 * scale;
-    return Tooltip(
-      message: tooltip,
-      child: SizedBox.square(
-        dimension: area,
-        child: Stack(
-          alignment: Alignment.center,
-          clipBehavior: Clip.none,
-          children: [
-            // Contour lines reaching past the button's area.
-            Positioned(
-              left: -reach,
-              top: -reach,
-              right: -reach,
-              bottom: -reach,
-              child: IgnorePointer(
-                child: CustomPaint(
-                  painter: _Contours(
-                    color: accent,
-                    alpha: p.dark ? 0.16 : 0.22,
-                  ),
-                ),
-              ),
-            ),
-            Container(
-              width: area,
-              height: area,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    accent.withValues(alpha: on ? 0.30 : 0.10),
-                    accent.withValues(alpha: 0),
-                  ],
-                ),
-              ),
-            ),
-            Container(
-              width: ring,
-              height: ring,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: accent.withValues(alpha: on ? 0.55 : 0.28),
-                  width: 1.5,
-                ),
-              ),
-            ),
-            if (busy)
-              SizedBox.square(
-                dimension: ring,
-                child: CircularProgressIndicator(strokeWidth: 2, color: accent),
-              ),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 400),
-              width: disc,
-              height: disc,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: on
-                      ? [Color.lerp(accent, Colors.white, 0.28)!, accent]
-                      : p.discOff,
-                ),
-                border: Border.all(
-                  color: on
-                      ? Colors.white.withValues(alpha: 0.4)
-                      : p.discOffEdge,
-                  width: 1.5,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: on
-                        ? accent.withValues(alpha: 0.5)
-                        : (p.dark ? Colors.black : const Color(0xFF2A3375))
-                              .withValues(alpha: p.dark ? 0.45 : 0.14),
-                    blurRadius: on ? 36 : 26,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: Material(
-                type: MaterialType.transparency,
-                shape: const CircleBorder(),
-                clipBehavior: Clip.antiAlias,
-                child: InkWell(
-                  autofocus: autofocus,
-                  onTap: busy ? null : onPressed,
-                  child: Icon(
-                    Icons.power_settings_new_rounded,
-                    size: 58 * scale,
-                    color: on ? Colors.white : (p.dark ? p.muted : p.idle),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Wavy closed lines around the center, like the contours of a map, fading
-/// outwards.
-class _Contours extends CustomPainter {
-  _Contours({required this.color, required this.alpha});
-
-  final Color color;
-  final double alpha;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = size.center(Offset.zero);
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
-    const lines = 7;
-    for (var i = 0; i < lines; i++) {
-      final base = 112.0 + i * 22;
-      final amp = 3.0 + i * 1.6;
-      final path = Path();
-      for (var k = 0; k <= 120; k++) {
-        final a = k / 120 * 2 * math.pi;
-        final r =
-            base +
-            amp * math.sin(3 * a + i * 0.8) +
-            amp * 0.5 * math.sin(5 * a - i * 0.5);
-        final point = center + Offset(math.cos(a) * r, math.sin(a) * r);
-        k == 0
-            ? path.moveTo(point.dx, point.dy)
-            : path.lineTo(point.dx, point.dy);
-      }
-      path.close();
-      paint.color = color.withValues(alpha: alpha * (1 - i / lines));
-      canvas.drawPath(path, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_Contours old) => old.color != color || old.alpha != alpha;
-}
-
 /// The data used of the active account: a ring that fills as it is used,
 /// in the quota's color, and the amount in large type.
 class _HomeData extends StatelessWidget {
@@ -1536,7 +2025,52 @@ class _HomeData extends StatelessWidget {
     final a = status.activeAccount;
     final usage = a?.usage;
     Widget body;
-    if (a == null || usage == null || usage.unlimited) {
+    if (a != null && usage != null && usage.unlimited) {
+      // The same shape as a quota that has a limit, so the card keeps its
+      // height and its weight on the page: the ring is simply full, with the
+      // sign for "no limit" in the middle instead of a percentage.
+      body = Row(
+        children: [
+          SizedBox.square(
+            dimension: _homeCardContent(compact),
+            child: CustomPaint(
+              painter: _QuotaRing(
+                value: 1,
+                color: theme.colorScheme.primary,
+                track: p.text.withValues(alpha: 0.08),
+              ),
+              child: Center(
+                child: Icon(
+                  Icons.all_inclusive_rounded,
+                  size: compact ? 20 : 26,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l.monthlyData, style: muted),
+                Text(
+                  l.unlimited,
+                  style:
+                      (compact
+                              ? theme.textTheme.titleSmall
+                              : theme.textTheme.titleMedium)
+                          ?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: p.text,
+                          ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    } else if (a == null || usage == null) {
       body = Row(
         children: [
           Icon(
@@ -1548,11 +2082,7 @@ class _HomeData extends StatelessWidget {
           const SizedBox(width: 14),
           Expanded(
             child: Text(
-              a == null
-                  ? l.noActiveAccount
-                  : usage == null
-                  ? l.quotaNotRead
-                  : l.unlimited,
+              a == null ? l.noActiveAccount : l.quotaNotRead,
               style: theme.textTheme.titleMedium?.copyWith(color: p.text),
             ),
           ),
@@ -1831,8 +2361,11 @@ class _UpdateNotice extends StatelessWidget {
     builder: (context, _) {
       final l = AppLocalizations.of(context);
       final update = core.status?.update;
+      final release = Updates.available.value;
       final last = update?.last;
-      if (last != null && !Updates.resultSeen.value) {
+      if (last != null &&
+          !Updates.resultSeen.value &&
+          release?.mandatory != true) {
         return _UpdateBanner(
           palette: palette,
           icon: last.ok ? Icons.check_circle_rounded : Icons.history_rounded,
@@ -1842,16 +2375,21 @@ class _UpdateNotice extends StatelessWidget {
           onClose: () => Updates.resultSeen.value = true,
         );
       }
-      final release = Updates.available.value;
-      if (release == null || release.version == settings.dismissedUpdate) {
+      if (release == null ||
+          (!release.mandatory && release.version == settings.dismissedUpdate)) {
         return const SizedBox.shrink();
       }
-      void dismiss() => settings.update(dismissedUpdate: release.version);
+      final VoidCallback? dismiss = release.mandatory
+          ? null
+          : () => settings.update(dismissedUpdate: release.version);
       if (update == null) {
         return _UpdateBanner(
           palette: palette,
           icon: Icons.system_update_rounded,
-          text: l.updateAvailable(release.version),
+          text: release.mandatory
+              ? l.updateRequired(release.version)
+              : l.updateAvailable(release.version),
+          problem: release.mandatory,
           action: release.url.isEmpty
               ? null
               : (
@@ -1895,7 +2433,10 @@ class _UpdateNotice extends StatelessWidget {
       return _UpdateBanner(
         palette: palette,
         icon: Icons.system_update_rounded,
-        text: mine && update.ready
+        problem: release.mandatory,
+        text: release.mandatory
+            ? l.updateRequired(release.version)
+            : mine && update.ready
             ? l.updateReady(release.version)
             : l.updateAvailable(release.version),
         action: (
@@ -2351,7 +2892,8 @@ class _LowQuotaNoticeState extends State<_LowQuotaNotice> {
               Align(
                 alignment: AlignmentDirectional.centerEnd,
                 child: TextButton.icon(
-                  onPressed: () => showSignInDialog(context, widget.core),
+                  onPressed: () =>
+                      startAddAccount(context, widget.core, widget.settings),
                   icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
                   label: Text(l.addAccount),
                 ),

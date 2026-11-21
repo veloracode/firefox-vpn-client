@@ -8,10 +8,10 @@ Accounts are managed in the [dashboard](DASHBOARD.md) (add, sign in again, reord
 
 | Command | Effect |
 | --- | --- |
-| `firefox-vpn-core` | Run the service: dashboard and proxy |
-| `firefox-vpn-core -add-account` | Sign in on the terminal (email, password, emailed code) and store the account at the end of the priority order |
-| `firefox-vpn-core -list-accounts` | Print accounts in priority order with status, usage, and the active account |
-| `firefox-vpn-core -panel` | Set the panel login (random when left empty) |
+| `arman-vpn-core` | Run the service: dashboard and proxy |
+| `arman-vpn-core -add-account` | Sign in on the terminal (email, password, emailed code) and store the account at the end of the priority order |
+| `arman-vpn-core -list-accounts` | Print accounts in priority order with status, usage, and the active account |
+| `arman-vpn-core -panel` | Set the panel login (random when left empty) |
 | `-data-dir PATH` | Use another data folder (with any of the above) |
 | `-verbose` | Force verbose logs regardless of the config |
 
@@ -19,11 +19,11 @@ Accounts added from the dashboard take effect immediately. After `-add-account` 
 
 ## Portable data folder
 
-All data lives in a `user-data` folder **next to the executable**. A core in the Windows desktop app's `core` folder (or beside `firefox-vpn.exe`) uses the app's `user-data` instead, so the core shares the app's accounts and settings. The one exception is a core beside the macOS or Linux app (`firefox_vpn` in the same folder, without a `portable` file): it uses the app's data folder (`~/Library/Application Support/Firefox VPN Client`, or `$XDG_DATA_HOME/firefox-vpn-client`). (Not `data`: Flutter keeps its own files in a `data` folder beside the app.) Moving the program's folder moves its data. If the folder is read-only (for example under `Program Files`), startup fails with a message; move the program or pass `-data-dir`.
+All data lives in a `user-data` folder **next to the executable**. A core in the Windows desktop app's `core` folder (or beside `arman-vpn.exe`) uses the app's `user-data` instead, so the core shares the app's accounts and settings. The one exception is a core beside the macOS or Linux app (`arman_vpn` in the same folder, without a `portable` file): it uses the app's data folder (`~/Library/Application Support/Arman VPN`, or `$XDG_DATA_HOME/arman-vpn`). (Not `data`: Flutter keeps its own files in a `data` folder beside the app.) Moving the program's folder moves its data. If the folder is read-only (for example under `Program Files`), startup fails with a message; move the program or pass `-data-dir`.
 
 ```text
 <program folder>/
-├── firefox-vpn-core(.exe)
+├── arman-vpn-core(.exe)
 └── user-data/
     ├── config.json            settings (may contain the dashboard password hash)
     ├── state.json             active account id
@@ -49,7 +49,8 @@ Files are written atomically with owner-only permissions on POSIX systems. On Wi
 | `proxy.username`, `proxy.password` | empty | When set (both), SOCKS5 clients must log in with them (RFC 1929); set them whenever the proxy listens on the network |
 | `proxy.country` | empty | Country code or name; empty is Auto (recommended, the `REC` location); `fastest` is Auto (fastest), the lowest real delay at each start |
 | `proxy.server` | empty | Exact upstream `host:port`; mutually exclusive with `country` |
-| `proxy.transport` | `h2` | `h2` (HTTP/2 over TCP) or `h3` (HTTP/3 over QUIC) |
+| `proxy.transport` | `h2` | `h2` (HTTP/2 over TCP), `h3` (HTTP/3 over QUIC), or `h1` (HTTP/1.1 over TLS: a TLS connection to Mozilla per tunnel carrying one CONNECT, with one spare kept ready; for networks that slow or cut long connections; UDP keeps its own HTTP/2 connection) |
+| `proxy.ip_version` | `auto` | The IP version of the connections to Mozilla's servers alone (the sign-in, the DNS, and the API keep their own): `auto` tries IPv4 first and IPv6 when IPv4 does not connect (IPv6 addresses are looked up only then); `dual` both at once, interleaved, the first to connect taken; `ipv6_first` IPv6 first, then IPv4; `ipv4` and `ipv6` keep to one. A step that another follows gets half the time left. Through `network.upstream_proxy` the proxy picks |
 | `proxy.upstream_connections` | `1` | Upstream sessions; client-IP affinity above 1 |
 | `proxy.max_connections` | `256` | Concurrent SOCKS clients; `0` disables the limit |
 | (fixed) `config.ConnectTimeout` | `20s` | Upstream dial/handshake and CONNECT opening budget; not in `config.json` |
@@ -60,12 +61,14 @@ Files are written atomically with owner-only permissions on POSIX systems. On Wi
 | `accounts.order` | `[]` | Priority order: `{"id": "...", "enabled": true}` entries |
 | `dashboard.enabled` / `listen` | `true` / `127.0.0.1:10820` | Web dashboard; `enabled` can only be changed in the file |
 | `dashboard.username` / `password_hash` | empty | Dashboard login; set from Settings or `-panel` (bcrypt hash) |
-| `network.api_relay` | empty | The user's own relay (an `https://` URL; a Cloudflare Worker or a PHP file, [scripts/relay](../scripts/relay)) for the FxA, Guardian, Remote Settings, geo-file, and flag requests; see [OPERATOR.md](OPERATOR.md#guardian-returns-http-451-region_unavailable) |
+| `network.api_relay` | empty | The user's own relay (an `https://` URL; a Cloudflare Worker or a PHP file, [docs/relay](../../docs/relay)) for the FxA, Guardian, Remote Settings, geo-file, and flag requests; see [OPERATOR.md](OPERATOR.md#guardian-returns-http-451-region_unavailable) |
+| `network.api_relay_enabled` | `true` | Enables only the personal relay; off preserves its address and does not disable shared relays |
+| `network.shared_relay_enabled` | `true` | Shared Guardian relay recovery after HTTP 451, independent of the personal switch. An enabled personal relay takes priority; a disabled saved personal address does not block shared recovery |
 | `network.api_relay_ech` | `on` | Encrypted Client Hello to the relay, so the network does not see its name: `on` (or empty: with ECH when the relay's name has a key, otherwise without), `require` (no request without ECH), or `off`. A relay on Cloudflare takes it; see [OPERATOR.md](OPERATOR.md#hiding-the-relays-name-ech) |
 | `network.upstream_proxy_enabled` | `false` | Uses `network.upstream_proxy`; off keeps it and its login, and connects directly. Saving an address where there was none turns it on |
 | `network.upstream_proxy` | empty | `host:port` of the user's own SOCKS5 proxy, for a network that blocks or slows Mozilla: while on, every connection to Mozilla and to the control plane goes through it. Not this program's own port. HTTP/3 is not used then. [OPERATOR.md](OPERATOR.md#upstream-proxy) |
 | `network.upstream_proxy_username` / `upstream_proxy_password` | empty | Its login, both or neither, up to 255 bytes each. In `config.json` as it is, like `proxy.password` |
-| `network.hello_split` | `off` | How the TLS ClientHello to Mozilla and the relay goes out, for a network that filters by server name: `off` (or empty: whole), `first-byte`, `sni` (cut inside the name), or `record` (two TLS records, cut inside the name). In the app: Settings > Connection > TLS fragmentation; in the dashboard: Settings > TLS fragmentation |
+| `network.hello_split` | `auto` | Automatic mode tries fragmentation when a Guardian token request needs it. Manual choices are `off`, `first-byte`, `sni`, and `record`. Find it under TLS fragmentation in the app or dashboard settings. |
 | `network.api_relay_ech_config` | empty | Where the ECH key comes from: empty, the relay's own name's HTTPS DNS record; a name, that name's record (for a Cloudflare relay, any Cloudflare name, such as `cloudflare-ech.com`); or the key itself (an ECHConfigList in base64) |
 | `network.guardian_endpoint` | `https://vpn.mozilla.org` | Guardian API endpoint |
 | `dns.servers` | DNS over HTTPS to 1.1.1.1, 8.8.8.8, and 9.9.9.9 ("Automatic") | DNS servers for the names this program resolves itself (Mozilla's and Firefox Accounts' servers), queried together (first answer wins): `https://…/dns-query` (DNS over HTTPS), `tls://host` (DNS over TLS), or an IP address (plain DNS). Empty uses the system resolver. Connections routed directly use the system resolver whatever this says: they go to the local country's sites, which its DNS answers best. See [OPERATOR.md](OPERATOR.md#dns-and-filtering) |
@@ -113,7 +116,7 @@ The active account id survives restarts in `user-data/state.json`. `status.json`
 | Atomic owner-only writes | [internal/securefile](../internal/securefile/securefile.go) |
 | Pass acquisition across accounts | [internal/proxy/accounts.go](../internal/proxy/accounts.go) |
 | Supervisor, account and settings operations | [internal/service/daemon.go](../internal/service/daemon.go), [engine.go](../internal/service/engine.go) |
-| Terminal commands | [cmd/firefox-vpn-core/commands.go](../cmd/firefox-vpn-core/commands.go) |
+| Terminal commands | [cmd/arman-vpn-core/commands.go](../cmd/arman-vpn-core/commands.go) |
 | Data folder, account store opening, order reconciliation | [internal/service/paths.go](../internal/service/paths.go) |
 | Quota checks, early checks, in-place switch | `checkQuota`, `noteTraffic` in [renewal.go](../internal/proxy/renewal.go) and [controller.go](../internal/proxy/controller.go) |
 

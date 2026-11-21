@@ -126,7 +126,7 @@ abstract class AppLocalizations {
   /// No description provided for @appTitle.
   ///
   /// In en, this message translates to:
-  /// **'FoxyVPN'**
+  /// **'Arman VPN'**
   String get appTitle;
 
   /// No description provided for @navOverview.
@@ -333,6 +333,12 @@ abstract class AppLocalizations {
   /// **'Each Firefox Account has {size} of data a month. You can add several: when one runs out, the app moves to the next one by itself.'**
   String accountsGuide(String size);
 
+  /// No description provided for @accountsGuideUnlimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Firefox Accounts have unlimited data at the moment.'**
+  String get accountsGuideUnlimited;
+
   /// No description provided for @accountsOrderNote.
   ///
   /// In en, this message translates to:
@@ -368,6 +374,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t measure the servers\' delay. Check your internet.'**
   String get delayTestFailed;
+
+  /// No description provided for @delayFromLastTest.
+  ///
+  /// In en, this message translates to:
+  /// **'From the last test'**
+  String get delayFromLastTest;
 
   /// No description provided for @createAccountTitle.
   ///
@@ -848,6 +860,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Settings'**
   String get settingsTitle;
+
+  /// No description provided for @settingsNoMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing matches that'**
+  String get settingsNoMatch;
 
   /// No description provided for @sectionGeneral.
   ///
@@ -1371,6 +1389,84 @@ abstract class AppLocalizations {
   /// **'The next account takes over when this share of the quota is used.'**
   String get switchThresholdHint;
 
+  /// No description provided for @signInMethod.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in method'**
+  String get signInMethod;
+
+  /// No description provided for @signInMethodBrowser.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with the browser'**
+  String get signInMethodBrowser;
+
+  /// No description provided for @signInMethodApi.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in directly'**
+  String get signInMethodApi;
+
+  /// No description provided for @browserSignInBroken.
+  ///
+  /// In en, this message translates to:
+  /// **'The sign-in page could not be opened.'**
+  String get browserSignInBroken;
+
+  /// No description provided for @browserSignInBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Mozilla did not complete the final step of adding the account (HTTP 406).'**
+  String get browserSignInBlocked;
+
+  /// No description provided for @browserSignInFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in with email and password'**
+  String get browserSignInFallback;
+
+  /// No description provided for @backupExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Save a backup'**
+  String get backupExport;
+
+  /// No description provided for @backupImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import a backup'**
+  String get backupImport;
+
+  /// No description provided for @backupSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved: {name}'**
+  String backupSaved(String name);
+
+  /// No description provided for @backupImportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add these accounts?'**
+  String get backupImportTitle;
+
+  /// No description provided for @backupAccountExists.
+  ///
+  /// In en, this message translates to:
+  /// **'Already added; it signs in from the file'**
+  String get backupAccountExists;
+
+  /// No description provided for @backupImportAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get backupImportAction;
+
+  /// No description provided for @backupImported.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 account added} other{{count} accounts added}}'**
+  String backupImported(int count);
+
   /// No description provided for @sectionDns.
   ///
   /// In en, this message translates to:
@@ -1431,11 +1527,71 @@ abstract class AppLocalizations {
   /// **'HTTP/3 (QUIC)'**
   String get transportH3;
 
+  /// No description provided for @ipVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'IP version'**
+  String get ipVersion;
+
+  /// No description provided for @ipVersionAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto (IPv4, then IPv6)'**
+  String get ipVersionAuto;
+
+  /// No description provided for @ipVersionDual.
+  ///
+  /// In en, this message translates to:
+  /// **'Both at once (dual-stack)'**
+  String get ipVersionDual;
+
+  /// No description provided for @ipVersionV6First.
+  ///
+  /// In en, this message translates to:
+  /// **'IPv6 first, then IPv4'**
+  String get ipVersionV6First;
+
+  /// No description provided for @ipVersionV4.
+  ///
+  /// In en, this message translates to:
+  /// **'IPv4 only'**
+  String get ipVersionV4;
+
+  /// No description provided for @ipVersionV6.
+  ///
+  /// In en, this message translates to:
+  /// **'IPv6 only'**
+  String get ipVersionV6;
+
+  /// No description provided for @tunMtu.
+  ///
+  /// In en, this message translates to:
+  /// **'MTU'**
+  String get tunMtu;
+
+  /// No description provided for @tunMtuHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The VPN interface\'s packet size, 1280 to 9000. Empty: automatic.'**
+  String get tunMtuHint;
+
+  /// No description provided for @tunMtuInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'A number from 1280 to 9000, or empty'**
+  String get tunMtuInvalid;
+
   /// No description provided for @transportH2.
   ///
   /// In en, this message translates to:
   /// **'HTTP/2 (TCP)'**
   String get transportH2;
+
+  /// No description provided for @transportH1.
+  ///
+  /// In en, this message translates to:
+  /// **'HTTP/1.1 (TLS)'**
+  String get transportH1;
 
   /// No description provided for @directRules.
   ///
@@ -1581,6 +1737,18 @@ abstract class AppLocalizations {
   /// **'TLS fragmentation'**
   String get tlsFragment;
 
+  /// No description provided for @tlsFragmentAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic'**
+  String get tlsFragmentAuto;
+
+  /// No description provided for @tlsFragmentAutoHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tries other methods if the normal connection fails.'**
+  String get tlsFragmentAutoHint;
+
   /// No description provided for @tlsFragmentOff.
   ///
   /// In en, this message translates to:
@@ -1635,11 +1803,35 @@ abstract class AppLocalizations {
   /// **'If Mozilla is blocked'**
   String get sectionBypass;
 
+  /// No description provided for @sharedRelay.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared relay'**
+  String get sharedRelay;
+
+  /// No description provided for @sharedRelayHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the app\'s shared relays if Mozilla blocks your region. An enabled personal relay takes priority.'**
+  String get sharedRelayHint;
+
+  /// No description provided for @personalRelay.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal relay'**
+  String get personalRelay;
+
   /// No description provided for @apiRelay.
   ///
   /// In en, this message translates to:
   /// **'Relay server'**
   String get apiRelay;
+
+  /// No description provided for @apiRelayUse.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the relay server'**
+  String get apiRelayUse;
 
   /// No description provided for @apiRelayHint.
   ///
@@ -1785,6 +1977,12 @@ abstract class AppLocalizations {
   /// **'Show speed in the notification'**
   String get speedInNotification;
 
+  /// No description provided for @showAppModeSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick VPN mode switch'**
+  String get showAppModeSwitch;
+
   /// No description provided for @liveTraffic.
   ///
   /// In en, this message translates to:
@@ -1893,6 +2091,12 @@ abstract class AppLocalizations {
   /// **'Version {version} is available.'**
   String updateAvailable(String version);
 
+  /// No description provided for @updateRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please update to version {version}. This update is required.'**
+  String updateRequired(String version);
+
   /// No description provided for @download.
   ///
   /// In en, this message translates to:
@@ -1904,6 +2108,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Could not check for updates: {error}'**
   String updateCheckFailed(String error);
+
+  /// The update check could not reach GitHub (no connection, a timeout, or a refused TLS handshake).
+  ///
+  /// In en, this message translates to:
+  /// **'Could not reach GitHub. Check your internet connection and try again.'**
+  String get updateCheckNoNetwork;
 
   /// No description provided for @updateNow.
   ///
@@ -1982,6 +2192,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Connect on startup'**
   String get connectOnStartup;
+
+  /// No description provided for @autostartShowsWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the app\'s window'**
+  String get autostartShowsWindow;
 
   /// No description provided for @proxyServiceActive.
   ///
@@ -2079,11 +2295,71 @@ abstract class AppLocalizations {
   /// **'Data used'**
   String get dataUsedTitle;
 
+  /// No description provided for @monthlyData.
+  ///
+  /// In en, this message translates to:
+  /// **'Data'**
+  String get monthlyData;
+
   /// No description provided for @bypassApps.
   ///
   /// In en, this message translates to:
   /// **'Per-app proxy'**
   String get bypassApps;
+
+  /// No description provided for @appClipboardImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import from Clipboard'**
+  String get appClipboardImport;
+
+  /// No description provided for @appClipboardExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Export to Clipboard'**
+  String get appClipboardExport;
+
+  /// No description provided for @appClipboardUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t access the clipboard.'**
+  String get appClipboardUnavailable;
+
+  /// No description provided for @appClipboardNoMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'No installed apps match the package names in the clipboard.'**
+  String get appClipboardNoMatches;
+
+  /// No description provided for @appClipboardMerge.
+  ///
+  /// In en, this message translates to:
+  /// **'Merge'**
+  String get appClipboardMerge;
+
+  /// No description provided for @appClipboardReplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace'**
+  String get appClipboardReplace;
+
+  /// No description provided for @appClipboardImportPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Found 1 installed app.} other{Found {count} installed apps.}} Add the matches to the current selection or replace it?'**
+  String appClipboardImportPrompt(int count);
+
+  /// No description provided for @appClipboardImported.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Imported 1 app.} other{Imported {count} apps.}}'**
+  String appClipboardImported(int count);
+
+  /// No description provided for @appClipboardExported.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Copied 1 package name.} other{Copied {count} package names.}}'**
+  String appClipboardExported(int count);
 
   /// No description provided for @connectRetrying.
   ///
@@ -2228,6 +2504,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Only the selected apps go through the VPN; the others connect directly.'**
   String get appModeIncludeHint;
+
+  /// No description provided for @modeAllApps.
+  ///
+  /// In en, this message translates to:
+  /// **'All apps'**
+  String get modeAllApps;
+
+  /// No description provided for @modeAllAppsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'All apps go through the VPN'**
+  String get modeAllAppsHint;
+
+  /// No description provided for @modeSelectedApps.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected apps'**
+  String get modeSelectedApps;
+
+  /// No description provided for @modeSelectedAppsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the selected apps'**
+  String get modeSelectedAppsHint;
+
+  /// No description provided for @selectedAppsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected apps  {count}'**
+  String selectedAppsCount(String count);
+
+  /// No description provided for @allTrafficThroughVpn.
+  ///
+  /// In en, this message translates to:
+  /// **'All of the phone\'s traffic goes through the VPN.'**
+  String get allTrafficThroughVpn;
 
   /// No description provided for @fromRegionList.
   ///
@@ -2514,7 +2826,7 @@ abstract class AppLocalizations {
   /// No description provided for @tunBusy.
   ///
   /// In en, this message translates to:
-  /// **'Another copy of Firefox VPN is using TUN mode.'**
+  /// **'Another copy of Arman VPN is using TUN mode.'**
   String get tunBusy;
 
   /// No description provided for @tunNoDriver.
@@ -2562,13 +2874,13 @@ abstract class AppLocalizations {
   /// macOS: the reason its administrator password prompt shows when the app installs the TUN mode's service.
   ///
   /// In en, this message translates to:
-  /// **'Firefox VPN wants to install the service for TUN mode.'**
+  /// **'Arman VPN wants to install the service for TUN mode.'**
   String get tunInstallPrompt;
 
   /// macOS: the reason its administrator password prompt shows when the app removes the TUN mode's service while the service does not run.
   ///
   /// In en, this message translates to:
-  /// **'Firefox VPN wants to remove the service for TUN mode.'**
+  /// **'Arman VPN wants to remove the service for TUN mode.'**
   String get tunRemovePrompt;
 
   /// No description provided for @tunRemoveFailed.
@@ -2787,240 +3099,359 @@ abstract class AppLocalizations {
   /// **'Failed'**
   String get connRouteFailed;
 
-  /// No description provided for @dotMethodEntry.
+  /// No description provided for @testRelay.
   ///
   /// In en, this message translates to:
-  /// **'How to create multiple accounts with one Gmail'**
-  String get dotMethodEntry;
+  /// **'Test relay health'**
+  String get testRelay;
 
-  /// No description provided for @dotMethodTitle.
+  /// No description provided for @relayTestTitle.
   ///
   /// In en, this message translates to:
-  /// **'Multiple accounts with one Gmail'**
-  String get dotMethodTitle;
+  /// **'Relay health test'**
+  String get relayTestTitle;
 
-  /// No description provided for @dotMethodIntro.
+  /// No description provided for @relayTestHint.
   ///
   /// In en, this message translates to:
-  /// **'Gmail ignores dots in an address: a.b@gmail.com and ab@gmail.com are the same inbox.'**
-  String get dotMethodIntro;
+  /// **'Checks only the relay. No Mozilla request or account information is sent.'**
+  String get relayTestHint;
 
-  /// No description provided for @dotMethodPoint.
+  /// No description provided for @relayTestPassed.
   ///
   /// In en, this message translates to:
-  /// **'Each dotted version counts as a NEW email address when you sign up for a Firefox account — but every verification email still arrives in that same one inbox.'**
-  String get dotMethodPoint;
+  /// **'Relay is ready'**
+  String get relayTestPassed;
 
-  /// No description provided for @dotMethodStep1.
+  /// No description provided for @relayTestFailed.
   ///
   /// In en, this message translates to:
-  /// **'Create a Firefox account with a new dotted version of your address.'**
-  String get dotMethodStep1;
+  /// **'Relay health could not be confirmed'**
+  String get relayTestFailed;
 
-  /// No description provided for @dotMethodStep2.
+  /// No description provided for @relayTestCopy.
   ///
   /// In en, this message translates to:
-  /// **'Open the verification email in your one inbox and confirm it, or note the code it carries.'**
-  String get dotMethodStep2;
+  /// **'Copy report'**
+  String get relayTestCopy;
 
-  /// No description provided for @dotMethodStep3.
+  /// No description provided for @relayTestInterrupted.
   ///
   /// In en, this message translates to:
-  /// **'Come back here and add the account. Repeat with another dotted version for more accounts.'**
-  String get dotMethodStep3;
+  /// **'The test ended before a complete result was received.'**
+  String get relayTestInterrupted;
 
-  /// No description provided for @dotMethodExample.
+  /// No description provided for @zedInterface.
   ///
   /// In en, this message translates to:
-  /// **'Example'**
-  String get dotMethodExample;
+  /// **'Interface'**
+  String get zedInterface;
 
-  /// No description provided for @uiDesign.
+  /// No description provided for @zedDesign.
   ///
   /// In en, this message translates to:
   /// **'Design'**
-  String get uiDesign;
+  String get zedDesign;
 
-  /// No description provided for @homeAnimations.
+  /// No description provided for @zedTransition.
   ///
   /// In en, this message translates to:
-  /// **'Home animations'**
-  String get homeAnimations;
+  /// **'Page transition'**
+  String get zedTransition;
 
-  /// No description provided for @homeAnimationsSubtitle.
+  /// No description provided for @zedNavStyle.
   ///
   /// In en, this message translates to:
-  /// **'Uses more CPU'**
-  String get homeAnimationsSubtitle;
+  /// **'Navigation style'**
+  String get zedNavStyle;
 
-  /// No description provided for @designFoxy.
+  /// No description provided for @zedReduceMotion.
   ///
   /// In en, this message translates to:
-  /// **'Foxy'**
-  String get designFoxy;
+  /// **'Reduce motion'**
+  String get zedReduceMotion;
 
-  /// No description provided for @designClassic.
+  /// No description provided for @zedPalette.
   ///
   /// In en, this message translates to:
-  /// **'Original'**
-  String get designClassic;
+  /// **'Palette'**
+  String get zedPalette;
 
-  /// No description provided for @designPixel.
+  /// No description provided for @zedCorners.
   ///
   /// In en, this message translates to:
-  /// **'Pixel'**
-  String get designPixel;
+  /// **'Corners'**
+  String get zedCorners;
 
-  /// No description provided for @designPortal.
+  /// No description provided for @zedTitleSize.
   ///
   /// In en, this message translates to:
-  /// **'Portal'**
-  String get designPortal;
+  /// **'Title size'**
+  String get zedTitleSize;
 
-  /// No description provided for @designOld.
+  /// No description provided for @zedDensity.
   ///
   /// In en, this message translates to:
-  /// **'Old'**
-  String get designOld;
+  /// **'Density'**
+  String get zedDensity;
 
-  /// No description provided for @zedTapCoreConnect.
+  /// No description provided for @zedDockLabels.
   ///
   /// In en, this message translates to:
-  /// **'Tap the core to connect'**
-  String get zedTapCoreConnect;
+  /// **'Dock labels'**
+  String get zedDockLabels;
 
-  /// No description provided for @zedTapCoreCancel.
+  /// No description provided for @zedDockAutoHide.
   ///
   /// In en, this message translates to:
-  /// **'Tap the core to cancel'**
-  String get zedTapCoreCancel;
+  /// **'Auto-hide dock'**
+  String get zedDockAutoHide;
 
-  /// No description provided for @zedTrafficProtected.
+  /// No description provided for @zedConnectStyle.
   ///
   /// In en, this message translates to:
-  /// **'All traffic is protected'**
-  String get zedTrafficProtected;
+  /// **'Connect control'**
+  String get zedConnectStyle;
 
-  /// No description provided for @zedVpnOn.
+  /// No description provided for @zedMotifs.
   ///
   /// In en, this message translates to:
-  /// **'VPN is ON'**
-  String get zedVpnOn;
+  /// **'Motifs'**
+  String get zedMotifs;
 
-  /// No description provided for @zedVpnOff.
+  /// No description provided for @zedPlayfulTouch.
   ///
   /// In en, this message translates to:
-  /// **'VPN is OFF'**
-  String get zedVpnOff;
+  /// **'Playful touch'**
+  String get zedPlayfulTouch;
 
-  /// No description provided for @zedConnectedFor.
+  /// No description provided for @zedIndexes.
   ///
   /// In en, this message translates to:
-  /// **'Connected for'**
-  String get zedConnectedFor;
+  /// **'Indexes'**
+  String get zedIndexes;
 
-  /// No description provided for @zedPing.
+  /// No description provided for @zedLiveTiles.
   ///
   /// In en, this message translates to:
-  /// **'Ping'**
-  String get zedPing;
+  /// **'Live tiles'**
+  String get zedLiveTiles;
 
-  /// No description provided for @zedPingMeasuring.
+  /// No description provided for @zedWave.
   ///
   /// In en, this message translates to:
-  /// **'measuring…'**
-  String get zedPingMeasuring;
+  /// **'Wave'**
+  String get zedWave;
 
-  /// No description provided for @zedPingUnavailable.
+  /// No description provided for @zedHomeSpeed.
   ///
   /// In en, this message translates to:
-  /// **'unavailable'**
-  String get zedPingUnavailable;
+  /// **'Speed on home'**
+  String get zedHomeSpeed;
 
-  /// No description provided for @zedConnectionDetails.
+  /// No description provided for @zedHomeSession.
   ///
   /// In en, this message translates to:
-  /// **'Connection details'**
-  String get zedConnectionDetails;
+  /// **'Session timer on home'**
+  String get zedHomeSession;
 
-  /// No description provided for @zedTapToChooseLocation.
+  /// No description provided for @zedHomeQuick.
   ///
   /// In en, this message translates to:
-  /// **'Tap to choose a location'**
-  String get zedTapToChooseLocation;
+  /// **'Quick actions on home'**
+  String get zedHomeQuick;
 
-  /// No description provided for @zedRecommendedTapChoose.
+  /// No description provided for @zedHomeChips.
   ///
   /// In en, this message translates to:
-  /// **'Recommended — tap to choose'**
-  String get zedRecommendedTapChoose;
+  /// **'Home chips'**
+  String get zedHomeChips;
 
-  /// No description provided for @zedAddFirstAccount.
+  /// No description provided for @zedAmoled.
   ///
   /// In en, this message translates to:
-  /// **'Tap to add your first account'**
-  String get zedAddFirstAccount;
+  /// **'AMOLED black'**
+  String get zedAmoled;
 
-  /// No description provided for @zedAccountsActive.
+  /// No description provided for @zedAccent.
   ///
   /// In en, this message translates to:
-  /// **'{active}/{total} active'**
-  String zedAccountsActive(int active, int total);
+  /// **'Accent'**
+  String get zedAccent;
 
-  /// No description provided for @zedAccountsOfConnected.
+  /// No description provided for @zedColorStyle.
   ///
   /// In en, this message translates to:
-  /// **'{connected} of {total} connected'**
-  String zedAccountsOfConnected(int connected, int total);
+  /// **'Colour style'**
+  String get zedColorStyle;
 
-  /// No description provided for @zedAccountsSummary.
+  /// No description provided for @zedContrast.
   ///
   /// In en, this message translates to:
-  /// **'{enabled} enabled · {connected} connected'**
-  String zedAccountsSummary(int enabled, int connected);
+  /// **'Contrast'**
+  String get zedContrast;
 
-  /// No description provided for @zedAccountOff.
+  /// No description provided for @zedCornerStyle.
   ///
   /// In en, this message translates to:
-  /// **'off'**
-  String get zedAccountOff;
+  /// **'Corner style'**
+  String get zedCornerStyle;
 
-  /// No description provided for @zedQuotaExhausted.
+  /// No description provided for @zedTrafficStyle.
   ///
   /// In en, this message translates to:
-  /// **'quota exhausted'**
-  String get zedQuotaExhausted;
+  /// **'Traffic cards'**
+  String get zedTrafficStyle;
 
-  /// No description provided for @zedIdle.
+  /// No description provided for @zedTrafficTileSize.
   ///
   /// In en, this message translates to:
-  /// **'idle'**
-  String get zedIdle;
+  /// **'Traffic tile size'**
+  String get zedTrafficTileSize;
 
-  /// No description provided for @zedSpeed.
+  /// No description provided for @zedProfile.
   ///
   /// In en, this message translates to:
-  /// **'Speed'**
-  String get zedSpeed;
+  /// **'Theme profile'**
+  String get zedProfile;
 
-  /// No description provided for @zedSpeedLive.
+  /// No description provided for @zedCustomColors.
   ///
   /// In en, this message translates to:
-  /// **'Live'**
-  String get zedSpeedLive;
+  /// **'Custom colours'**
+  String get zedCustomColors;
 
-  /// No description provided for @zedDownload.
+  /// No description provided for @zedCustomDownload.
   ///
   /// In en, this message translates to:
-  /// **'Download'**
-  String get zedDownload;
+  /// **'Download colour'**
+  String get zedCustomDownload;
 
-  /// No description provided for @zedUpload.
+  /// No description provided for @zedCustomUpload.
   ///
   /// In en, this message translates to:
-  /// **'Upload'**
-  String get zedUpload;
+  /// **'Upload colour'**
+  String get zedCustomUpload;
 
+  /// No description provided for @zedCustomDownloadTile.
+  ///
+  /// In en, this message translates to:
+  /// **'Download tile colour'**
+  String get zedCustomDownloadTile;
+
+  /// No description provided for @zedCustomUploadTile.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload tile colour'**
+  String get zedCustomUploadTile;
+
+  /// No description provided for @zedCustomConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect colour'**
+  String get zedCustomConnect;
+
+  /// No description provided for @zedCustomConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected colour'**
+  String get zedCustomConnected;
+
+  /// No description provided for @zedCustomTapHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap hint colour'**
+  String get zedCustomTapHint;
+
+  /// No description provided for @zedCustomServerCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Server card colour'**
+  String get zedCustomServerCard;
+
+  /// No description provided for @zedCustomServerActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active server colour'**
+  String get zedCustomServerActive;
+
+  /// No description provided for @zedCustomConfigCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Config card colour'**
+  String get zedCustomConfigCard;
+
+  /// No description provided for @zedCustomConfigCardText.
+  ///
+  /// In en, this message translates to:
+  /// **'Config card text colour'**
+  String get zedCustomConfigCardText;
+
+  /// No description provided for @zedTint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tint'**
+  String get zedTint;
+
+  /// No description provided for @zedWallpaper.
+  ///
+  /// In en, this message translates to:
+  /// **'Wallpaper'**
+  String get zedWallpaper;
+
+  /// No description provided for @zedMaterial.
+  ///
+  /// In en, this message translates to:
+  /// **'Material'**
+  String get zedMaterial;
+
+  /// No description provided for @zedGlassLists.
+  ///
+  /// In en, this message translates to:
+  /// **'Glass lists'**
+  String get zedGlassLists;
+
+  /// No description provided for @zedShrinkTabBar.
+  ///
+  /// In en, this message translates to:
+  /// **'Shrinking tab bar'**
+  String get zedShrinkTabBar;
+
+  /// No description provided for @zedMotionHighlights.
+  ///
+  /// In en, this message translates to:
+  /// **'Motion highlights'**
+  String get zedMotionHighlights;
+
+  /// No description provided for @zedReduceTransparency.
+  ///
+  /// In en, this message translates to:
+  /// **'Reduce transparency'**
+  String get zedReduceTransparency;
+
+  /// No description provided for @zedHomeTimer.
+  ///
+  /// In en, this message translates to:
+  /// **'Timer on home'**
+  String get zedHomeTimer;
+
+  /// No description provided for @zedHomeCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Home card'**
+  String get zedHomeCard;
+
+  /// No description provided for @zedNone.
+  ///
+  /// In en, this message translates to:
+  /// **'None'**
+  String get zedNone;
+
+  /// No description provided for @zedCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get zedCustom;
 }
 
 class _AppLocalizationsDelegate

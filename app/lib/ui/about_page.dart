@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../app_info.dart';
 import '../core/core_controller.dart';
@@ -25,6 +25,12 @@ class _AboutPageState extends State<AboutPage> {
   String? _result;
   Release? _release;
 
+  @override
+  void initState() {
+    super.initState();
+    _release = Updates.available.value;
+  }
+
   Future<void> _check() async {
     final l = AppLocalizations.of(context);
     if (githubRepo.isEmpty) {
@@ -38,18 +44,32 @@ class _AboutPageState extends State<AboutPage> {
     });
     try {
       final release = await checkForUpdate(
+        check: UpdateCheck.manual,
         proxy: updateProxy(widget.core.status),
+        onAnnouncements: Updates.receiveAnnouncements,
       );
-      Updates.found(release);
+      Updates.found(release, check: UpdateCheck.manual);
       if (!mounted) return;
       setState(() {
         _release = release;
         _result = release == null
             ? l.upToDate
+            : release.mandatory
+            ? l.updateRequired(release.version)
             : l.updateAvailable(release.version);
       });
     } on Exception catch (e) {
-      if (mounted) setState(() => _result = l.updateCheckFailed('$e'));
+      // No connection, a timeout, or a refused handshake: say so in words,
+      // not as the exception's text.
+      final network =
+          e is SocketException || e is TimeoutException || e is TlsException;
+      if (mounted) {
+        setState(
+          () => _result = network
+              ? l.updateCheckNoNetwork
+              : l.updateCheckFailed('$e'),
+        );
+      }
     } finally {
       if (mounted) setState(() => _checking = false);
     }
@@ -72,17 +92,25 @@ class _AboutPageState extends State<AboutPage> {
         Panel(
           child: Column(
             children: [
+              const AppLogo(size: 72),
+              const SizedBox(height: 10),
               Text(l.appTitle, style: theme.textTheme.titleLarge),
               const SizedBox(height: 4),
               Text(l.unofficialNote, style: muted, textAlign: TextAlign.center),
+              const SizedBox(height: 6),
+              // The maker's badge (standing rule): in the app itself.
+              Text(
+                'Made by arblant & Muse',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.primary,
+                ),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 20),
               _Line(label: l.appVersionLabel, value: appVersion),
               const Divider(height: 24),
               _Line(label: l.coreVersionLabel, value: status?.version ?? '—'),
-              const Divider(height: 24),
-              // The fork's makers, as in this project's earlier builds;
-              // a name, not a sentence, so it is not localized.
-              const _Line(label: 'Creators', value: 'muse & arblant'),
               const Divider(height: 24),
               // The result and the Download button under the title, so a
               // phone's narrow screen keeps the text readable.

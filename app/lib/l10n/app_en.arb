@@ -1,6 +1,6 @@
 {
   "@@locale": "en",
-  "appTitle": "FoxyVPN",
+  "appTitle": "Arman VPN",
   "navOverview": "Overview",
   "navAccounts": "Accounts",
   "navSettings": "Settings",
@@ -141,6 +141,7 @@
     }
   },
   "accountsGuide": "Each Firefox Account has {size} of data a month. You can add several: when one runs out, the app moves to the next one by itself.",
+  "accountsGuideUnlimited": "Firefox Accounts have unlimited data at the moment.",
   "accountsOrderNote": "In the order of this list: each up to {percent}%, the last one until its data runs out.",
   "@accountsGuide": {
     "placeholders": {
@@ -168,6 +169,7 @@
   "noAccounts": "No accounts yet",
   "noAccountsHint": "Add a Firefox Account to connect.",
   "delayTestFailed": "Couldn't measure the servers' delay. Check your internet.",
+  "delayFromLastTest": "From the last test",
   "createAccountTitle": "Don't have a Firefox Account?",
   "createAccountHint": "Create one for free at accounts.firefox.com, then come back and press Add account.",
   "moveUp": "Move up",
@@ -335,6 +337,7 @@
   "errNotAnswering": "The core is not answering.",
   "errRefused": "The core refused the app; it may belong to another copy.",
   "settingsTitle": "Settings",
+  "settingsNoMatch": "Nothing matches that",
   "sectionGeneral": "General",
   "language": "Language",
   "languageSystem": "System default",
@@ -491,6 +494,33 @@
   "sectionAccounts": "Account switching",
   "switchThreshold": "Switch account at",
   "switchThresholdHint": "The next account takes over when this share of the quota is used.",
+  "signInMethod": "Sign-in method",
+  "signInMethodBrowser": "Sign in with the browser",
+  "signInMethodApi": "Sign in directly",
+  "browserSignInBroken": "The sign-in page could not be opened.",
+  "browserSignInBlocked": "Mozilla did not complete the final step of adding the account (HTTP 406).",
+  "browserSignInFallback": "Sign in with email and password",
+  "backupExport": "Save a backup",
+  "backupImport": "Import a backup",
+  "backupSaved": "Saved: {name}",
+  "@backupSaved": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "backupImportTitle": "Add these accounts?",
+  "backupAccountExists": "Already added; it signs in from the file",
+  "backupImportAction": "Add",
+  "backupImported": "{count, plural, =1{1 account added} other{{count} accounts added}}",
+  "@backupImported": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "sectionDns": "DNS",
   "dnsPreset": "DNS servers",
   "dnsSystem": "System",
@@ -501,7 +531,17 @@
   "testDns": "Test DNS",
   "transport": "Protocol",
   "transportH3": "HTTP/3 (QUIC)",
+  "ipVersion": "IP version",
+  "ipVersionAuto": "Auto (IPv4, then IPv6)",
+  "ipVersionDual": "Both at once (dual-stack)",
+  "ipVersionV6First": "IPv6 first, then IPv4",
+  "ipVersionV4": "IPv4 only",
+  "ipVersionV6": "IPv6 only",
+  "tunMtu": "MTU",
+  "tunMtuHint": "The VPN interface's packet size, 1280 to 9000. Empty: automatic.",
+  "tunMtuInvalid": "A number from 1280 to 9000, or empty",
   "transportH2": "HTTP/2 (TCP)",
+  "transportH1": "HTTP/1.1 (TLS)",
   "directRules": "Direct",
   "directRulesHint": "Sites and addresses in this list open without the VPN, straight through your own internet. The chosen country's rules are already here: add, change, or remove lines. Choosing another country replaces them with its own.",
   "restoreRegionRules": "Restore the region's rules",
@@ -540,6 +580,8 @@
   "portRefusedNote": "Mozilla's proxy does not connect to this port.",
   "sectionAdvanced": "Advanced",
   "tlsFragment": "TLS fragmentation",
+  "tlsFragmentAuto": "Automatic",
+  "tlsFragmentAutoHint": "Tries other methods if the normal connection fails.",
   "tlsFragmentOff": "Off",
   "tlsFragmentFirstByte": "First byte",
   "tlsFragmentSni": "Server name (SNI)",
@@ -549,7 +591,11 @@
   "tlsFragmentRecordHint": "Splits the server name (SNI) across two TLS records",
   "tlsFragmentOffHint": "Normal TLS connection",
   "sectionBypass": "If Mozilla is blocked",
+  "sharedRelay": "Shared relay",
+  "sharedRelayHint": "Use the app's shared relays if Mozilla blocks your region. An enabled personal relay takes priority.",
+  "personalRelay": "Personal relay",
   "apiRelay": "Relay server",
+  "apiRelayUse": "Use the relay server",
   "apiRelayHint": "Your own Cloudflare Worker, or relay.php on your own host.\nUsed only when Mozilla doesn't answer directly: the sign-in, accounts, and server list go through it, not the VPN traffic.",
   "upstreamProxy": "Upstream proxy",
   "upstreamProxyOn": "Upstream proxy is on",
@@ -581,6 +627,7 @@
   },
   "showPublicIp": "Show the public IP",
   "speedInNotification": "Show speed in the notification",
+  "showAppModeSwitch": "Quick VPN mode switch",
   "liveTraffic": "Live traffic",
   "totalTraffic": "Total traffic",
   "verboseLogs": "Detailed logs",
@@ -616,6 +663,14 @@
   "checkingUpdates": "Checking…",
   "upToDate": "You have the latest version.",
   "updateAvailable": "Version {version} is available.",
+  "updateRequired": "Please update to version {version}. This update is required.",
+  "@updateRequired": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
   "@updateAvailable": {
     "placeholders": {
       "version": {
@@ -631,6 +686,10 @@
         "type": "String"
       }
     }
+  },
+  "updateCheckNoNetwork": "Could not reach GitHub. Check your internet connection and try again.",
+  "@updateCheckNoNetwork": {
+    "description": "The update check could not reach GitHub (no connection, a timeout, or a refused TLS handshake)."
   },
   "updateNow": "Update",
   "updateDownloading": "Downloading version {version}…",
@@ -687,6 +746,7 @@
   "tapToDisconnect": "Click to disconnect",
   "startOnBoot": "Start on boot",
   "connectOnStartup": "Connect on startup",
+  "autostartShowsWindow": "Show the app's window",
   "proxyServiceActive": "Proxy service active",
   "navHome": "Home",
   "groupApp": "App",
@@ -720,7 +780,38 @@
   "connectedTo": "Connected to",
   "vpnNotAllowed": "The VPN needs your permission. Tap the button again and allow it.",
   "dataUsedTitle": "Data used",
+  "monthlyData": "Data",
   "bypassApps": "Per-app proxy",
+  "appClipboardImport": "Import from Clipboard",
+  "appClipboardExport": "Export to Clipboard",
+  "appClipboardUnavailable": "Couldn't access the clipboard.",
+  "appClipboardNoMatches": "No installed apps match the package names in the clipboard.",
+  "appClipboardMerge": "Merge",
+  "appClipboardReplace": "Replace",
+  "appClipboardImportPrompt": "{count, plural, one{Found 1 installed app.} other{Found {count} installed apps.}} Add the matches to the current selection or replace it?",
+  "@appClipboardImportPrompt": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "appClipboardImported": "{count, plural, one{Imported 1 app.} other{Imported {count} apps.}}",
+  "@appClipboardImported": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "appClipboardExported": "{count, plural, one{Copied 1 package name.} other{Copied {count} package names.}}",
+  "@appClipboardExported": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "connectRetrying": "Couldn't connect. Check your internet.",
   "failUnreachable": "Couldn't reach Mozilla's servers. Try another internet connection.",
   "failUpstreamProxy": "Couldn't reach Mozilla through your upstream proxy. Check that it's running.",
@@ -766,6 +857,19 @@
   "appModeInclude": "Proxy selected apps",
   "appModeExcludeHint": "Selected apps connect directly, not through the VPN: for example banking apps that refuse foreign addresses.",
   "appModeIncludeHint": "Only the selected apps go through the VPN; the others connect directly.",
+  "modeAllApps": "All apps",
+  "modeAllAppsHint": "All apps go through the VPN",
+  "modeSelectedApps": "Selected apps",
+  "modeSelectedAppsHint": "Only the selected apps",
+  "selectedAppsCount": "Selected apps  {count}",
+  "@selectedAppsCount": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "allTrafficThroughVpn": "All of the phone's traffic goes through the VPN.",
   "fromRegionList": "Suggested: on the {region} list",
   "@fromRegionList": {
     "placeholders": {
@@ -883,7 +987,7 @@
   "tunMissing": "The TUN service isn't installed.",
   "tunOutdated": "The TUN service is older than this app. Install it again to use TUN mode.",
   "tunAppOutdated": "The TUN service is newer than this app. Update the app to use TUN mode.",
-  "tunBusy": "Another copy of Firefox VPN is using TUN mode.",
+  "tunBusy": "Another copy of Arman VPN is using TUN mode.",
   "tunNoDriver": "The system's TUN driver isn't available. Restart the computer and try again.",
   "tunInstall": "Install",
   "tunInstallAgain": "Install again",
@@ -891,11 +995,11 @@
   "removeTunService": "Remove the TUN service",
   "removeTunServiceHint": "Removes the system service that TUN mode uses. Choosing TUN again installs it again.",
   "tunServiceRemoved": "The TUN service was removed.",
-  "tunInstallPrompt": "Firefox VPN wants to install the service for TUN mode.",
+  "tunInstallPrompt": "Arman VPN wants to install the service for TUN mode.",
   "@tunInstallPrompt": {
     "description": "macOS: the reason its administrator password prompt shows when the app installs the TUN mode's service."
   },
-  "tunRemovePrompt": "Firefox VPN wants to remove the service for TUN mode.",
+  "tunRemovePrompt": "Arman VPN wants to remove the service for TUN mode.",
   "@tunRemovePrompt": {
     "description": "macOS: the reason its administrator password prompt shows when the app removes the TUN mode's service while the service does not run."
   },
@@ -979,73 +1083,63 @@
     "description": "Mozilla's proxy connects to ports 80, 443, 8080, and 8443 only."
   },
   "connRouteFailed": "Failed",
-  "dotMethodEntry": "How to create multiple accounts with one Gmail",
-  "dotMethodTitle": "Multiple accounts with one Gmail",
-  "dotMethodIntro": "Gmail ignores dots in an address: a.b@gmail.com and ab@gmail.com are the same inbox.",
-  "dotMethodPoint": "Each dotted version counts as a NEW email address when you sign up for a Firefox account — but every verification email still arrives in that same one inbox.",
-  "dotMethodStep1": "Create a Firefox account with a new dotted version of your address.",
-  "dotMethodStep2": "Open the verification email in your one inbox and confirm it, or note the code it carries.",
-  "dotMethodStep3": "Come back here and add the account. Repeat with another dotted version for more accounts.",
-  "dotMethodExample": "Example",
-  "uiDesign": "Design",
-  "homeAnimations": "Home animations",
-  "homeAnimationsSubtitle": "Uses more CPU",
-  "designFoxy": "Foxy",
-  "designClassic": "Original",
-  "designPixel": "Pixel",
-  "designPortal": "Portal",
-  "designOld": "Old",
-  "zedTapCoreConnect": "Tap the core to connect",
-  "zedTapCoreCancel": "Tap the core to cancel",
-  "zedTrafficProtected": "All traffic is protected",
-  "zedVpnOn": "VPN is ON",
-  "zedVpnOff": "VPN is OFF",
-  "zedConnectedFor": "Connected for",
-  "zedPing": "Ping",
-  "zedPingMeasuring": "measuring…",
-  "zedPingUnavailable": "unavailable",
-  "zedConnectionDetails": "Connection details",
-  "zedTapToChooseLocation": "Tap to choose a location",
-  "zedRecommendedTapChoose": "Recommended — tap to choose",
-  "zedAddFirstAccount": "Tap to add your first account",
-  "zedAccountsActive": "{active}/{total} active",
-  "@zedAccountsActive": {
-    "placeholders": {
-      "active": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      }
-    }
-  },
-  "zedAccountsOfConnected": "{connected} of {total} connected",
-  "@zedAccountsOfConnected": {
-    "placeholders": {
-      "connected": {
-        "type": "int"
-      },
-      "total": {
-        "type": "int"
-      }
-    }
-  },
-  "zedAccountsSummary": "{enabled} enabled · {connected} connected",
-  "@zedAccountsSummary": {
-    "placeholders": {
-      "enabled": {
-        "type": "int"
-      },
-      "connected": {
-        "type": "int"
-      }
-    }
-  },
-  "zedAccountOff": "off",
-  "zedQuotaExhausted": "quota exhausted",
-  "zedIdle": "idle",
-  "zedSpeed": "Speed",
-  "zedSpeedLive": "Live",
-  "zedDownload": "Download",
-  "zedUpload": "Upload"
+  "testRelay": "Test relay health",
+  "relayTestTitle": "Relay health test",
+  "relayTestHint": "Checks only the relay. No Mozilla request or account information is sent.",
+  "relayTestPassed": "Relay is ready",
+  "relayTestFailed": "Relay health could not be confirmed",
+  "relayTestCopy": "Copy report",
+  "relayTestInterrupted": "The test ended before a complete result was received.",
+  "zedInterface": "Interface",
+  "zedDesign": "Design",
+  "zedTransition": "Page transition",
+  "zedNavStyle": "Navigation style",
+  "zedReduceMotion": "Reduce motion",
+  "zedPalette": "Palette",
+  "zedCorners": "Corners",
+  "zedTitleSize": "Title size",
+  "zedDensity": "Density",
+  "zedDockLabels": "Dock labels",
+  "zedDockAutoHide": "Auto-hide dock",
+  "zedConnectStyle": "Connect control",
+  "zedMotifs": "Motifs",
+  "zedPlayfulTouch": "Playful touch",
+  "zedIndexes": "Indexes",
+  "zedLiveTiles": "Live tiles",
+  "zedWave": "Wave",
+  "zedHomeSpeed": "Speed on home",
+  "zedHomeSession": "Session timer on home",
+  "zedHomeQuick": "Quick actions on home",
+  "zedHomeChips": "Home chips",
+  "zedAmoled": "AMOLED black",
+  "zedAccent": "Accent",
+  "zedColorStyle": "Colour style",
+  "zedContrast": "Contrast",
+  "zedCornerStyle": "Corner style",
+  "zedTrafficStyle": "Traffic cards",
+  "zedTrafficTileSize": "Traffic tile size",
+  "zedProfile": "Theme profile",
+  "zedCustomColors": "Custom colours",
+  "zedCustomDownload": "Download colour",
+  "zedCustomUpload": "Upload colour",
+  "zedCustomDownloadTile": "Download tile colour",
+  "zedCustomUploadTile": "Upload tile colour",
+  "zedCustomConnect": "Connect colour",
+  "zedCustomConnected": "Connected colour",
+  "zedCustomTapHint": "Tap hint colour",
+  "zedCustomServerCard": "Server card colour",
+  "zedCustomServerActive": "Active server colour",
+  "zedCustomConfigCard": "Config card colour",
+  "zedCustomConfigCardText": "Config card text colour",
+  "zedTint": "Tint",
+  "zedWallpaper": "Wallpaper",
+  "zedMaterial": "Material",
+  "zedGlassLists": "Glass lists",
+  "zedShrinkTabBar": "Shrinking tab bar",
+  "zedMotionHighlights": "Motion highlights",
+  "zedReduceTransparency": "Reduce transparency",
+  "zedHomeTimer": "Timer on home",
+  "zedHomeCard": "Home card",
+  "zedNone": "None",
+  "zedCustom": "Custom"
 }

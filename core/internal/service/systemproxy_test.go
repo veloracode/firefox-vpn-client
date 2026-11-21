@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/armanlife/firefox-vpn-client/core/internal/config"
+	"github.com/armanlife/arman-vpn-client/core/internal/config"
 )
 
 func waitPhase(t *testing.T, d *Daemon, want string) {
@@ -29,7 +29,7 @@ func waitPhase(t *testing.T, d *Daemon, want string) {
 func TestSystemProxyEndpointAcceptsSetAndClear(t *testing.T) {
 	d := newTestDaemon(t)
 	client := newDashboardClient(t, d)
-	if view, _ := d.StatusView(); view.SystemProxy != config.SystemProxySet {
+	if view, _ := d.StatusView(); view.SystemProxy != config.SystemProxyClear {
 		t.Fatalf("default system proxy mode %q", view.SystemProxy)
 	}
 	for _, mode := range []string{config.SystemProxySet, config.SystemProxyClear} {

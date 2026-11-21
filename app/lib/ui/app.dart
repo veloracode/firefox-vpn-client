@@ -1,7 +1,6 @@
 import 'dart:io';
 
-import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../app_settings.dart';
 import '../core/android_core.dart';
@@ -10,11 +9,10 @@ import '../core/core_controller.dart';
 import '../core/models.dart';
 import '../l10n/app_localizations.dart';
 import 'about_page.dart';
+import 'announcement_panel.dart';
 import 'accounts_page.dart';
 import 'focus_ring.dart';
 import 'format.dart';
-import 'foxy_accounts_page.dart';
-import 'foxy_overview_page.dart';
 import 'logs_page.dart';
 import 'mobile_shell.dart';
 import 'overview_page.dart';
@@ -23,60 +21,10 @@ import 'servers_page.dart';
 import 'settings_page.dart';
 import 'welcome_page.dart';
 import 'widgets.dart';
-import 'zed_old_home.dart';
-import 'zed_pixel_home.dart';
-import 'zed_portal_home.dart';
-
-ThemeData _theme(Brightness brightness, Locale locale) {
-  final scheme = ColorScheme.fromSeed(
-    seedColor: const Color(0xFF5B5BD6),
-    brightness: brightness,
-  );
-  final dark = brightness == Brightness.dark;
-  // Vazirmatn for Persian and Arabic; the system font (Segoe UI)
-  // otherwise. Styles set here name it too, or they would fall back to the
-  // system font.
-  final font = languageFont(locale.languageCode);
-  return ThemeData(
-    colorScheme: scheme,
-    fontFamily: font,
-    scaffoldBackgroundColor: dark
-        ? const Color(0xFF111218)
-        : const Color(0xFFF5F5FA),
-    cardTheme: CardThemeData(
-      elevation: 0,
-      color: dark ? const Color(0xFF1A1B23) : Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.4)),
-      ),
-    ),
-    navigationRailTheme: NavigationRailThemeData(
-      backgroundColor: dark ? const Color(0xFF15161D) : const Color(0xFFECECF4),
-      // The menu's names semi-bold, the open page's bold.
-      selectedLabelTextStyle: TextStyle(
-        fontFamily: font,
-        fontSize: 15.5,
-        fontWeight: FontWeight.w700,
-        color: scheme.onSurface,
-      ),
-      unselectedLabelTextStyle: TextStyle(
-        fontFamily: font,
-        fontSize: 15.5,
-        fontWeight: FontWeight.w600,
-        color: scheme.onSurfaceVariant,
-      ),
-      selectedIconTheme: IconThemeData(
-        size: 24,
-        color: scheme.onSecondaryContainer,
-      ),
-      unselectedIconTheme: IconThemeData(
-        size: 24,
-        color: scheme.onSurfaceVariant,
-      ),
-    ),
-  );
-}
+import 'zed/zed_glass.dart';
+import 'zed/zed_motion.dart';
+import 'zed/zed_prefs.dart';
+import 'zed/zed_theme.dart';
 
 class VpnApp extends StatelessWidget {
   const VpnApp({
@@ -90,6 +38,11 @@ class VpnApp extends StatelessWidget {
   final AppSettings settings;
   final GlobalKey<NavigatorState>? navigatorKey;
 
+  static const localizationsDelegates = [
+    AppLocalizations.delegate,
+    ...GlobalMaterialLocalizations.delegates,
+  ];
+
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: settings,
@@ -101,12 +54,7 @@ class VpnApp extends StatelessWidget {
       supportedLocales: AppLocalizations.supportedLocales,
       localeListResolutionCallback: (locales, _) =>
           AppSettings.localeOf(AppSettings.languageForList(locales)),
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
+      localizationsDelegates: localizationsDelegates,
       // The theme depends on the resolved language for its font.
       builder: (context, child) {
         final locale = Localizations.localeOf(context);
@@ -117,7 +65,11 @@ class VpnApp extends StatelessWidget {
             MediaQuery.platformBrightnessOf(context) == Brightness.dark,
         };
         return Theme(
-          data: _theme(dark ? Brightness.dark : Brightness.light, locale),
+          data: ZedTheme.build(
+            dark ? Brightness.dark : Brightness.light,
+            locale,
+            settings.zedPrefs,
+          ),
           // A clear ring around what a remote or the keyboard chose.
           child: FocusRing(
             atStart: Platform.isAndroid && AndroidCore.isTv,
@@ -144,10 +96,31 @@ enum _Page { overview, servers, accounts, settings, logs, about }
 
 class _ShellState extends State<Shell> {
   _Page _page = _Page.overview;
+  int _prevIndex = 0;
 
   /// The settings section the home page opened (Connection), until another
   /// page is chosen.
   SettingsSection? _settingsOpening;
+
+  @override
+  void initState() {
+    super.initState();
+    AndroidCore.homeRequests.addListener(_openHome);
+  }
+
+  void _openHome() {
+    Navigator.of(context).popUntil((route) => route.isFirst);
+    setState(() {
+      _page = _Page.overview;
+      _settingsOpening = null;
+    });
+  }
+
+  @override
+  void dispose() {
+    AndroidCore.homeRequests.removeListener(_openHome);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => ListenableBuilder(
@@ -212,93 +185,59 @@ class _ShellState extends State<Shell> {
             ),
           },
       ];
+      final prefs = widget.settings.zedPrefs;
+      final pageIndex = pages.indexOf(page);
+      final forward = pageIndex >= _prevIndex;
+      _prevIndex = pageIndex;
+      final pageContent = ZedPageTransition(
+        style: prefs.transition,
+        forward: forward,
+        reduceMotion: prefs.reduceMotion,
+        child: KeyedSubtree(
+          key: ValueKey(page),
+          child: status == null
+              ? _NoCore(core: core)
+              : switch (page) {
+                  // Its cards open the pages beside it.
+                  _Page.overview => OverviewPage(
+                    core: core,
+                    settings: widget.settings,
+                    onOpenServers: () => setState(() => _page = _Page.servers),
+                    onOpenAccounts: () =>
+                        setState(() => _page = _Page.accounts),
+                    onOpenConnection: () => setState(() {
+                      _page = _Page.settings;
+                      _settingsOpening = SettingsSection.connection;
+                    }),
+                    onOpenUpstreamProxy: () => setState(() {
+                      _page = _Page.settings;
+                      _settingsOpening = SettingsSection.upstreamProxy;
+                    }),
+                  ),
+                  _Page.servers => ServersPage(
+                    core: core,
+                    settings: widget.settings,
+                  ),
+                  _Page.accounts => AccountsPage(
+                    core: core,
+                    settings: widget.settings,
+                  ),
+                  _Page.settings => SettingsPage(
+                    key: ValueKey(_settingsOpening),
+                    core: core,
+                    settings: widget.settings,
+                    opening: _settingsOpening,
+                    onOpenLogs: () => setState(() => _page = _Page.logs),
+                  ),
+                  _Page.logs => LogsPage(core: core, settings: widget.settings),
+                  _Page.about => AboutPage(core: core),
+                },
+        ),
+      );
       final content = Column(
         children: [
           if (core.unavailable != null && status != null) const _LostBanner(),
-          Expanded(
-            child: status == null
-                ? _NoCore(core: core)
-                : switch (page) {
-                    // Its cards open the pages beside it. The design is
-                    // the user's (Settings, General): the phone's three
-                    // designs, FoxyVPN's pages, or the classic ones, for
-                    // the home; the accounts follow but for classic.
-                    _Page.overview => switch (widget.settings.uiDesign) {
-                      UiDesign.pixel => ZedPixelHome(
-                        core: core,
-                        settings: widget.settings,
-                        onOpenServers: () =>
-                            setState(() => _page = _Page.servers),
-                        onOpenAccounts: () =>
-                            setState(() => _page = _Page.accounts),
-                      ),
-                      UiDesign.portal => ZedPortalHome(
-                        core: core,
-                        settings: widget.settings,
-                        onOpenServers: () =>
-                            setState(() => _page = _Page.servers),
-                        onOpenAccounts: () =>
-                            setState(() => _page = _Page.accounts),
-                      ),
-                      UiDesign.old => ZedOldHome(
-                        core: core,
-                        settings: widget.settings,
-                        onOpenServers: () =>
-                            setState(() => _page = _Page.servers),
-                        onOpenAccounts: () =>
-                            setState(() => _page = _Page.accounts),
-                      ),
-                      UiDesign.foxy => FoxyOverviewPage(
-                        core: core,
-                        settings: widget.settings,
-                        onOpenServers: () =>
-                            setState(() => _page = _Page.servers),
-                        onOpenAccounts: () =>
-                            setState(() => _page = _Page.accounts),
-                        onOpenConnection: () => setState(() {
-                          _page = _Page.settings;
-                          _settingsOpening = SettingsSection.connection;
-                        }),
-                      ),
-                      UiDesign.classic => OverviewPage(
-                        core: core,
-                        settings: widget.settings,
-                        onOpenServers: () =>
-                            setState(() => _page = _Page.servers),
-                        onOpenAccounts: () =>
-                            setState(() => _page = _Page.accounts),
-                        onOpenConnection: () => setState(() {
-                          _page = _Page.settings;
-                          _settingsOpening = SettingsSection.connection;
-                        }),
-                        onOpenUpstreamProxy: () => setState(() {
-                          _page = _Page.settings;
-                          _settingsOpening = SettingsSection.upstreamProxy;
-                        }),
-                      ),
-                    },
-                    _Page.servers => ServersPage(
-                      core: core,
-                      settings: widget.settings,
-                    ),
-                    _Page.accounts =>
-                      widget.settings.uiDesign == UiDesign.classic
-                          ? AccountsPage(core: core)
-                          : FoxyAccountsPage(core: core),
-                    _Page.settings => SettingsPage(
-                      key: ValueKey(_settingsOpening),
-                      core: core,
-                      settings: widget.settings,
-                      opening: _settingsOpening,
-                      onOpenLogs: () => setState(() => _page = _Page.logs),
-                    ),
-                    _Page.logs => LogsPage(
-                      core: core,
-                      settings: widget.settings,
-                    ),
-                    _Page.about => AboutPage(core: core),
-                  },
-          ),
+          Expanded(child: pageContent),
         ],
       );
       void select(int i) => setState(() {
@@ -318,55 +257,106 @@ class _ShellState extends State<Shell> {
           noCore: status == null ? _NoCore(core: core) : null,
         );
       }
+      final dark = Theme.of(context).brightness == Brightness.dark;
       return Scaffold(
-        body: Row(
-          children: [
-            NavigationRail(
-              selectedIndex: pages.indexOf(page),
-              onDestinationSelected: select,
-              // Icons with their names beside them.
-              extended: true,
-              minExtendedWidth: 190,
-              leading: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-                child: Row(
-                  children: [
-                    Text(
-                      l.appTitle,
-                      style: Theme.of(context).textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                  ],
-                ),
-              ),
-              destinations: [
-                for (final (icon, selected, label) in items)
-                  NavigationRailDestination(
-                    icon: icon,
-                    selectedIcon: selected,
-                    label: Text(label),
+        body: AnnouncementOverlay(
+          settings: widget.settings,
+          onOpenUpdates: () => setState(() => _page = _Page.about),
+          child: Stack(
+            children: [
+              if (prefs.design == ZedDesign.glass)
+                Positioned.fill(
+                  child: GlassWallpaperView(
+                    tokens: glassTokensFor(prefs.glass, dark),
+                    wallpaper: prefs.glass.wallpaper,
                   ),
-              ],
-              // The traffic at the bottom of the menu; in a short window the
-              // pages above it scroll rather than run under it.
-              trailing: _TrafficPanel(traffic: status?.traffic),
-              trailingAtBottom: true,
-              scrollable: true,
-            ),
-            // A maximized window: the pages stay as wide as reads well; the
-            // home page, centered by itself, keeps its colors to the edges.
-            Expanded(
-              child: page == _Page.overview || status == null
-                  ? content
-                  : Align(
-                      alignment: Alignment.topCenter,
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 1000),
-                        child: content,
+                ),
+              Row(
+                children: [
+                  NavigationRail(
+                    selectedIndex: pages.indexOf(page),
+                    onDestinationSelected: select,
+                    // Icons with their names beside them; the minimal nav
+                    // style collapses the rail to icons (under Bento, the
+                    // bento block's own nav style decides).
+                    extended: switch (prefs.design) {
+                      ZedDesign.bento =>
+                        prefs.bento.navStyle != ZedNavStyle.minimal &&
+                            prefs.bento.navStyle != ZedNavStyle.compactDock,
+                      _ => prefs.navStyle != ZedNavStyle.minimal,
+                    },
+                    minExtendedWidth: 190,
+                    leading: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                      child: Row(
+                        children: [
+                          const AppLogo(size: 34),
+                          const SizedBox(width: 10),
+                          Text(
+                            l.appTitle,
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                        ],
                       ),
                     ),
-            ),
-          ],
+                    destinations: [
+                      for (final (icon, selected, label) in items)
+                        NavigationRailDestination(
+                          icon: icon,
+                          selectedIcon: selected,
+                          label: Text(label),
+                        ),
+                    ],
+                    // The traffic at the bottom of the menu; in a short window the
+                    // pages above it scroll rather than run under it.
+                    trailing: _TrafficPanel(
+                      traffic: status?.traffic,
+                      showLive:
+                          prefs.design != ZedDesign.bento ||
+                          prefs.bento.liveTiles,
+                      width:
+                          (prefs.design == ZedDesign.pixel ||
+                              prefs.design == ZedDesign.old)
+                          ? switch (prefs.activePixel.trafficTileSize) {
+                              TrafficTileSize.small => 150.0,
+                              TrafficTileSize.normal => 166.0,
+                              TrafficTileSize.large => 190.0,
+                            }
+                          : 166.0,
+                      upColor:
+                          (prefs.design == ZedDesign.pixel ||
+                                  prefs.design == ZedDesign.old) &&
+                              prefs.activePixel.customUpload != null
+                          ? Color(prefs.activePixel.customUpload!)
+                          : null,
+                      downColor:
+                          (prefs.design == ZedDesign.pixel ||
+                                  prefs.design == ZedDesign.old) &&
+                              prefs.activePixel.customDownload != null
+                          ? Color(prefs.activePixel.customDownload!)
+                          : null,
+                    ),
+                    trailingAtBottom: true,
+                    scrollable: true,
+                  ),
+                  // A maximized window: the pages stay as wide as reads well; the
+                  // home page, centered by itself, keeps its colors to the edges.
+                  Expanded(
+                    child: page == _Page.overview || status == null
+                        ? content
+                        : Align(
+                            alignment: Alignment.topCenter,
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 1000),
+                              child: content,
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       );
     },
@@ -376,9 +366,25 @@ class _ShellState extends State<Shell> {
 /// The side menu's traffic: the speed now and the total since the core
 /// started, through Mozilla, up and down.
 class _TrafficPanel extends StatelessWidget {
-  const _TrafficPanel({required this.traffic});
+  const _TrafficPanel({
+    required this.traffic,
+    this.upColor,
+    this.downColor,
+    this.showLive = true,
+    this.width = 166,
+  });
 
   final Traffic? traffic;
+
+  /// Pixel/Old custom traffic colours, when the user set them.
+  final Color? upColor;
+  final Color? downColor;
+
+  /// Bento's live tiles: off hides the live-rate card (totals stay).
+  final bool showLive;
+
+  /// Pixel/Old traffic tile size, as the panel's width.
+  final double width;
 
   @override
   Widget build(BuildContext context) {
@@ -387,20 +393,26 @@ class _TrafficPanel extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
       child: SizedBox(
-        width: 166,
+        width: width,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _TrafficCard(
-              title: l.liveTraffic,
-              up: formatRate(t?.upRate ?? 0),
-              down: formatRate(t?.downRate ?? 0),
-            ),
-            const SizedBox(height: 8),
+            if (showLive) ...[
+              _TrafficCard(
+                title: l.liveTraffic,
+                up: formatRate(t?.upRate ?? 0),
+                down: formatRate(t?.downRate ?? 0),
+                upColor: upColor,
+                downColor: downColor,
+              ),
+              const SizedBox(height: 8),
+            ],
             _TrafficCard(
               title: l.totalTraffic,
               up: formatBytes(t?.up ?? 0),
               down: formatBytes(t?.down ?? 0),
+              upColor: upColor,
+              downColor: downColor,
             ),
           ],
         ),
@@ -414,11 +426,15 @@ class _TrafficCard extends StatelessWidget {
     required this.title,
     required this.up,
     required this.down,
+    this.upColor,
+    this.downColor,
   });
 
   final String title;
   final String up;
   final String down;
+  final Color? upColor;
+  final Color? downColor;
 
   @override
   Widget build(BuildContext context) {
@@ -445,8 +461,12 @@ class _TrafficCard extends StatelessWidget {
         children: [
           Text(title, style: theme.textTheme.labelMedium),
           const SizedBox(height: 4),
-          line(Icons.arrow_upward_rounded, StatusColors.good, up),
-          line(Icons.arrow_downward_rounded, theme.colorScheme.primary, down),
+          line(Icons.arrow_upward_rounded, upColor ?? StatusColors.good, up),
+          line(
+            Icons.arrow_downward_rounded,
+            downColor ?? theme.colorScheme.primary,
+            down,
+          ),
         ],
       ),
     );

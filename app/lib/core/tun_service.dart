@@ -22,21 +22,19 @@ class TunServiceFailed extends TunServiceResult {
   final String error;
 }
 
-/// The TUN mode's service (core/cmd/firefox-vpn-tun), beside the core: its
-/// start command asks for administrator rights itself (one prompt:
-/// Windows', polkit's on Linux, the administrator password on macOS) —
-/// and only when the service is not already running: it installs the
-/// service on the first use and starts it on every use, because the
-/// service never starts with the computer. Its uninstall command removes
-/// it, through the running service without a prompt. The core then uses
-/// the service; the app only starts it.
+/// The TUN mode's service (core/cmd/arman-vpn-tun), beside the core: its
+/// install command asks for administrator rights itself (one prompt:
+/// Windows', polkit's on Linux, the administrator password on macOS),
+/// installs the service, and starts it; its uninstall command removes it,
+/// through the running service without a prompt. The core then uses the
+/// service; the app only installs it.
 class TunService {
   TunService(this.executable);
 
   /// From the core's executable: the service is in the same folder.
   factory TunService.besideCore(String coreExecutable) => TunService(
     '${File(coreExecutable).parent.path}${Platform.pathSeparator}'
-    'firefox-vpn-tun${Platform.isWindows ? '.exe' : ''}',
+    'arman-vpn-tun${Platform.isWindows ? '.exe' : ''}',
   );
 
   final String executable;
@@ -45,15 +43,11 @@ class TunService {
   /// user's language; Windows and polkit name the program themselves.
   Future<TunServiceResult> install({String? prompt}) => _run('install', prompt);
 
-  /// Makes sure the service runs: nothing when it already does, an
-  /// install when it is missing, a start when it is stopped.
-  Future<TunServiceResult> start({String? prompt}) => _run('start', prompt);
-
   Future<TunServiceResult> uninstall({String? prompt}) =>
       _run('uninstall', prompt);
 
   /// Exit status 0 done, 3 the prompt declined, anything else failed with
-  /// the reason on the standard error (core/cmd/firefox-vpn-tun).
+  /// the reason on the standard error (core/cmd/arman-vpn-tun).
   Future<TunServiceResult> _run(String command, String? prompt) async {
     if (!File(executable).existsSync()) {
       return TunServiceFailed('$executable is missing');
@@ -82,8 +76,8 @@ class TunService {
 
   static String _firstLine(String text, String fallback) {
     final line = text.trim().split('\n').first.trim();
-    return line.replaceFirst(RegExp(r'^firefox-vpn-tun:\s*'), '').isEmpty
+    return line.replaceFirst(RegExp(r'^arman-vpn-tun:\s*'), '').isEmpty
         ? fallback
-        : line.replaceFirst(RegExp(r'^firefox-vpn-tun:\s*'), '');
+        : line.replaceFirst(RegExp(r'^arman-vpn-tun:\s*'), '');
   }
 }

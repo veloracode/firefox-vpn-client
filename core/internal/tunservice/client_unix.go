@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/armanlife/firefox-vpn-client/core/internal/tunapi"
+	"github.com/armanlife/arman-vpn-client/core/internal/tunapi"
 )
 
 // InstallForUser installs the service for the user running this process
@@ -22,25 +22,6 @@ func InstallForUser(prompt string) error {
 		return Install(uid)
 	}
 	return runElevated(prompt, "install-as-admin", "-user", uid)
-}
-
-// startForUser starts the installed service, as root through the
-// administrator's permission, unless this process already is root.
-func startForUser(prompt string) error {
-	if os.Geteuid() == 0 {
-		return StartInstalled()
-	}
-	return runElevated(prompt, "start-as-admin")
-}
-
-// manualForUser takes the installed service out of the start-at-boot
-// list and stops it, as root through the administrator's permission,
-// unless this process already is root.
-func manualForUser(prompt string) error {
-	if os.Geteuid() == 0 {
-		return MakeManual()
-	}
-	return runElevated(prompt, "manual-as-admin")
 }
 
 // UninstallForUser removes the service: through its socket while it runs,
@@ -61,7 +42,7 @@ func UninstallForUser(prompt string) error {
 // reportFile makes the file an elevated copy writes why it failed to, and
 // returns a function that removes it.
 func reportFile() (string, func(), error) {
-	f, err := os.CreateTemp("", "firefox-vpn-tun-*.txt")
+	f, err := os.CreateTemp("", "arman-vpn-tun-*.txt")
 	if err != nil {
 		return "", nil, err
 	}

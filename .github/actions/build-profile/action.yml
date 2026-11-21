@@ -1,0 +1,78 @@
+# Puts the optional build profile in place. The repository's own sources
+# build a complete client on their own; a repository that is set up with its
+# own profile (the three secrets below) builds with that profile instead.
+# Without the secrets - in a fork, or in a pull request, which gets none -
+# every step here is skipped and the ordinary client is built, so this action
+# is safe to call from every build job.
+name: Build profile
+description: Puts the optional build profile in place when this repository has the secrets for one.
+
+inputs:
+  repository:
+    description: The profile's repository, owner/name. Empty disables all of this.
+    required: false
+    default: ''
+  ssh-key:
+    description: A read-only deploy key for that repository.
+    required: false
+    default: ''
+  key:
+    description: The key the profile is built with.
+    required: false
+    default: ''
+  ref:
+    description: The profile's version, a tag in its repository.
+    required: false
+    default: v0.4.3
+
+outputs:
+  enabled:
+    description: '"true" when the profile is in place, "false" when the ordinary client is built.'
+    value: ${{ steps.check.outputs.enabled }}
+
+runs:
+  using: composite
+  steps:
+    # All three or nothing: a profile without its key authorizes nothing, so
+    # it would behave exactly like the ordinary client while pretending not to.
+    - id: check
+      shell: bash
+      env:
+        REPOSITORY: ${{ inputs.repository }}
+        SSH_KEY: ${{ inputs.ssh-key }}
+        KEY: ${{ inputs.key }}
+      run: |
+        if [ -n "$REPOSITORY" ] && [ -n "$SSH_KEY" ] && [ -n "$KEY" ]; then
+          echo 'enabled=true' >> "$GITHUB_OUTPUT"
+        else
+          echo 'enabled=false' >> "$GITHUB_OUTPUT"
+          echo '::notice::No build profile for this repository: building the ordinary client.'
+        fi
+
+    - if: steps.check.outputs.enabled == 'true'
+      uses: actions/checkout@v7
+      with:
+        repository: ${{ inputs.repository }}
+        ref: ${{ inputs.ref }}
+        ssh-key: ${{ inputs.ssh-key }}
+        path: profile
+        persist-credentials: false
+
+    # The profile's repository carries the files the build looks for: the
+    # build tag's wiring for core/internal/evasion, and the build scripts'
+    # optional local settings file (scripts/build-local.ps1 for the
+    # PowerShell scripts, scripts/build-local.sh for the shell ones), which
+    # hands them the tag and the -ldflags. The workspace file links the
+    # checkout in without touching core/go.mod, so the module graph a fork
+    # resolves stays exactly as it is.
+    - if: steps.check.outputs.enabled == 'true'
+      shell: bash
+      run: |
+        mkdir -p core/internal/evasion
+        cp profile/wiring/ext.go core/internal/evasion/ext.go
+        cp profile/wiring/build-local.ps1 scripts/build-local.ps1
+        cp profile/wiring/build-local.sh scripts/build-local.sh
+        printf 'go %s\n\nuse .\nuse ../profile\n' \
+          "$(sed -n 's/^go \([0-9.]*\)$/\1/p' core/go.mod)" > core/go.work
+        echo "ARMAN_PROFILE_DIR=$GITHUB_WORKSPACE/profile" >> "$GITHUB_ENV"
+        echo 'Build profile in place.'

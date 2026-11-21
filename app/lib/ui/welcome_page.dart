@@ -1,13 +1,17 @@
 import 'dart:io';
 import 'dart:ui';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../app_settings.dart';
 import '../core/android_core.dart';
 import '../core/core_controller.dart';
 import '../l10n/app_localizations.dart';
 import 'widgets.dart';
+import 'zed/zed_kit.dart' show ZedSwatchRow;
+import 'zed/zed_labels.dart' as zl;
+import 'zed/zed_prefs.dart';
+import 'zed/zed_theme.dart';
 
 /// The first run: the user picks a language and a country, and the
 /// country's sites go directly (the core's routing region).
@@ -25,7 +29,7 @@ class _WelcomePageState extends State<WelcomePage> {
   late String _language;
   late String _region;
 
-  /// The region follows the language until the user picks one.
+  /// A manual region choice always wins over desktop language suggestions.
   bool _regionPicked = false;
   bool _saving = false;
 
@@ -36,13 +40,15 @@ class _WelcomePageState extends State<WelcomePage> {
     _language = widget.settings.language.isNotEmpty
         ? widget.settings.language
         : AppSettings.languageFor(system);
-    _region = AppSettings.suggestedRegion(_language, system.countryCode);
+    _region =
+        widget.settings.firstRunRegion ??
+        AppSettings.suggestedRegion(_language, system.countryCode);
   }
 
   void _pickLanguage(String language) {
     setState(() {
       _language = language;
-      if (!_regionPicked) {
+      if (widget.settings.firstRunRegion == null && !_regionPicked) {
         _region = AppSettings.regionForLanguage(language) ?? _region;
       }
     });
@@ -145,6 +151,8 @@ class _WelcomePageState extends State<WelcomePage> {
                         ),
                     ],
                   ),
+                  const SizedBox(height: 20),
+                  _designPicker(l),
                   const SizedBox(height: 28),
                   FilledButton(
                     // A TV starts on Start: the remote's OK goes on with
@@ -162,6 +170,89 @@ class _WelcomePageState extends State<WelcomePage> {
           ),
         ),
       ),
+    );
+  }
+
+  /// First-run look: the interface design and its main colour. The
+  /// same choices live in Settings afterwards; Start keeps them.
+  Widget _designPicker(AppLocalizations l) {
+    final theme = Theme.of(context);
+    final prefs = widget.settings.zedPrefs;
+    final dark = theme.brightness == Brightness.dark;
+    void apply(ZedPrefs next) {
+      setState(() {});
+      widget.settings.setZed(next);
+    }
+
+    final Widget colourRow = switch (prefs.design) {
+      ZedDesign.bento => ZedSwatchRow(
+        title: l.zedPalette,
+        colors: [
+          for (final p in BentoPalette.values)
+            bentoTokensFor(p, dark).violet.container,
+        ],
+        selected: prefs.bento.palette.index,
+        onSelect: (i) {
+          final next = widget.settings.zedPrefs;
+          next.bento.palette = BentoPalette.values[i];
+          apply(next);
+        },
+      ),
+      ZedDesign.pixel => ZedSwatchRow(
+        title: l.zedAccent,
+        colors: pixelAccents,
+        selected: prefs.pixel.accentIndex,
+        onSelect: (i) {
+          final next = widget.settings.zedPrefs;
+          next.pixel.accentIndex = i;
+          apply(next);
+        },
+      ),
+      ZedDesign.old => ZedSwatchRow(
+        title: l.zedAccent,
+        colors: pixelAccents,
+        selected: prefs.old.accentIndex,
+        onSelect: (i) {
+          final next = widget.settings.zedPrefs;
+          next.old.accentIndex = i;
+          apply(next);
+        },
+      ),
+      ZedDesign.glass => ZedSwatchRow(
+        title: l.zedTint,
+        colors: [for (final t in GlassTint.values) glassTintColor(t, dark)],
+        selected: prefs.glass.tint.index,
+        onSelect: (i) {
+          final next = widget.settings.zedPrefs;
+          next.glass.tint = GlassTint.values[i];
+          apply(next);
+        },
+      ),
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        DropdownButtonFormField<ZedDesign>(
+          initialValue: prefs.design,
+          decoration: InputDecoration(
+            labelText: l.zedDesign,
+            prefixIcon: const Icon(Icons.palette_rounded),
+            border: const OutlineInputBorder(),
+          ),
+          onChanged: (d) {
+            if (d == null) return;
+            final next = widget.settings.zedPrefs;
+            next.design = d;
+            apply(next);
+          },
+          items: [
+            for (final d in ZedDesign.values)
+              DropdownMenuItem(value: d, child: Text(zl.zedDesignName(d))),
+          ],
+        ),
+        const SizedBox(height: 12),
+        colourRow,
+      ],
     );
   }
 }

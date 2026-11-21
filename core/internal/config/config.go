@@ -19,11 +19,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/armanlife/firefox-vpn-client/core/internal/guardian"
-	"github.com/armanlife/firefox-vpn-client/core/internal/hellosplit"
-	"github.com/armanlife/firefox-vpn-client/core/internal/resolver"
-	"github.com/armanlife/firefox-vpn-client/core/internal/routing"
-	"github.com/armanlife/firefox-vpn-client/core/internal/securefile"
+	"github.com/armanlife/arman-vpn-client/core/internal/guardian"
+	"github.com/armanlife/arman-vpn-client/core/internal/hellosplit"
+	"github.com/armanlife/arman-vpn-client/core/internal/resolver"
+	"github.com/armanlife/arman-vpn-client/core/internal/routing"
+	"github.com/armanlife/arman-vpn-client/core/internal/securefile"
 )
 
 // CurrentVersion is the config schema version written by this build.
@@ -86,7 +86,17 @@ type Tun struct {
 	// QUIC carries apps' QUIC (UDP to port 443) through the VPN (the phone's
 	// too); by default it is refused, and apps fall back to TCP.
 	QUIC bool `json:"quic,omitempty"`
+	// MTU is the VPN interface's MTU (the phone's VPN and the desktop's TUN
+	// adapter), MinTunMTU to MaxTunMTU; 0 keeps each one's own (1500 on the
+	// phone, 9000 on the desktop).
+	MTU int `json:"mtu,omitempty"`
 }
+
+// The bounds of tun.mtu: IPv6 needs 1280.
+const (
+	MinTunMTU = 1280
+	MaxTunMTU = 9000
+)
 
 // TunProgram is a program that skips the VPN.
 type TunProgram struct {
@@ -140,7 +150,7 @@ func CleanTunPrograms(programs []TunProgram) []TunProgram {
 //	clear  turn the system proxy off, once when chosen (a setting this
 //	       program made is restored first)
 //	tun    leave the setting alone (restoring this program's) and send every
-//	       app's TCP through the TUN service (cmd/firefox-vpn-tun) while the
+//	       app's TCP through the TUN service (cmd/arman-vpn-tun) while the
 //	       proxy is on; only the desktop app's core does it
 type SystemProxy struct {
 	Mode string `json:"mode"`
@@ -193,8 +203,15 @@ type Proxy struct {
 	Country string `json:"country"`
 	// Server pins an exact upstream host:port.
 	Server string `json:"server"`
-	// Transport is "h2" (HTTP/2 over TCP) or "h3" (HTTP/3 over QUIC).
-	Transport           string `json:"transport"`
+	// Transport is "h2" (HTTP/2 over TCP), "h3" (HTTP/3 over QUIC), or "h1"
+	// (HTTP/1.1 over TLS, a connection per tunnel).
+	Transport string `json:"transport"`
+	// IPVersion is the IP version of the connections to Mozilla's servers
+	// alone (not the sign-in, the DNS, or the API): "auto" tries IPv4 first
+	// and IPv6 when IPv4 does not connect; "dual" both at once (dual-stack);
+	// "ipv6_first" IPv6 first, then IPv4; "ipv4" and "ipv6" keep to one.
+	// Empty is "auto".
+	IPVersion           string `json:"ip_version,omitempty"`
 	UpstreamConnections int    `json:"upstream_connections"`
 	MaxConnections      int    `json:"max_connections"`
 	// IdleSleep, when not 0, lets the proxy sleep after this long without
@@ -238,9 +255,17 @@ type Network struct {
 	// APIRelay, when set, sends the control-plane requests (FxA, Guardian,
 	// the server list, the geo files, and flags) through the user's own
 	// relay: an https:// URL that takes the target in its url parameter
-	// (scripts/relay: a Cloudflare Worker or a PHP file). The VPN traffic
+	// (docs/relay: a Cloudflare Worker or a PHP file). The VPN traffic
 	// never uses it.
 	APIRelay string `json:"api_relay"`
+	// APIRelayEnabled uses APIRelay (APIRelayInUse): while off, the address
+	// stays set. It controls only the personal relay, independently of the
+	// shared relay pool. On by default for an address already configured.
+	APIRelayEnabled bool `json:"api_relay_enabled"`
+	// SharedRelayEnabled allows the manifest's shared Guardian relay pool
+	// after HTTP 451 is first retried directly with a doubled path. An
+	// enabled personal relay takes priority.
+	SharedRelayEnabled bool `json:"shared_relay_enabled"`
 	// APIRelayECH hides the relay's name from the network with Encrypted
 	// Client Hello (TLS 1.3): "on" (or empty: with ECH when the relay's
 	// name has a key, otherwise without; a relay on Cloudflare, a Worker,
@@ -307,6 +332,7 @@ func Default() Config {
 		Proxy: Proxy{
 			Listen:              DefaultProxyListen,
 			Transport:           "h2",
+			IPVersion:           "auto",
 			UpstreamConnections: 1,
 			MaxConnections:      256,
 			IdleSleep:           Duration(DefaultIdleSleep),
@@ -320,17 +346,19 @@ func Default() Config {
 			Listen:  DefaultDashboardListen,
 		},
 		Network: Network{
-			APIRelayECH:      RelayECHOn,
-			GuardianEndpoint: guardian.DefaultEndpoint,
-			HelloSplit:       hellosplit.Off,
+			APIRelayEnabled:    true,
+			SharedRelayEnabled: true,
+			APIRelayECH:        RelayECHOn,
+			GuardianEndpoint:   guardian.DefaultEndpoint,
+			HelloSplit:         hellosplit.Auto,
 		},
 		DNS: DNS{
 			Servers:          append([]string(nil), DefaultDNSServers...),
 			FallbackToSystem: true,
 		},
-		// The system proxy until the user chooses another mode; a mode a
-		// config file names is kept as it is.
-		SystemProxy: SystemProxy{Mode: SystemProxySet},
+		// Proxy only until the user chooses the system proxy; the choice is
+		// kept here.
+		SystemProxy: SystemProxy{Mode: SystemProxyClear},
 		Tun:         Tun{Programs: []TunProgram{}},
 		Routing: Routing{
 			Region:         routing.RegionIran,
@@ -484,6 +512,21 @@ func (n Network) UpstreamProxyInUse() string {
 	return n.UpstreamProxy
 }
 
+// APIRelayInUse is the relay the control-plane requests may use: empty
+// while network.api_relay_enabled is off.
+func (n Network) APIRelayInUse() string {
+	if !n.APIRelayEnabled {
+		return ""
+	}
+	return n.APIRelay
+}
+
+// SharedRelayInUse is independent of the personal relay's switch and saved
+// address. Only an enabled, nonempty personal relay takes priority.
+func (n Network) SharedRelayInUse() bool {
+	return n.SharedRelayEnabled && strings.TrimSpace(n.APIRelayInUse()) == ""
+}
+
 // SettleUpstreamProxy is the upstream proxy as a client saved it over prev:
 // cleaned, on when an address comes where there was none, so that filling it
 // in is enough, and off without an address.
@@ -612,8 +655,13 @@ func (c Config) Validate() error {
 	if strings.TrimSpace(p.Country) != "" && strings.TrimSpace(p.Server) != "" {
 		return errors.New("proxy.country and proxy.server are mutually exclusive")
 	}
-	if p.Transport != "h2" && p.Transport != "h3" {
-		return fmt.Errorf("proxy.transport must be \"h2\" or \"h3\", not %q", p.Transport)
+	if p.Transport != "h2" && p.Transport != "h3" && p.Transport != "h1" {
+		return fmt.Errorf("proxy.transport must be \"h2\", \"h3\", or \"h1\", not %q", p.Transport)
+	}
+	switch p.IPVersion {
+	case "", "auto", "dual", "ipv6_first", "ipv4", "ipv6":
+	default:
+		return fmt.Errorf("proxy.ip_version must be \"auto\", \"dual\", \"ipv6_first\", \"ipv4\", or \"ipv6\", not %q", p.IPVersion)
 	}
 	if p.UpstreamConnections < 1 {
 		return errors.New("proxy.upstream_connections must be at least 1")
@@ -661,7 +709,7 @@ func (c Config) Validate() error {
 		return fmt.Errorf("network.api_relay_ech_config: %w", err)
 	}
 	if !hellosplit.Valid(c.Network.HelloSplit) {
-		return fmt.Errorf("network.hello_split: %q is not off, sni, first-byte, or record", c.Network.HelloSplit)
+		return fmt.Errorf("network.hello_split: %q is not auto, off, sni, first-byte, or record", c.Network.HelloSplit)
 	}
 	if err := ValidateUpstreamProxy(c.Network, c.Proxy.Listen); err != nil {
 		return fmt.Errorf("network.upstream_proxy: %w", err)
@@ -688,6 +736,9 @@ func (c Config) Validate() error {
 	case SystemProxySet, SystemProxyClear, SystemProxyTun:
 	default:
 		return fmt.Errorf("system_proxy.mode %q is not supported; it must be %q, %q, or %q", c.SystemProxy.Mode, SystemProxySet, SystemProxyClear, SystemProxyTun)
+	}
+	if c.Tun.MTU != 0 && (c.Tun.MTU < MinTunMTU || c.Tun.MTU > MaxTunMTU) {
+		return fmt.Errorf("tun.mtu must be 0 (automatic) or from %d to %d, not %d", MinTunMTU, MaxTunMTU, c.Tun.MTU)
 	}
 	if len(c.Tun.Programs) > MaxTunPrograms {
 		return fmt.Errorf("tun.programs holds at most %d programs", MaxTunPrograms)
@@ -730,14 +781,14 @@ const DataDirName = "user-data"
 // (inside the macOS bundle). A core started from either place uses the
 // app's data folder, so it sees the app's accounts and settings.
 const (
-	AppFolder      = "Firefox VPN Client"
+	AppFolder      = "Arman VPN"
 	PortableMarker = "portable"
 	CoreFolder     = "core"
 )
 
 // appExecutables are the desktop app's executables: Windows, Linux, and
-// macOS (inside Firefox VPN.app/Contents/MacOS).
-var appExecutables = []string{"firefox-vpn.exe", "firefox-vpn", "Firefox VPN"}
+// macOS (inside Arman VPN.app/Contents/MacOS).
+var appExecutables = []string{"arman-vpn.exe", "arman-vpn", "Arman VPN"}
 
 // DefaultDataDir returns the data folder: DataDirName next to the running
 // executable (symlinks resolved, so a linked binary still uses its real
@@ -752,18 +803,13 @@ func DefaultDataDir() (string, error) {
 	return data, nil
 }
 
-// The app's data folder before upstream 1.0.9, by its name now. This fork
-// kept the program's name, so the old and the new folder are the same on
-// every system: the map is the identity, and MoveLegacyDataDir below can
-// never move a folder (when the old folder exists it IS dir, which the
-// first check in the function leaves alone; when it does not, there is
-// nothing to move). It is kept, in upstream's shape, so an install of this
-// fork upgrades in place with its accounts and settings untouched.
-var legacyDataFolders = map[string]string{AppFolder: AppFolder, linuxDataFolder: linuxDataFolder}
+// The app's data folder on macOS and Linux before 1.0.9, when the program
+// was called Firefox VPN: beside the new one, by its new name.
+var legacyDataFolders = map[string]string{AppFolder: "Firefox VPN Client", linuxDataFolder: "firefox-vpn-client"}
 
-// MoveLegacyDataDir moves the app's data folder of a version before
-// upstream 1.0.9 to dir, the app's data folder now, when the old one exists
-// and the new one does not yet (the app does the same: app/lib/core/core_api.dart).
+// MoveLegacyDataDir moves the app's data folder of a version before 1.0.9
+// to dir, the app's data folder now, when the old one exists and the new
+// one does not yet (the app does the same: app/lib/core/core_api.dart).
 // Other folders (Windows' and a portable copy's user-data beside the app)
 // keep their name.
 func MoveLegacyDataDir(dir string) {
@@ -855,7 +901,7 @@ func defaultDataDirFor(exeDir, goos string, getenv func(string) string, exists f
 }
 
 // linuxDataFolder is the app's data folder on Linux, in XDG_DATA_HOME.
-const linuxDataFolder = "firefox-vpn-client"
+const linuxDataFolder = "arman-vpn"
 
 // CheckWritable verifies that dir can be created and written, so a
 // read-only installation folder fails with a clear message at startup.

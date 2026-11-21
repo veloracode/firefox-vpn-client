@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../app_settings.dart';
 import '../core/core_controller.dart';
@@ -64,7 +64,7 @@ class DesktopIntegration {
   /// The window is hidden in the tray; notifications show only then.
   bool _hidden;
 
-  bool? _autostartApplied;
+  (bool, bool)? _autostartApplied;
 
   /// Auto-connect was asked for, or is not wanted, in this run.
   bool _autoConnectDone = false;
@@ -108,11 +108,17 @@ class DesktopIntegration {
   /// Keeps the Run entry equal to the setting, pointing at this copy of the
   /// app (a new version takes it over when it runs).
   void _applyAutostart() {
-    if (!manageAutostart || _autostartApplied == settings.autostart) return;
-    _autostartApplied = settings.autostart;
+    final wanted = (settings.autostart, settings.autostartShowsWindow);
+    if (!manageAutostart || _autostartApplied == wanted) return;
+    _autostartApplied = wanted;
+    // --autostart stays whichever way the window starts: it is what tells
+    // the app the computer started it, which the connect at start needs.
+    // --show is what opens the window; without it the app waits in the
+    // tray, as an entry written by an older version does.
+    final show = settings.autostartShowsWindow ? ' --show' : '';
     _bridge.setAutostart(
       enabled: settings.autostart,
-      command: '"${Platform.resolvedExecutable}" --autostart',
+      command: '"${Platform.resolvedExecutable}" --autostart$show',
     );
   }
 
@@ -168,12 +174,18 @@ class DesktopIntegration {
   void _notifyUpdate() {
     final release = Updates.available.value;
     if (release == null || !_hidden) return;
-    if (release.version == _notifiedUpdate ||
-        release.version == settings.dismissedUpdate) {
+    final notice = '${release.version}:${release.mandatory}';
+    if (notice == _notifiedUpdate ||
+        (!release.mandatory && release.version == settings.dismissedUpdate)) {
       return;
     }
-    _notifiedUpdate = release.version;
-    _bridge.notify(_l.appTitle, _l.updateAvailable(release.version));
+    _notifiedUpdate = notice;
+    _bridge.notify(
+      _l.appTitle,
+      release.mandatory
+          ? _l.updateRequired(release.version)
+          : _l.updateAvailable(release.version),
+    );
   }
 
   void _onChange() {
@@ -358,17 +370,17 @@ class DesktopIntegration {
   }
 
   /// TUN mode from the tray: with the window open, as on the home page (it
-  /// says why a start did not happen); hidden, making sure the service
-  /// runs first (it never starts with the computer), without a word but
-  /// the system's prompt.
+  /// says why an install did not happen); hidden, installing the service
+  /// first when needed, without a word but the system's prompt.
   Future<void> _chooseTun() async {
     final context = navigatorKey.currentContext;
     if (!_hidden && context != null && context.mounted) {
       await chooseConnectionMode(context, core, 'tun');
       return;
     }
-    if (await core.startTunService(prompt: _l.tunInstallPrompt)
-        is! TunServiceDone) {
+    if (!(core.status?.tun?.installed ?? false) &&
+        await core.installTunService(prompt: _l.tunInstallPrompt)
+            is! TunServiceDone) {
       return;
     }
     await core.setSystemProxy('tun').catchError((_) {});

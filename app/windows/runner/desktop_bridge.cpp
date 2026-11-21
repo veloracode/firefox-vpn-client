@@ -341,12 +341,14 @@ void DesktopBridge::SetAutostart(bool enabled, const std::wstring& command) {
                     KEY_SET_VALUE, &key) != ERROR_SUCCESS) {
     return;
   }
+  // The value's name before 1.0.9.
+  RegDeleteValueW(key, L"Firefox VPN");
   if (enabled && !command.empty()) {
-    RegSetValueExW(key, L"Firefox VPN", 0, REG_SZ,
+    RegSetValueExW(key, L"Arman VPN", 0, REG_SZ,
                    reinterpret_cast<const BYTE*>(command.c_str()),
                    static_cast<DWORD>((command.size() + 1) * sizeof(wchar_t)));
   } else {
-    RegDeleteValueW(key, L"Firefox VPN");
+    RegDeleteValueW(key, L"Arman VPN");
   }
   RegCloseKey(key);
 }
@@ -403,14 +405,16 @@ std::optional<LRESULT> DesktopBridge::HandleMessage(UINT message,
                                                     WPARAM wparam,
                                                     LPARAM lparam) {
   if (message == WM_GETMINMAXINFO) {
-    // The smallest window the computer layout is made for: 640 by 480
-    // logical pixels inside the frame (narrower, the app uses the phone's);
-    // small enough to snap into half, or a quarter, of most screens. The
-    // limit is for the whole window, so the frame is added; rounded up, so
-    // the inside never comes out a fraction short.
+    // 400 by 480 logical pixels inside the frame. Below 640 wide the app
+    // lays itself out as a phone does (one column, the sections behind a
+    // bar at the bottom), which is what a window pinned to the side of a
+    // screen or placed by a tiling window manager wants; the old limit of
+    // 640 meant that layout could never be reached by resizing. The limit
+    // is for the whole window, so the frame is added; rounded up, so the
+    // inside never comes out a fraction short.
     const UINT dpi = GetDpiForWindow(window_);
     const double scale = dpi / 96.0;
-    RECT rect = {0, 0, static_cast<LONG>(std::ceil(640 * scale)),
+    RECT rect = {0, 0, static_cast<LONG>(std::ceil(400 * scale)),
                  static_cast<LONG>(std::ceil(480 * scale))};
     AdjustWindowRectExForDpi(
         &rect, static_cast<DWORD>(GetWindowLongPtr(window_, GWL_STYLE)), FALSE,

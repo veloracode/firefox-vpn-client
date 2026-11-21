@@ -269,7 +269,7 @@ abstract final class Failure {
 }
 
 /// The TUN mode's state (core/internal/service/tun.go): the TUN service
-/// (core/cmd/firefox-vpn-tun) carries every app's traffic to the core.
+/// (core/cmd/arman-vpn-tun) carries every app's traffic to the core.
 class TunState {
   TunState.fromJson(Map<String, Object?> j)
     : state = _str(j['state']),
@@ -485,6 +485,7 @@ class CoreStatus {
         null => null,
       },
       autoConnecting = _bool(j['auto_connecting']),
+      connectPending = _bool(j['connect_pending']),
       connectFailure = _str(j['connect_failure']),
       selection = _str(j['selection']),
       selectionName = _str(j['selection_name']),
@@ -546,9 +547,18 @@ class CoreStatus {
   /// for a passed test.
   final bool autoConnecting;
 
+  /// The core is still trying to establish the upstream connection the
+  /// user requested.
+  final bool connectPending;
+
   /// Why the user's last connect was given up (a [Failure] code): it never
   /// reached Mozilla within a minute, and the proxy went off again.
   final String connectFailure;
+
+  /// The power switch follows the connect result even while the engine is
+  /// still starting or stopping.
+  bool get proxyOn =>
+      connectPending || (connectFailure.isEmpty && state.phase != Phase.off);
 
   /// The phone reported that no network is connected (Android's own
   /// state: no Wi-Fi and no mobile data).
@@ -563,14 +573,29 @@ class CoreStatus {
   bool confirmedBy(ConnectionTest? test) {
     final p = proxy;
     final at = test?.at;
-    if (state.phase != Phase.running || p == null || at == null) return false;
-    if (!test!.ok || noNetwork) return false;
-    if (p.startedAt != null && at.isBefore(p.startedAt!)) return false;
-    // A test from before the network changed says nothing about it now.
-    final changed = networkChangedAt;
-    if (changed != null && at.isBefore(changed)) return false;
+    if (connectPending ||
+        !proxyOn ||
+        state.phase != Phase.running ||
+        p == null ||
+        at == null) {
+      return false;
+    }
+    if (test?.ok != true || noNetwork || !isCurrentTest(test)) {
+      return false;
+    }
     final failed = p.wakeFailedAt;
     return !(p.wakeError.isNotEmpty && failed != null && failed.isAfter(at));
+  }
+
+  /// A test made before the current proxy or network says nothing about
+  /// the current connection.
+  bool isCurrentTest(ConnectionTest? test) {
+    final at = test?.at;
+    if (at == null) return false;
+    final started = proxy?.startedAt;
+    if (started != null && at.isBefore(started)) return false;
+    final changed = networkChangedAt;
+    return changed == null || !at.isBefore(changed);
   }
 
   /// The chosen location, also while the proxy is off: "" the recommended
@@ -609,6 +634,8 @@ abstract final class SignInError {
   static const tooManyCodes = 'too_many_codes';
   static const timedOut = 'timed_out';
   static const network = 'network';
+  static const blocked = 'blocked';
+  static const tokenBlocked = 'token_blocked';
 }
 
 class SignInState {
@@ -650,4 +677,41 @@ class SignInState {
       step == SignInStep.needTotp ||
       step == SignInStep.needUnblockCode ||
       step == SignInStep.needCaptcha;
+}
+
+/// An account in a backup file (POST /api/backup/inspect).
+class BackupAccount {
+  BackupAccount.fromJson(Map<String, Object?> j)
+    : email = _str(j['email']),
+      hasPassword = _bool(j['has_password']),
+      exists = _bool(j['exists']);
+
+  final String email;
+  final bool hasPassword;
+
+  /// This device has the account already: taking the file in gives it the
+  /// file's sign-in.
+  final bool exists;
+}
+
+/// What a backup file holds (POST /api/backup/inspect).
+class BackupContents {
+  BackupContents.fromJson(Map<String, Object?> j)
+    : accounts = [
+        for (final a in (j['accounts'] as List<Object?>? ?? const []))
+          if (a is Map<String, Object?>) BackupAccount.fromJson(a),
+      ];
+
+  final List<BackupAccount> accounts;
+}
+
+/// A backup file taken in (POST /api/backup/import): new accounts, and
+/// ones this device had, now signed in from the file.
+class BackupImported {
+  BackupImported.fromJson(Map<String, Object?> j)
+    : added = _int(j['added']),
+      updated = _int(j['updated']);
+
+  final int added;
+  final int updated;
 }

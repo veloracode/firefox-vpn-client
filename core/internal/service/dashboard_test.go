@@ -3,6 +3,7 @@ package service
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -11,15 +12,15 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/armanlife/firefox-vpn-client/core/internal/accounts"
-	"github.com/armanlife/firefox-vpn-client/core/internal/config"
-	"github.com/armanlife/firefox-vpn-client/core/internal/fxa"
-	"github.com/armanlife/firefox-vpn-client/core/internal/logx"
-	"github.com/armanlife/firefox-vpn-client/core/internal/proxy"
+	"github.com/armanlife/arman-vpn-client/core/internal/accounts"
+	"github.com/armanlife/arman-vpn-client/core/internal/config"
+	"github.com/armanlife/arman-vpn-client/core/internal/fxa"
+	"github.com/armanlife/arman-vpn-client/core/internal/guardian"
+	"github.com/armanlife/arman-vpn-client/core/internal/logx"
+	"github.com/armanlife/arman-vpn-client/core/internal/proxy"
 )
 
 // All credentials in this file are local fixtures; the control plane
@@ -54,6 +55,64 @@ func addTestAccount(t *testing.T, d *Daemon, name string) string {
 		t.Fatal(err)
 	}
 	return acc.ID
+}
+
+func TestManualQuotaRefreshReadsPassHeadersWhenHeadIsForbidden(t *testing.T) {
+	for _, status := range []int{http.StatusOK, http.StatusTooManyRequests, http.StatusForbidden} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			d := newTestDaemon(t)
+			id := addTestAccount(t, d, "quota")
+			if _, err := d.mgr.ObserveUsage(id, accounts.Usage{LimitBytes: 50 * testGiB, RemainingBytes: 49 * testGiB}); err != nil {
+				t.Fatal(err)
+			}
+			var methods []string
+			setCoreControlPlane(t, func(r *http.Request) (*http.Response, error) {
+				if r.URL.Path != "/api/v1/fpn/token" || r.Header.Get("Authorization") != "Bearer access-quota" {
+					return nil, fmt.Errorf("unexpected quota request %s %s", r.Method, r.URL.Path)
+				}
+				methods = append(methods, r.Method)
+				switch r.Method {
+				case http.MethodHead:
+					return coreResponse(r, http.StatusForbidden, "", nil), nil
+				case http.MethodGet:
+					if status == http.StatusForbidden {
+						return coreResponse(r, status, "", nil), nil
+					}
+					used := int64(2)
+					if status == http.StatusTooManyRequests {
+						used = 50
+					}
+					return coreResponse(r, status, "", quotaHeader(used)), nil
+				default:
+					return nil, fmt.Errorf("unexpected quota method %s", r.Method)
+				}
+			})
+			if err := d.refreshAccountUsage(id, false); !errors.Is(err, guardian.ErrNotEntitled) {
+				t.Fatalf("expected the background read to stop at HEAD: %v", err)
+			}
+			client := newDashboardClient(t, d)
+			wantStatus, wantRemaining := http.StatusOK, int64(48*testGiB)
+			switch status {
+			case http.StatusTooManyRequests:
+				wantRemaining = 0
+			case http.StatusForbidden:
+				wantStatus, wantRemaining = http.StatusBadRequest, 49*testGiB
+			}
+			if rec := client.do(http.MethodPost, "/api/accounts/"+id+"/refresh", nil); rec.Code != wantStatus {
+				t.Fatalf("manual quota refresh: %d %s", rec.Code, rec.Body)
+			}
+			if got := strings.Join(methods, ","); got != "HEAD,HEAD,GET" {
+				t.Fatalf("quota methods %s", got)
+			}
+			acc, err := d.store.Get(id)
+			if err != nil || acc.Usage == nil || acc.Usage.LimitBytes != 50*testGiB {
+				t.Fatalf("quota was not saved: %v", err)
+			}
+			if acc.Usage.RemainingBytes != wantRemaining {
+				t.Fatalf("unexpected remaining quota %d", acc.Usage.RemainingBytes)
+			}
+		})
+	}
 }
 
 type dashboardClient struct {
@@ -143,7 +202,7 @@ func TestDashboardLoginProtectsAPI(t *testing.T) {
 	if rec := c.do(http.MethodGet, "/api/status", nil); rec.Code != http.StatusUnauthorized {
 		t.Fatalf("expected a login to be required, got %d", rec.Code)
 	}
-	if rec := c.do(http.MethodGet, "/app/", nil); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "Firefox VPN") {
+	if rec := c.do(http.MethodGet, "/app/", nil); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "Arman VPN") {
 		t.Fatalf("expected the page itself to load without a login, got %d", rec.Code)
 	}
 	if rec := c.do(http.MethodGet, "/app", nil); rec.Code/100 != 3 || rec.Header().Get("Location") != "/app/" {
@@ -211,6 +270,32 @@ func TestDashboardSettingsValidateAndApply(t *testing.T) {
 	saved, _, err := config.Load(d.paths.Config)
 	if err != nil || saved.Accounts.SwitchThresholdPercent != 80 {
 		t.Fatalf("expected the threshold to be saved, got %v %v", saved.Accounts, err)
+	}
+}
+
+func TestDashboardRelaySwitchesSaveIndependently(t *testing.T) {
+	d := newTestDaemon(t)
+	t.Cleanup(func() { guardian.SetRegionRecovery(nil) })
+	c := newDashboardClient(t, d)
+	settings := decodeBody[settingsView](t, c.do(http.MethodGet, "/api/settings", nil))
+	for _, shared := range []bool{false, true} {
+		cfg := settings.Config
+		cfg.Network.APIRelayEnabled = false
+		cfg.Network.APIRelay = "https://personal.example/"
+		cfg.Network.SharedRelayEnabled = shared
+		if rec := c.do(http.MethodPut, "/api/settings", map[string]any{"config": cfg}); rec.Code != http.StatusOK {
+			t.Fatal("relay switches could not be saved")
+		}
+		view := decodeBody[settingsView](t, c.do(http.MethodGet, "/api/settings", nil))
+		saved, _, err := config.Load(d.paths.Config)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, n := range []config.Network{view.Config.Network, saved.Network} {
+			if n.APIRelayEnabled || n.SharedRelayEnabled != shared || n.SharedRelayInUse() != shared || n.APIRelay != cfg.Network.APIRelay {
+				t.Fatal("shared relay did not remain independent from the disabled personal relay")
+			}
+		}
 	}
 }
 
@@ -340,6 +425,7 @@ func TestDashboardSignInWithoutAPassword(t *testing.T) {
 func TestDashboardSignInWithEmailCode(t *testing.T) {
 	d := newTestDaemon(t)
 	session := strings.Repeat("ab", 32)
+	verified := false
 	setCoreControlPlane(t, func(r *http.Request) (*http.Response, error) {
 		switch {
 		case r.URL.Path == "/v1/account/login":
@@ -349,9 +435,20 @@ func TestDashboardSignInWithEmailCode(t *testing.T) {
 			if !strings.Contains(string(body), `"123456"`) {
 				return coreResponse(r, http.StatusBadRequest, `{"errno":183,"message":"Invalid code"}`, nil), nil
 			}
+			verified = true
 			return coreResponse(r, http.StatusOK, `{}`, nil), nil
 		case r.URL.Path == "/v1/oauth/token":
+			return coreResponse(r, http.StatusNotAcceptable, "", nil), nil
+		case r.URL.Path == "/v1/oauth/authorization":
+			var request struct{ State string }
+			if !verified || json.NewDecoder(r.Body).Decode(&request) != nil || request.State == "" {
+				return nil, fmt.Errorf("OAuth authorization did not follow verification")
+			}
+			return coreResponse(r, http.StatusOK, `{"code":"fixture-code","state":"`+request.State+`"}`, nil), nil
+		case r.URL.Host == "oauth.accounts.firefox.com" && r.URL.Path == "/v1/token":
 			return coreResponse(r, http.StatusOK, `{"access_token":"access-new","refresh_token":"refresh-new","expires_in":3600,"scope":"profile"}`, nil), nil
+		case r.URL.Path == "/v1/session/destroy":
+			return coreResponse(r, http.StatusOK, `{}`, nil), nil
 		case r.Method == http.MethodHead && strings.HasSuffix(r.URL.Path, "/api/v1/fpn/token"):
 			return coreResponse(r, http.StatusOK, "", quotaHeader(2)), nil
 		}
@@ -390,75 +487,6 @@ func TestDashboardSignInWithEmailCode(t *testing.T) {
 	}
 	if strings.Contains(c.do(http.MethodGet, "/api/signin/"+id, nil).Body.String(), "access-new") {
 		t.Fatal("the sign-in view must never contain tokens")
-	}
-}
-
-// A sign-in Mozilla wants confirmed with the emailed LINK: the session
-// is held and its verification state is polled (recovery_email/status,
-// the check Mozilla's own clients run), so the sign-in completes by
-// itself when the link is clicked — the dialog offers no answer for
-// this step at all. Pressing Continue early must NOT proceed to the
-// token request while the session is still unverified: that blind
-// trust was the old flow's failure, the token request was refused and
-// the whole sign-in died.
-func TestDashboardSignInWithEmailLink(t *testing.T) {
-	d := newTestDaemon(t)
-	session := strings.Repeat("cd", 32)
-	var confirmed atomic.Bool
-	var tokenCalls atomic.Int32
-	setCoreControlPlane(t, func(r *http.Request) (*http.Response, error) {
-		switch {
-		case r.URL.Path == "/v1/account/login":
-			return coreResponse(r, http.StatusOK, `{"sessionToken":"`+session+`","uid":"u","verified":false,"verificationMethod":"email"}`, nil), nil
-		case r.URL.Path == "/v1/recovery_email/status":
-			if !strings.HasPrefix(r.Header.Get("Authorization"), "Hawk ") {
-				return coreResponse(r, http.StatusUnauthorized, `{"errno":110}`, nil), nil
-			}
-			return coreResponse(r, http.StatusOK, fmt.Sprintf(`{"email":"link@example.com","verified":%t,"sessionVerified":%t}`, confirmed.Load(), confirmed.Load()), nil), nil
-		case r.URL.Path == "/v1/oauth/token":
-			tokenCalls.Add(1)
-			if !confirmed.Load() {
-				return coreResponse(r, http.StatusBadRequest, `{"error":"invalid_grant","error_description":"Unverified session"}`, nil), nil
-			}
-			return coreResponse(r, http.StatusOK, `{"access_token":"access-link","refresh_token":"refresh-link","expires_in":3600,"scope":"profile"}`, nil), nil
-		case r.Method == http.MethodHead && strings.HasSuffix(r.URL.Path, "/api/v1/fpn/token"):
-			return coreResponse(r, http.StatusOK, "", quotaHeader(2)), nil
-		}
-		return nil, fmt.Errorf("unexpected request %s %s", r.Method, r.URL)
-	})
-	c := newDashboardClient(t, d)
-
-	rec := c.do(http.MethodPost, "/api/signin", map[string]string{"email": "link@example.com", "password": "pw"})
-	if rec.Code != http.StatusAccepted {
-		t.Fatalf("sign-in start failed: %d %s", rec.Code, rec.Body)
-	}
-	id := decodeBody[signInView](t, rec).ID
-	var view signInView
-	waitForCondition(t, 5*time.Second, func() bool {
-		view = decodeBody[signInView](t, c.do(http.MethodGet, "/api/signin/"+id, nil))
-		return view.Step == stepEmailLink
-	})
-
-	// Continue before the click: the flow must stay on the link step
-	// and keep the token endpoint untouched.
-	c.do(http.MethodPost, "/api/signin/"+id, map[string]string{"value": ""})
-	waitForCondition(t, 5*time.Second, func() bool {
-		view = decodeBody[signInView](t, c.do(http.MethodGet, "/api/signin/"+id, nil))
-		return view.Step == stepEmailLink && strings.Contains(view.Message+view.Error, "not confirmed")
-	})
-	if tokenCalls.Load() != 0 {
-		t.Fatal("the token endpoint was called for a still-unverified session")
-	}
-
-	// The click lands: polling notices on its own and finishes.
-	confirmed.Store(true)
-	waitForCondition(t, 10*time.Second, func() bool {
-		view = decodeBody[signInView](t, c.do(http.MethodGet, "/api/signin/"+id, nil))
-		return view.Step == stepDone
-	})
-	acc, err := d.store.Get(view.AccountID)
-	if err != nil || acc.Email != "link@example.com" {
-		t.Fatalf("expected the stored account, got %+v %v", acc, err)
 	}
 }
 
@@ -661,5 +689,47 @@ func TestNetworkURLsNameTheComputersAddresses(t *testing.T) {
 		if got := networkURLs(listen, "/app/"); got != nil {
 			t.Errorf("%s: %v", listen, got)
 		}
+	}
+}
+
+func TestSignInProxyOnlyForTheApp(t *testing.T) {
+	d := newTestDaemon(t)
+	d.localToken = "local-token-fixture"
+	t.Cleanup(d.signInProxy.close)
+	handler := newDashboardServer(d).handler()
+	call := func(method, token string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest(method, "/api/signin/browser/proxy", strings.NewReader(`{"port":0}`))
+		req.Host = "127.0.0.1:10820"
+		req.Header.Set("Content-Type", "application/json")
+		if token != "" {
+			req.Header.Set(localTokenHeader, token)
+		}
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, req)
+		return rec
+	}
+
+	// A browser on the dashboard (no login set here) is not the app.
+	if rec := call(http.MethodPost, ""); rec.Code != http.StatusForbidden {
+		t.Fatalf("without the local token: %d %s, want 403", rec.Code, rec.Body)
+	}
+	if rec := call(http.MethodPost, "wrong"); rec.Code != http.StatusForbidden {
+		t.Fatalf("with a wrong token: %d %s, want 403", rec.Code, rec.Body)
+	}
+
+	rec := call(http.MethodPost, d.localToken)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("open: %d %s", rec.Code, rec.Body)
+	}
+	first := decodeBody[map[string]string](t, rec)["address"]
+	if !strings.HasPrefix(first, "127.0.0.1:") {
+		t.Fatalf("address %q, want loopback", first)
+	}
+	// Opened again (the page shown again): the same proxy.
+	if again := decodeBody[map[string]string](t, call(http.MethodPost, d.localToken))["address"]; again != first {
+		t.Fatalf("second open gave %q, want %q", again, first)
+	}
+	if rec := call(http.MethodDelete, d.localToken); rec.Code != http.StatusOK {
+		t.Fatalf("close: %d %s", rec.Code, rec.Body)
 	}
 }

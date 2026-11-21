@@ -3,10 +3,11 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
-	"github.com/armanlife/firefox-vpn-client/core/internal/logx"
-	"github.com/armanlife/firefox-vpn-client/core/internal/proxy"
+	"github.com/armanlife/arman-vpn-client/core/internal/logx"
+	"github.com/armanlife/arman-vpn-client/core/internal/proxy"
 )
 
 const (
@@ -23,14 +24,17 @@ var errPingNeedsProxy = errors.New("start the proxy first: latency is measured t
 // codes limits the measurement to those country codes; empty measures
 // every location. Without a running proxy (the phone app turned it off)
 // it measures with a pass of its own (offPass).
-func (d *Daemon) PingAll(ctx context.Context, codes []string) ([]proxy.LocationPing, time.Time, error) {
+//
+// fresh measures every location, as a person asking for it expects; without
+// it a location that was slow lately keeps its last figure (slowPingSkip).
+func (d *Daemon) PingAll(ctx context.Context, codes []string, fresh bool) ([]proxy.LocationPing, time.Time, error) {
 	engine := d.currentEngine()
 	if engine == nil {
 		token, err := d.offPass(ctx)
 		if err != nil {
 			return nil, time.Time{}, err
 		}
-		results, at := d.measureLocations(ctx, token, codes)
+		results, at := d.measureLocations(ctx, token, codes, fresh)
 		return results, at, nil
 	}
 	// A real-delay test wakes a sleeping proxy and keeps it awake.
@@ -43,7 +47,7 @@ func (d *Daemon) PingAll(ctx context.Context, codes []string) ([]proxy.LocationP
 	if token == "" {
 		return nil, time.Time{}, errPingNeedsProxy
 	}
-	results, at := d.measureLocations(ctx, token, codes)
+	results, at := d.measureLocations(ctx, token, codes, fresh)
 	return results, at, nil
 }
 
@@ -71,10 +75,26 @@ func (d *Daemon) offPass(ctx context.Context) (string, error) {
 	return pass.RawToken, nil
 }
 
+// pingLocations measures targets through the tunnel with token; a test
+// measures without one.
+var pingLocations = func(ctx context.Context, targets []proxy.Candidate, token string) []proxy.LocationPing {
+	return proxy.PingLocations(ctx, targets, proxy.TunnelMeter(token))
+}
+
+const (
+	// A location whose delay came out above slowPingMS, or that did not
+	// answer, is left out of the measurements for slowPingSkip. It is no
+	// candidate for the fastest, and testing it again costs the most time,
+	// waiting for its timeout. Its last figure stays on the list. The skip
+	// is short and belongs to one network: on another one, all are tested.
+	slowPingMS   = 210
+	slowPingSkip = 10 * time.Minute
+)
+
 // measureLocations measures the given locations (all when codes is
 // empty) and merges the results into the kept measurement, so testing one
 // tab keeps the other locations' earlier values.
-func (d *Daemon) measureLocations(ctx context.Context, token string, codes []string) ([]proxy.LocationPing, time.Time) {
+func (d *Daemon) measureLocations(ctx context.Context, token string, codes []string, fresh bool) ([]proxy.LocationPing, time.Time) {
 	d.pingMu.Lock()
 	defer d.pingMu.Unlock()
 	d.mu.Lock()
@@ -84,12 +104,55 @@ func (d *Daemon) measureLocations(ctx context.Context, token string, codes []str
 		countries = d.refreshLocations(d.config())
 	}
 	targets := proxy.FilterTargets(proxy.PingTargets(countries), codes)
-	logx.Info("testing the real delay through the tunnel locations=%d target=%s", len(targets), proxy.PingTarget)
-	results := proxy.PingLocations(ctx, targets, proxy.TunnelMeter(token))
 	now := time.Now()
+	if network, _ := networkNow(); network != d.pingSkipNetwork {
+		d.pingSkip, d.pingSkipNetwork = nil, network
+	}
+	measure := make([]proxy.Candidate, 0, len(targets))
+	for _, target := range targets {
+		if until, ok := d.pingSkip[strings.ToUpper(target.CountryCode)]; !fresh && ok && now.Before(until) {
+			continue
+		}
+		measure = append(measure, target)
+	}
+	logx.Info("testing the real delay through the tunnel locations=%d skipped_slow=%d target=%s", len(measure), len(targets)-len(measure), proxy.PingTarget)
+	results := pingLocations(ctx, measure, token)
+	now = time.Now()
+	for _, r := range results {
+		code := strings.ToUpper(r.Code)
+		if !r.OK() || r.PingMS > slowPingMS {
+			if d.pingSkip == nil {
+				d.pingSkip = make(map[string]time.Time)
+			}
+			d.pingSkip[code] = now.Add(slowPingSkip)
+		} else {
+			delete(d.pingSkip, code)
+		}
+	}
 	d.mu.Lock()
-	d.pings, d.pingedAt = proxy.MergePings(d.pings, results), now
+	merged := proxy.MergePings(d.pings, results)
+	d.pings, d.pingedAt = merged, now
 	d.mu.Unlock()
+	if len(measure) < len(targets) {
+		// The answer covers every location asked for: the skipped ones with
+		// their last figure, so the list does not lose them.
+		asked := make(map[string]bool, len(targets))
+		for _, target := range targets {
+			asked[strings.ToUpper(target.CountryCode)] = true
+		}
+		measured := make(map[string]bool, len(results))
+		for _, r := range results {
+			measured[strings.ToUpper(r.Code)] = true
+		}
+		results = results[:0:0]
+		for _, p := range merged {
+			code := strings.ToUpper(p.Code)
+			if asked[code] {
+				p.Cached = !measured[code]
+				results = append(results, p)
+			}
+		}
+	}
 	reachable := 0
 	for _, r := range results {
 		if r.OK() {
@@ -115,10 +178,10 @@ func (d *Daemon) lastPings() ([]proxy.LocationPing, time.Time) {
 // proxy.country = "fastest": from a recent measurement, or measured now
 // with token. It returns "" (the recommended location) when nothing could
 // be measured.
-func (d *Daemon) resolveFastestCountry(token string) string {
+func (d *Daemon) resolveFastestCountry(ctx context.Context, token string) string {
 	results, at := d.lastPings()
 	if time.Since(at) > pingReuseAge {
-		results, _ = d.measureLocations(context.Background(), token, nil)
+		results, _ = d.measureLocations(ctx, token, nil, false)
 	}
 	best, ok := proxy.FastestLocation(results)
 	if !ok {

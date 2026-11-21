@@ -4,8 +4,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/armanlife/firefox-vpn-client/core/internal/config"
-	"github.com/armanlife/firefox-vpn-client/core/internal/logx"
+	"github.com/armanlife/arman-vpn-client/core/internal/config"
+	"github.com/armanlife/arman-vpn-client/core/internal/logx"
 )
 
 // Auto-connect: the desktop app, started with the computer and set to
@@ -52,6 +52,7 @@ func (d *Daemon) AutoConnect() {
 	holds := (cfg.SystemProxy.Mode == config.SystemProxySet && d.systemProxyApplies()) ||
 		(cfg.SystemProxy.Mode == config.SystemProxyTun && d.TunSupported)
 	d.mu.Lock()
+	d.endConnectLocked()
 	d.autoConnect = nil
 	var attempt chan struct{}
 	if holds {

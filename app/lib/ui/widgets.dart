@@ -1,12 +1,9 @@
-import 'dart:async';
-
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../app_info.dart';
 import '../core/android_core.dart';
 import '../core/core_api.dart';
-import '../core/core_controller.dart';
 import '../core/models.dart';
 import '../core/ports.dart';
 import '../core/remote_flags.dart';
@@ -17,12 +14,29 @@ import 'country_names.dart';
 import 'format.dart';
 import 'local_country_names.dart';
 
-/// Where a Firefox Account is made: Mozilla's sign-up page.
-const firefoxAccountSignUpUrl = 'https://accounts.firefox.com/signup';
+/// Where a Firefox Account is made: Mozilla's site.
+const firefoxAccountSignUpUrl = 'https://accounts.firefox.com/';
 
 /// Where an account made with Google or Apple sign-in gets a password.
 const firefoxAccountSetPasswordUrl =
     'https://accounts.firefox.com/reset_password/';
+
+/// The program's logo, its tile (assets/logo.png, made by
+/// tool/app_icons.py), [size] logical pixels square.
+class AppLogo extends StatelessWidget {
+  const AppLogo({super.key, required this.size});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Image.asset(
+    'assets/logo.png',
+    width: size,
+    height: size,
+    filterQuality: FilterQuality.medium,
+    excludeFromSemantics: true,
+  );
+}
 
 /// Status colors that read in both themes.
 abstract final class StatusColors {
@@ -44,6 +58,12 @@ class PhaseLook {
   final String hint;
 
   static PhaseLook of(AppLocalizations l, CoreStatus s) {
+    if (s.connectPending) {
+      return PhaseLook(l.stateConnecting, StatusColors.busy, '');
+    }
+    if (s.connectFailure.isNotEmpty) {
+      return PhaseLook(l.stateOff, StatusColors.idle, '');
+    }
     final message = stateText(l, s.state);
     return switch (s.state.phase) {
       // Connected in either mode on the computer (Proxy or System proxy).
@@ -454,10 +474,13 @@ const languageNames = {
   'bn': 'বাংলা',
 };
 
-/// The bundled font for a language: Vazirmatn for the Arabic script
-/// (Persian, Arabic); null for the system font.
-String? languageFont(String code) =>
-    const {'fa', 'ar'}.contains(code) ? 'Vazirmatn' : null;
+/// Bundled UI fonts for English and the Arabic script; other languages
+/// keep the platform typography and its script-specific fallbacks.
+String? languageFont(String code) => switch (code) {
+  'en' => 'Inter',
+  'fa' || 'ar' => 'Vazirmatn',
+  _ => null,
+};
 
 /// A title or label in its own language's font.
 TextStyle? languageStyle(String code) => switch (languageFont(code)) {
@@ -569,16 +592,25 @@ Color quotaColor(double usedPercent, double thresholdPercent) {
 
 /// A usage bar with the account-switch threshold marked.
 class QuotaBar extends StatelessWidget {
-  const QuotaBar({super.key, required this.percent, this.threshold = 0});
+  const QuotaBar({
+    super.key,
+    required this.percent,
+    this.threshold = 0,
+    this.unlimited = false,
+  });
 
   final double percent;
   final double threshold;
 
+  /// An account with no limit: the bar is full and in the accent colour, and
+  /// the threshold marker is left off, since there is nothing to run out of.
+  final bool unlimited;
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final value = (percent / 100).clamp(0.0, 1.0);
-    final color = quotaColor(percent, threshold);
+    final value = unlimited ? 1.0 : (percent / 100).clamp(0.0, 1.0);
+    final color = unlimited ? scheme.primary : quotaColor(percent, threshold);
     return SizedBox(
       height: 8,
       child: LayoutBuilder(
@@ -595,7 +627,7 @@ class QuotaBar extends StatelessWidget {
                 ),
               ),
             ),
-            if (threshold > 0 && threshold < 100)
+            if (!unlimited && threshold > 0 && threshold < 100)
               PositionedDirectional(
                 start: box.maxWidth * threshold / 100 - 1,
                 top: -3,
@@ -646,43 +678,6 @@ class Pill extends StatelessWidget {
       ),
     );
   }
-}
-
-/// The engine is on: any phase but off. The one derivation every home
-/// design uses, so no design can disagree with another about whether
-/// the VPN is on.
-bool engineOn(CoreStatus status) => status.state.phase != Phase.off;
-
-/// The connection is live: the engine runs and a connection test passed
-/// since it started (CoreStatus.confirmedBy). Every home shows
-/// "Connected" only then and "Connecting" until then — the classic
-/// desktop home's semantics, shared by all designs, so a design never
-/// claims a connection the test has not confirmed.
-bool connectionLive(CoreStatus status, ConnectionTest? lastTest) =>
-    status.confirmedBy(lastTest);
-
-/// The connect button's one behavior in every home design: with no
-/// accounts it opens the accounts page ([onNoAccounts]); otherwise it
-/// turns the power off or on — setOn, the engine's power, never the
-/// connection mode — and, when turning on, runs the test that confirms
-/// the connection. The classic desktop home's behavior, shared verbatim
-/// so every design connects in exactly the same way and time.
-void homePowerPressed(
-  BuildContext context,
-  CoreController core, {
-  required VoidCallback onNoAccounts,
-}) {
-  final status = core.status;
-  if (status == null) return;
-  if (status.totalAccounts == 0) {
-    onNoAccounts();
-    return;
-  }
-  final on = engineOn(status);
-  runShowingErrors(context, () async {
-    await core.setOn(!on);
-    if (!on) unawaited(core.runTest().catchError((_) {}));
-  });
 }
 
 /// Runs [action] and shows its error, if any, in a snack bar.
@@ -785,6 +780,11 @@ class LabeledSwitch extends StatelessWidget {
 /// only.
 Future<void> openLink(BuildContext context, String url) async {
   if (await openUrl(url) || !context.mounted) return;
+  await showLink(context, url);
+}
+
+/// Shows a readable address when no system handler can open it.
+Future<void> showLink(BuildContext context, String url) async {
   final l = AppLocalizations.of(context);
   final theme = Theme.of(context);
   await showDialog<void>(
