@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:material_ui/material_ui.dart';
 
 import 'zed_glass.dart';
 import 'zed_prefs.dart';
+import 'zed_theme.dart' show glassTintColor;
 
 /// The connect controls, one kit per design, reimplemented from the
 /// documented ZedSecure v3.2.0 variant catalogue (§25):
@@ -99,21 +101,14 @@ class _BusyArcPainter extends CustomPainter {
       ..strokeWidth = 2.5
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
-    canvas.drawArc(
-      Offset.zero & size,
-      -1.5708,
-      4.5239,
-      false,
-      paint,
-    );
+    canvas.drawArc(Offset.zero & size, -1.5708, 4.5239, false, paint);
   }
 
   @override
   bool shouldRepaint(_BusyArcPainter old) => old.color != color;
 }
 
-Widget _busyMark(BuildContext context, ZedConnectState s, Color color) =>
-    s.busy
+Widget _busyMark(BuildContext context, ZedConnectState s, Color color) => s.busy
     ? _BusyMark(color: color)
     : Icon(
         s.live ? Icons.power_settings_new_rounded : Icons.power_settings_new,
@@ -167,7 +162,10 @@ class ZedConnectControl extends StatelessWidget {
         state: state,
         prefs: prefs,
       ),
-      GlassConnectStyle.slider => _SlideConnect(state: state, glass: true),
+      GlassConnectStyle.slider => _GlassSlideConnect(
+        state: state,
+        prefs: prefs,
+      ),
     },
   };
 
@@ -184,10 +182,9 @@ class ZedConnectControl extends StatelessWidget {
 /// Slide-to-toggle: the wave track completes at a 0.72 drag fraction
 /// (§25). Sliding back while live disconnects by the same rule.
 class _SlideConnect extends StatefulWidget {
-  const _SlideConnect({required this.state, this.glass = false});
+  const _SlideConnect({required this.state});
 
   final ZedConnectState state;
-  final bool glass;
 
   @override
   State<_SlideConnect> createState() => _SlideConnectState();
@@ -260,13 +257,9 @@ class _SlideConnectState extends State<_SlideConnect> {
     // The knob's landing zone decides: from off, only a drag past
     // the connect threshold connects; from on, only a drag back
     // under the stay threshold disconnects — anything less springs
-    // back. The thresholds are per design: Bento's slide is
-    // 0.72/0.28 (§25); the Glass slider's own spec is 0.70/0.30
-    // (extract, GlassSlideControl) — the shared control used to run
-    // Bento's numbers for both (round-2 fidelity fix).
-    final endOn = s.on
-        ? drag >= (widget.glass ? 0.30 : 0.28)
-        : drag > (widget.glass ? 0.70 : 0.72);
+    // back. Bento's slide is 0.72/0.28 (§25); the Glass slider has
+    // its own control (_GlassSlideConnect) with its own 0.70/0.30.
+    final endOn = s.on ? drag >= 0.28 : drag > 0.72;
     if (endOn != s.on) s.onToggle();
     setState(() => _drag = null);
   }
@@ -287,7 +280,9 @@ class _SlideConnectState extends State<_SlideConnect> {
       builder: (context, constraints) {
         final width = constraints.maxWidth;
         const knob = 56.0;
-        final travel = (width - knob - 8).clamp(0.0, double.infinity).toDouble();
+        final travel = (width - knob - 8)
+            .clamp(0.0, double.infinity)
+            .toDouble();
         final rest = s.on ? 1.0 : 0.0;
         final frac = _drag ?? rest;
         return Listener(
@@ -344,6 +339,286 @@ class _SlideConnectState extends State<_SlideConnect> {
       },
     );
   }
+}
+
+/// The Glass slider: the original's dedicated GlassSlideControl
+/// (§2 of the extract, GlassControls.kt) — NOT the shared Bento
+/// slide with a glass flag, which is what the port ran through
+/// round 2. Its own geometry: a 74 dp glass-chrome track (the
+/// recipe's real-blur chrome capsule, radius 37), a 64 dp white
+/// knob resting 5 dp in, carrying the Z mark (30 dp; the glass
+/// tint while off, #FFB06CFF while on), and the state label centred
+/// with 72 dp of clearance on the knob's resting side, shimmering
+/// on a 2600 ms sweep while it waits. Landing thresholds are the
+/// slider's own 0.70 / 0.30. Pointer tracking is the slide's
+/// Listener pattern — outside the gesture arena, so the wrapping
+/// Tooltip can never cancel a paused drag — and the knob's motion
+/// is physical-left based, as in the source. The source's springs
+/// (stiff flip, 0.6-damped snap-back) are expressed as the kit's
+/// ease curves, like the glass switch's.
+class _GlassSlideConnect extends StatefulWidget {
+  const _GlassSlideConnect({required this.state, required this.prefs});
+
+  final ZedConnectState state;
+  final ZedPrefs prefs;
+
+  @override
+  State<_GlassSlideConnect> createState() => _GlassSlideConnectState();
+}
+
+class _GlassSlideConnectState extends State<_GlassSlideConnect>
+    with SingleTickerProviderStateMixin {
+  double? _drag;
+  int? _pointer;
+  double _downX = 0;
+  double _lastBeyond = 0;
+  DateTime? _downAt;
+  bool _reduced = false;
+
+  /// The label shimmer's sweep; runs only while the control waits
+  /// idle — never while busy, never under reduced motion.
+  late final AnimationController _shimmer = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2600),
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _reduced = MediaQuery.disableAnimationsOf(context);
+    _syncShimmer();
+  }
+
+  @override
+  void didUpdateWidget(_GlassSlideConnect old) {
+    super.didUpdateWidget(old);
+    _syncShimmer();
+  }
+
+  void _syncShimmer() {
+    if (widget.state.busy || _reduced) {
+      if (_shimmer.isAnimating) _shimmer.stop();
+      if (_shimmer.value != 0) _shimmer.value = 0;
+    } else if (!_shimmer.isAnimating) {
+      _shimmer.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _shimmer.dispose();
+    super.dispose();
+  }
+
+  void _down(PointerDownEvent e) {
+    if (_pointer != null) return;
+    _pointer = e.pointer;
+    _downX = e.position.dx;
+    _lastBeyond = 0;
+    _downAt = DateTime.now();
+  }
+
+  void _move(PointerMoveEvent e, double travel, bool rtl) {
+    if (e.pointer != _pointer) return;
+    final total = e.position.dx - _downX;
+    if (_drag == null && total.abs() <= 18) return;
+    final beyond = total - 18 * total.sign;
+    final dBeyond = beyond - _lastBeyond;
+    _lastBeyond = beyond;
+    if (travel <= 0 || dBeyond == 0) return;
+    final rest = widget.state.on ? 1.0 : 0.0;
+    final dx = rtl ? -dBeyond : dBeyond;
+    setState(() => _drag = ((_drag ?? rest) + dx / travel).clamp(0, 1));
+  }
+
+  void _up(PointerUpEvent e) {
+    if (e.pointer != _pointer) return;
+    _pointer = null;
+    final s = widget.state;
+    final drag = _drag;
+    if (drag == null) {
+      // A plain tap toggles — unless the press was held past the
+      // long-press deadline, which was the user reading the tooltip.
+      final held = _downAt == null
+          ? Duration.zero
+          : DateTime.now().difference(_downAt!);
+      if (held < const Duration(milliseconds: 500)) s.onToggle();
+      return;
+    }
+    final endOn = s.on ? drag >= 0.30 : drag > 0.70;
+    if (endOn != s.on) s.onToggle();
+    setState(() => _drag = null);
+  }
+
+  void _cancel(PointerCancelEvent e) {
+    if (e.pointer != _pointer) return;
+    _pointer = null;
+    if (_drag != null) setState(() => _drag = null);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.state;
+    final prefs = widget.prefs;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    final tint = glassTintColor(prefs.glassTint, dark);
+    final markColor = s.on ? const Color(0xFFB06CFF) : tint;
+    // While the shimmer runs the label wears the full label colour;
+    // still (busy / reduced motion) it drops to the secondary label
+    // token, exactly as the source switches label → label2.
+    final labelColor = Theme.of(context).colorScheme.onSurface;
+    final stillColor = dark ? const Color(0x99EBEBF5) : const Color(0x993C3C43);
+    final frac = _drag ?? (s.on ? 1.0 : 0.0);
+    final shimmering = !s.busy && !_reduced;
+    Widget label = Text(
+      s.label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontSize: 17,
+        fontWeight: FontWeight.w500,
+        color: shimmering ? Colors.white : stillColor,
+      ),
+    );
+    if (shimmering) {
+      label = AnimatedBuilder(
+        animation: _shimmer,
+        builder: (context, child) => ShaderMask(
+          blendMode: BlendMode.srcIn,
+          shaderCallback: (bounds) => LinearGradient(
+            colors: [
+              labelColor.withValues(alpha: 0.35),
+              labelColor,
+              labelColor.withValues(alpha: 0.35),
+            ],
+            // The source's band: full colour at 0.45, dim by 0.9.
+            stops: const [0, 0.45, 0.9],
+            transform: _SweepGradient((_shimmer.value * 2 - 1) * bounds.width),
+          ).createShader(bounds),
+          child: child,
+        ),
+        child: label,
+      );
+    }
+    return Semantics(
+      button: true,
+      toggled: s.on,
+      label: s.label,
+      onTap: s.onToggle,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final travel = math.max(1.0, constraints.maxWidth - 64 - 10);
+          return Listener(
+            onPointerDown: _down,
+            onPointerMove: (e) => _move(e, travel, rtl),
+            onPointerUp: _up,
+            onPointerCancel: _cancel,
+            child: SizedBox(
+              height: 74,
+              child: GlassChrome(
+                prefs: prefs,
+                radius: 37,
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: AnimatedPadding(
+                        duration: _reduced
+                            ? Duration.zero
+                            : const Duration(milliseconds: 220),
+                        curve: Curves.easeOut,
+                        padding: EdgeInsetsDirectional.only(
+                          start: s.on ? 0 : 72,
+                          end: s.on ? 72 : 0,
+                        ),
+                        child: Center(child: label),
+                      ),
+                    ),
+                    AnimatedPositioned(
+                      duration: _reduced || _drag != null
+                          ? Duration.zero
+                          : const Duration(milliseconds: 220),
+                      curve: Curves.easeOut,
+                      left: 5 + travel * frac,
+                      top: 5,
+                      child: Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Color(0x40000000),
+                              blurRadius: 6,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: s.busy
+                              ? _BusyMark(color: markColor)
+                              : CustomPaint(
+                                  size: const Size(30, 30),
+                                  painter: _ZMarkPainter(markColor),
+                                ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// The shimmer's travelling gradient: the α0.35 → 1 → α0.35 band
+/// swept across the label by the animation's progress.
+class _SweepGradient extends GradientTransform {
+  const _SweepGradient(this.dx);
+
+  final double dx;
+
+  @override
+  Matrix4? transform(Rect bounds, {TextDirection? textDirection}) =>
+      Matrix4.translationValues(dx, 0, 0);
+}
+
+/// The Z glyph of the original's vector mark (viewBox origin
+/// 98.5, 111; size 315×290), fitted into the knob's 30 dp box.
+class _ZMarkPainter extends CustomPainter {
+  const _ZMarkPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path()
+      ..moveTo(161, 111)
+      ..lineTo(413.5, 111)
+      ..lineTo(174.75, 331)
+      ..lineTo(351, 331)
+      ..lineTo(413.5, 401)
+      ..lineTo(98.5, 401)
+      ..lineTo(98.5, 298.5)
+      ..lineTo(226, 181)
+      ..lineTo(98.5, 181)
+      ..close();
+    final scale = size.width / 315;
+    canvas.save();
+    canvas.translate(size.width / 2, size.height / 2);
+    canvas.scale(scale);
+    canvas.translate(-(98.5 + 315 / 2), -(111 + 290 / 2));
+    canvas.drawPath(path, Paint()..color = color);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_ZMarkPainter old) => old.color != color;
 }
 
 /// The plain big button (Bento Button, Glass Button) and, smaller, the
@@ -589,7 +864,10 @@ class _RingPainter extends CustomPainter {
         ..strokeWidth = 6
         ..strokeCap = StrokeCap.round;
       canvas.drawArc(
-        Rect.fromCircle(center: size.center(Offset.zero), radius: size.width / 2 - 4),
+        Rect.fromCircle(
+          center: size.center(Offset.zero),
+          radius: size.width / 2 - 4,
+        ),
         -1.5708,
         progress * 6.2832,
         false,
@@ -658,17 +936,18 @@ class _HeroConnect extends StatelessWidget {
           color: color.withValues(alpha: 0.14),
           border: Border.all(color: color, width: 2),
           boxShadow: s.live
-              ? [BoxShadow(color: color.withValues(alpha: 0.45), blurRadius: 36)]
+              ? [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.45),
+                    blurRadius: 36,
+                  ),
+                ]
               : null,
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.power_settings_new_rounded,
-              size: 52,
-              color: color,
-            ),
+            Icon(Icons.power_settings_new_rounded, size: 52, color: color),
             const SizedBox(height: 6),
             Text(
               s.label,
@@ -776,27 +1055,50 @@ class _SwitchConnect extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = state;
     // While the state is busy the switch itself cannot show it, so
-    // the wait's mark rides beside the label.
+    // the wait's mark rides beside the label. The label is Flexible
+    // so a long localized state word at a large text scale ellipsizes
+    // instead of overflowing the row (round 3, ds3-02 finding 4).
     final row = <Widget>[
-      Text(s.label, style: const TextStyle(fontWeight: FontWeight.w700)),
+      Flexible(
+        child: Text(
+          s.label,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+      ),
       if (s.busy) ...[
         const SizedBox(width: 10),
         _busyMark(context, s, _stateColor(context, s)),
       ],
       const SizedBox(width: 16),
     ];
+    // MergeSemantics ties the state word to the switch, so a screen
+    // reader announces "Connected, switch, on" as one control
+    // instead of an unlabelled switch beside a stray text (ds3-02
+    // finding 3).
     if (prefs != null) {
-      return Row(
+      return MergeSemantics(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ...row,
+            GlassSwitch(
+              value: s.on,
+              onChanged: (_) => s.onToggle(),
+              prefs: prefs!,
+            ),
+          ],
+        ),
+      );
+    }
+    return MergeSemantics(
+      child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           ...row,
-          GlassSwitch(value: s.on, onChanged: (_) => s.onToggle(), prefs: prefs!),
+          Switch(value: s.on, onChanged: (_) => s.onToggle()),
         ],
-      );
-    }
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [...row, Switch(value: s.on, onChanged: (_) => s.onToggle())],
+      ),
     );
   }
 }
@@ -812,34 +1114,56 @@ class _GlassZConnect extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = state;
     final color = _stateColor(context, s);
-    return GestureDetector(
-      onTap: s.onToggle,
-      child: Container(
-        width: 168,
-        height: 168,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: color.withValues(alpha: 0.20),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.35),
-            width: 1,
-          ),
-          boxShadow: s.live
-              ? [BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 40)]
-              : null,
+    // The Z is a primary control, so it must read as a button with
+    // a state to a screen reader and take keyboard activation on
+    // desktop — a bare GestureDetector gives it neither (round 3,
+    // DeepSeek ds3-02 finding 1).
+    return FocusableActionDetector(
+      actions: <Type, Action<Intent>>{
+        ActivateIntent: CallbackAction<ActivateIntent>(
+          onInvoke: (_) => s.onToggle(),
         ),
-        child: Center(
-          child: s.busy
-              ? _BusyMark(color: color)
-              : Text(
-                  'Z',
-                  style: TextStyle(
-                    fontSize: 84,
-                    fontWeight: FontWeight.w800,
-                    color: color,
-                    height: 1,
-                  ),
-                ),
+      },
+      child: Semantics(
+        button: true,
+        toggled: s.on,
+        label: s.label,
+        onTap: s.onToggle,
+        child: GestureDetector(
+          onTap: s.onToggle,
+          child: Container(
+            width: 168,
+            height: 168,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color.withValues(alpha: 0.20),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.35),
+                width: 1,
+              ),
+              boxShadow: s.live
+                  ? [
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.5),
+                        blurRadius: 40,
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Center(
+              child: s.busy
+                  ? _BusyMark(color: color)
+                  : Text(
+                      'Z',
+                      style: TextStyle(
+                        fontSize: 84,
+                        fontWeight: FontWeight.w800,
+                        color: color,
+                        height: 1,
+                      ),
+                    ),
+            ),
+          ),
         ),
       ),
     );

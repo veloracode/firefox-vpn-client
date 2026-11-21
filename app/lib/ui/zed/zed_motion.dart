@@ -12,6 +12,37 @@ import 'zed_prefs.dart';
 /// 120/90 ms fade.
 
 abstract final class ZedMotion {
+  /// True while [animation] belongs to the OUTGOING page: the
+  /// switcher runs the same builder for both pages, the incoming one
+  /// driving its animation forward, the outgoing one in reverse.
+  /// The reference gives enter and exit SEPARATE transforms (§6.1),
+  /// so the branches below pick the transform by this test (proven
+  /// by zed_motion_exits_test.dart: mid-transition the outgoing
+  /// page's transform is the exit one, not the reversed enter).
+  static bool _exiting(Animation<double> animation) =>
+      animation.status == AnimationStatus.reverse ||
+      animation.status == AnimationStatus.dismissed;
+
+  /// The spec's fades are SHORTER than the transforms they ride
+  /// with (§6.1: Slide fades 220/180 within 320, Push 120/340,
+  /// Depth 160/200 within 300, Elastic 180 in / 160 out, Curtain
+  /// 200/260 within 360): the fade completes early and the
+  /// transform finishes alone. Maps the shared progress onto the
+  /// fade's own window (DeepSeek's round-3 draft formulation).
+  static double _fade(
+    double v, {
+    required bool exiting,
+    required double total,
+    required double fadeIn,
+    required double fadeOut,
+  }) {
+    if (exiting) {
+      final f = fadeOut / total;
+      return ((v - (1 - f)) / f).clamp(0.0, 1.0);
+    }
+    return (v / (fadeIn / total)).clamp(0.0, 1.0);
+  }
+
   /// Wraps a page change. [direction] is the sign of (new index − old
   /// index) in tab order, already flipped for RTL by the caller:
   /// horizontal transitions enter from the side the destination sits
@@ -31,42 +62,89 @@ abstract final class ZedMotion {
       case ZedTransitionStyle.fade:
         return FadeTransition(opacity: animation, child: child);
       case ZedTransitionStyle.slide:
-        // 320 ms at a third of the width (duration lives on the switcher).
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: Offset(direction / 3, 0),
-            end: Offset.zero,
-          ).animate(animation),
-          child: FadeTransition(opacity: animation, child: child),
-        );
-      case ZedTransitionStyle.push:
-        // Enter full width, exit a third — the asymmetric Push pair is
-        // approximated on the single switcher animation.
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: Offset(direction, 0),
-            end: Offset.zero,
-          ).animate(animation),
-          child: child,
-        );
-      case ZedTransitionStyle.depth:
-        // Spec (§6.1): enter scales 0.88 → 1, but the EXIT grows to
-        // 1.12 — the switcher runs this same builder in reverse for
-        // the outgoing page, so the tween is chosen by the
-        // animation's direction (round-2 finding M3: the exit used
-        // to shrink back to 0.88).
+        // Spec (§6.1): enter slides from sign × width/3, exit slides
+        // to −sign × width/3 — opposite directions, so the offset is
+        // chosen by the page's role, not by reversing one tween
+        // (round 3: the exit used to slide back out the way it came).
         return AnimatedBuilder(
           animation: animation,
           child: child,
           builder: (context, child) {
             final v = animation.value;
-            final exiting =
-                animation.status == AnimationStatus.reverse ||
-                animation.status == AnimationStatus.dismissed;
-            final scale = exiting ? 1 + (1 - v) * 0.12 : 0.88 + v * 0.12;
+            final dx = _exiting(animation)
+                ? -direction * (1 - v) / 3
+                : direction * (1 - v) / 3;
+            return FractionalTranslation(
+              translation: Offset(dx, 0),
+              child: Opacity(
+                opacity: _fade(
+                  v,
+                  exiting: _exiting(animation),
+                  total: 320,
+                  fadeIn: 220,
+                  fadeOut: 180,
+                ),
+                child: child,
+              ),
+            );
+          },
+        );
+      case ZedTransitionStyle.push:
+        // Spec (§6.1): the asymmetric Push pair — enter from the
+        // FULL width, exit to a THIRD of the width on the opposite
+        // side. Chosen by role like Slide (round 3).
+        return AnimatedBuilder(
+          animation: animation,
+          child: child,
+          builder: (context, child) {
+            final v = animation.value;
+            final dx = _exiting(animation)
+                ? -direction * (1 - v) / 3
+                : direction * (1 - v);
+            return FractionalTranslation(
+              translation: Offset(dx, 0),
+              child: Opacity(
+                opacity: _fade(
+                  v,
+                  exiting: _exiting(animation),
+                  total: 340,
+                  fadeIn: 120,
+                  fadeOut: 340,
+                ),
+                child: child,
+              ),
+            );
+          },
+        );
+      case ZedTransitionStyle.depth:
+        // Spec (§6.1): forward, enter scales 0.88 → 1 and the exit
+        // grows to 1.12; back, the pair swaps (enter from 1.12, exit
+        // to 0.88). The switcher runs this same builder in reverse
+        // for the outgoing page, so the tween is chosen by the
+        // animation's direction (round-2 finding M3: the exit used
+        // to shrink back to 0.88; round 3: the back pair was the
+        // forward pair).
+        return AnimatedBuilder(
+          animation: animation,
+          child: child,
+          builder: (context, child) {
+            final v = animation.value;
+            final forward = direction > 0;
+            final scale = _exiting(animation)
+                ? (forward ? 1 + (1 - v) * 0.12 : 1 - (1 - v) * 0.12)
+                : (forward ? 0.88 + v * 0.12 : 1.12 - v * 0.12);
             return Transform.scale(
               scale: scale,
-              child: FadeTransition(opacity: animation, child: child),
+              child: Opacity(
+                opacity: _fade(
+                  v,
+                  exiting: _exiting(animation),
+                  total: 300,
+                  fadeIn: 160,
+                  fadeOut: 200,
+                ),
+                child: child,
+              ),
             );
           },
         );
@@ -76,33 +154,86 @@ abstract final class ZedMotion {
         // ride the RAW progress: an overshooting curve on opacity
         // exceeds 1.0 mid-flight and asserts in debug builds
         // (round-2 finding M1 — the old code also scaled from 0).
-        // Scale and slide take the spring curve; the exit is the
-        // same builder reversed (the spec's scale-to-0.96 exit is
-        // approximated by the return to 0.9).
-        final spring = CurvedAnimation(
-          parent: animation,
-          curve: Curves.elasticOut,
-        );
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, 0.125),
-            end: Offset.zero,
-          ).animate(spring),
-          child: ScaleTransition(
-            scale: Tween<double>(begin: 0.9, end: 1).animate(spring),
-            child: FadeTransition(opacity: animation, child: child),
-          ),
+        // The EXIT is its own transform — scale to 0.96, no slide —
+        // not the enter reversed (round 3; the exit's 220 ms lives
+        // in reverseDuration).
+        return AnimatedBuilder(
+          animation: animation,
+          child: child,
+          builder: (context, child) {
+            if (_exiting(animation)) {
+              final v = animation.value;
+              return Transform.scale(
+                scale: 1 - (1 - v) * 0.04,
+                child: Opacity(
+                  opacity: _fade(
+                    v,
+                    exiting: true,
+                    total: 220,
+                    fadeIn: 180,
+                    fadeOut: 160,
+                  ),
+                  child: child,
+                ),
+              );
+            }
+            final spring = CurvedAnimation(
+              parent: animation,
+              curve: Curves.elasticOut,
+            );
+            return SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.125),
+                end: Offset.zero,
+              ).animate(spring),
+              child: ScaleTransition(
+                scale: Tween<double>(begin: 0.9, end: 1).animate(spring),
+                child: Opacity(
+                  opacity: _fade(
+                    animation.value,
+                    exiting: false,
+                    total: 450,
+                    fadeIn: 180,
+                    fadeOut: 160,
+                  ),
+                  child: child,
+                ),
+              ),
+            );
+          },
         );
       case ZedTransitionStyle.curtain:
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, 0.5),
-            end: Offset.zero,
-          ).animate(animation),
-          child: ScaleTransition(
-            scale: Tween<double>(begin: 0.94, end: 1).animate(animation),
-            child: child,
-          ),
+        // Spec (§6.1): forward, the new page slides up from
+        // height/2 while the old one scales to 0.94; back, the new
+        // page scales in from 0.94 while the old one slides away to
+        // height/2. Each page gets its own half of the pair, chosen
+        // by role and direction (round 3: both pages used to slide
+        // and scale together).
+        return AnimatedBuilder(
+          animation: animation,
+          child: child,
+          builder: (context, child) {
+            final v = animation.value;
+            final forward = direction > 0;
+            final slides = _exiting(animation) ? !forward : forward;
+            final opacity = _fade(
+              v,
+              exiting: _exiting(animation),
+              total: 360,
+              fadeIn: 200,
+              fadeOut: 260,
+            );
+            if (slides) {
+              return FractionalTranslation(
+                translation: Offset(0, (1 - v) * 0.5),
+                child: Opacity(opacity: opacity, child: child),
+              );
+            }
+            return Transform.scale(
+              scale: 0.94 + v * 0.06,
+              child: Opacity(opacity: opacity, child: child),
+            );
+          },
         );
       case ZedTransitionStyle.flip:
         return AnimatedBuilder(
@@ -110,7 +241,16 @@ abstract final class ZedMotion {
           child: child,
           builder: (context, child) {
             final t = animation.value;
-            final angle = (1 - t) * math.pi * (78 / 180) * direction;
+            // Spec (§6.1 + transitionDecoration): the entering page
+            // turns from +78° × sign to 0; the LEAVING page turns to
+            // −78° × sign (PostExit), not back the way it came
+            // (round 3).
+            final angle =
+                (_exiting(animation) ? -1 : 1) *
+                (1 - t) *
+                math.pi *
+                (78 / 180) *
+                direction;
             // Spec (§6.1): the pivot sits near the leading edge
             // (transformOrigin 0.15 / 0.85 by sign) and the page
             // fades as it turns, alpha = 1 − |angle| / 110
@@ -149,25 +289,27 @@ abstract final class ZedMotion {
     };
   }
 
-  static Duration reverseDuration(
-    ZedTransitionStyle style,
-    bool reduceMotion,
-  ) {
+  static Duration reverseDuration(ZedTransitionStyle style, bool reduceMotion) {
     if (reduceMotion) return const Duration(milliseconds: 90);
     return switch (style) {
       ZedTransitionStyle.fade => const Duration(milliseconds: 180),
+      // Spec (§6.1): Elastic's exit is a 220 ms tween (its fade is
+      // 160 ms, riding the same progress) — the enter's spring
+      // window does not apply to the way out.
+      ZedTransitionStyle.elastic => const Duration(milliseconds: 220),
       _ => duration(style, reduceMotion),
     };
   }
 
   static Curve curve(ZedTransitionStyle style) => switch (style) {
-    // Elastic's switcher-level curve must NOT overshoot: it drives
-    // the fade (see the elastic branch of transition(), which puts
+    // Every spec tween without an explicit easing uses Compose's
+    // default FastOutSlowInEasing (§6.1) — the port ran the styles
+    // on easeInOutCubic / easeOutCubic (round 3, finding M-7).
+    // Elastic keeps a non-overshooting curve at the switcher level:
+    // it drives the fade (the elastic branch of transition() puts
     // the spring curve on scale/slide only).
     ZedTransitionStyle.elastic => Curves.easeOut,
-    ZedTransitionStyle.depth => Curves.easeOutCubic,
-    ZedTransitionStyle.curtain => Curves.easeOutCubic,
-    _ => Curves.easeInOutCubic,
+    _ => Curves.fastOutSlowIn,
   };
 }
 
@@ -207,7 +349,11 @@ class ZedPageSwitcher extends StatelessWidget {
     switchInCurve: reduceMotion
         ? Curves.easeOut
         : ZedMotion.curve(prefs.transitionStyle),
-    switchOutCurve: Curves.easeIn,
+    // The spec's exit tweens ride the same FastOutSlowIn default;
+    // the port hardcoded easeIn for every style (finding M-7).
+    switchOutCurve: reduceMotion
+        ? Curves.easeIn
+        : ZedMotion.curve(prefs.transitionStyle),
     transitionBuilder: (child, animation) => ZedMotion.transition(
       style: prefs.transitionStyle,
       reduceMotion: reduceMotion,
@@ -259,8 +405,7 @@ class _ZedEntranceState extends State<ZedEntrance>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _reduced =
-        widget.reduceMotion || MediaQuery.disableAnimationsOf(context);
+    _reduced = widget.reduceMotion || MediaQuery.disableAnimationsOf(context);
     if (_reduced) {
       // Reduced motion: render the end state and never schedule the
       // staggered start at all (a pending start timer outliving the

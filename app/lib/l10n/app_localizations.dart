@@ -3333,6 +3333,192 @@ abstract class AppLocalizations {
   /// **'Upload speed'**
   String get zedUpload;
 
+  /// No description provided for @zedSetAccent.
+  ///
+  /// In en, this message translates to:
+  /// **'Accent'**
+  String get zedSetAccent;
+
+  /// No description provided for @zedSetBentoPalette.
+  ///
+  /// In en, this message translates to:
+  /// **'Bento palette'**
+  String get zedSetBentoPalette;
+
+  /// No description provided for @zedSetBentoCorners.
+  ///
+  /// In en, this message translates to:
+  /// **'Bento corners'**
+  String get zedSetBentoCorners;
+
+  /// No description provided for @zedSetConnectControl.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect control'**
+  String get zedSetConnectControl;
+
+  /// No description provided for @zedSetDockLabels.
+  ///
+  /// In en, this message translates to:
+  /// **'Dock labels'**
+  String get zedSetDockLabels;
+
+  /// No description provided for @zedSetAmoled.
+  ///
+  /// In en, this message translates to:
+  /// **'AMOLED'**
+  String get zedSetAmoled;
+
+  /// No description provided for @zedSetGlassMaterial.
+  ///
+  /// In en, this message translates to:
+  /// **'Glass material'**
+  String get zedSetGlassMaterial;
+
+  /// No description provided for @zedSetWallpaper.
+  ///
+  /// In en, this message translates to:
+  /// **'Wallpaper'**
+  String get zedSetWallpaper;
+
+  /// No description provided for @zedSetGlassTint.
+  ///
+  /// In en, this message translates to:
+  /// **'Glass tint'**
+  String get zedSetGlassTint;
+
+  /// No description provided for @zedSetGlassLists.
+  ///
+  /// In en, this message translates to:
+  /// **'Glass lists'**
+  String get zedSetGlassLists;
+
+  /// No description provided for @zedSetShrinkTabBar.
+  ///
+  /// In en, this message translates to:
+  /// **'Shrink tab bar'**
+  String get zedSetShrinkTabBar;
+
+  /// No description provided for @zedSetMotionHighlights.
+  ///
+  /// In en, this message translates to:
+  /// **'Motion highlights'**
+  String get zedSetMotionHighlights;
+
+  /// No description provided for @zedSetReduceTransparency.
+  ///
+  /// In en, this message translates to:
+  /// **'Reduce transparency'**
+  String get zedSetReduceTransparency;
+
+  /// No description provided for @zedSetShowSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Show speed'**
+  String get zedSetShowSpeed;
+
+  /// No description provided for @zedSetShowTimer.
+  ///
+  /// In en, this message translates to:
+  /// **'Show timer'**
+  String get zedSetShowTimer;
+
+  /// No description provided for @zedSetNavBar.
+  ///
+  /// In en, this message translates to:
+  /// **'Navigation bar'**
+  String get zedSetNavBar;
+
+  /// No description provided for @zedSetTransition.
+  ///
+  /// In en, this message translates to:
+  /// **'Screen transition'**
+  String get zedSetTransition;
+
+  /// No description provided for @zedSetThemeProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme profile'**
+  String get zedSetThemeProfile;
+
+  /// No description provided for @zedDockActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get zedDockActive;
+
+  /// No description provided for @zedDockAlways.
+  ///
+  /// In en, this message translates to:
+  /// **'Always'**
+  String get zedDockAlways;
+
+  /// No description provided for @zedDockNever.
+  ///
+  /// In en, this message translates to:
+  /// **'Never'**
+  String get zedDockNever;
+
+  /// No description provided for @zedNavFloatingPill.
+  ///
+  /// In en, this message translates to:
+  /// **'Floating pill'**
+  String get zedNavFloatingPill;
+
+  /// No description provided for @zedNavFullBar.
+  ///
+  /// In en, this message translates to:
+  /// **'Full bar'**
+  String get zedNavFullBar;
+
+  /// No description provided for @zedNavExpressivePill.
+  ///
+  /// In en, this message translates to:
+  /// **'Expressive pill'**
+  String get zedNavExpressivePill;
+
+  /// No description provided for @zedNavCompactDock.
+  ///
+  /// In en, this message translates to:
+  /// **'Compact dock'**
+  String get zedNavCompactDock;
+
+  /// No description provided for @zedNavUnderline.
+  ///
+  /// In en, this message translates to:
+  /// **'Underline'**
+  String get zedNavUnderline;
+
+  /// No description provided for @zedNavMinimal.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimal'**
+  String get zedNavMinimal;
+
+  /// No description provided for @zedNavDock.
+  ///
+  /// In en, this message translates to:
+  /// **'Dock'**
+  String get zedNavDock;
+
+  /// No description provided for @zedConnectButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Button'**
+  String get zedConnectButton;
+
+  /// No description provided for @zedConnectSwitch.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch'**
+  String get zedConnectSwitch;
+
+  /// No description provided for @zedConnectSlider.
+  ///
+  /// In en, this message translates to:
+  /// **'Slider'**
+  String get zedConnectSlider;
+
   /// No description provided for @testRelay.
   ///
   /// In en, this message translates to:

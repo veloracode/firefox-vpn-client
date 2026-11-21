@@ -26,9 +26,7 @@ void main() {
             prefs,
             ZedGroup(
               prefs: prefs,
-              rows: const [
-                ListTile(title: Text('Row')),
-              ],
+              rows: const [ListTile(title: Text('Row'))],
             ),
           ),
         );
@@ -216,15 +214,18 @@ void main() {
       expect(scheme.surfaceBright, const Color(0xFF1A1A1A));
     });
 
-    test('dark Bento errorContainer is a container tone, not the accent',
-        () {
+    test('dark Bento errorContainer is the palette coral pair (round 3)', () {
+      // Round 2 pinned the generic Material pair #93000A/#FFDAD6;
+      // round 3 checked BentoTheme.kt and REFUTED that premise:
+      // bentoColorScheme() maps the dark error container to the
+      // palette's own coral tone pair (BrandDark: #4A251D/#FFD3C6).
       final theme = ZedTheme.build(
         Brightness.dark,
         const Locale('en'),
         const ZedPrefs(),
       );
-      expect(theme.colorScheme.errorContainer, const Color(0xFF93000A));
-      expect(theme.colorScheme.onErrorContainer, const Color(0xFFFFDAD6));
+      expect(theme.colorScheme.errorContainer, const Color(0xFF4A251D));
+      expect(theme.colorScheme.onErrorContainer, const Color(0xFFFFD3C6));
     });
 
     testWidgets('the glass switch is the wide green capsule (§2.7)', (
@@ -254,10 +255,7 @@ void main() {
         app(
           const ZedPrefs(design: ZedDesign.glass, reduceTransparency: true),
           const ZedModule(
-            prefs: ZedPrefs(
-              design: ZedDesign.glass,
-              reduceTransparency: true,
-            ),
+            prefs: ZedPrefs(design: ZedDesign.glass, reduceTransparency: true),
             child: Text('cell'),
           ),
         ),
@@ -297,10 +295,7 @@ void main() {
         findsNothing,
       );
       expect(
-        find.ancestor(
-          of: find.text('row'),
-          matching: find.byType(Transform),
-        ),
+        find.ancestor(of: find.text('row'), matching: find.byType(Transform)),
         findsNothing,
       );
     });

@@ -1897,6 +1897,99 @@ class AppLocalizationsRu extends AppLocalizations {
   String get zedUpload => 'Upload';
 
   @override
+  String get zedSetAccent => 'Accent';
+
+  @override
+  String get zedSetBentoPalette => 'Bento palette';
+
+  @override
+  String get zedSetBentoCorners => 'Bento corners';
+
+  @override
+  String get zedSetConnectControl => 'Connect control';
+
+  @override
+  String get zedSetDockLabels => 'Dock labels';
+
+  @override
+  String get zedSetAmoled => 'AMOLED';
+
+  @override
+  String get zedSetGlassMaterial => 'Glass material';
+
+  @override
+  String get zedSetWallpaper => 'Wallpaper';
+
+  @override
+  String get zedSetGlassTint => 'Glass tint';
+
+  @override
+  String get zedSetGlassLists => 'Glass lists';
+
+  @override
+  String get zedSetShrinkTabBar => 'Shrink tab bar';
+
+  @override
+  String get zedSetMotionHighlights => 'Motion highlights';
+
+  @override
+  String get zedSetReduceTransparency => 'Reduce transparency';
+
+  @override
+  String get zedSetShowSpeed => 'Show speed';
+
+  @override
+  String get zedSetShowTimer => 'Show timer';
+
+  @override
+  String get zedSetNavBar => 'Navigation bar';
+
+  @override
+  String get zedSetTransition => 'Screen transition';
+
+  @override
+  String get zedSetThemeProfile => 'Theme profile';
+
+  @override
+  String get zedDockActive => 'Active';
+
+  @override
+  String get zedDockAlways => 'Always';
+
+  @override
+  String get zedDockNever => 'Never';
+
+  @override
+  String get zedNavFloatingPill => 'Floating pill';
+
+  @override
+  String get zedNavFullBar => 'Full bar';
+
+  @override
+  String get zedNavExpressivePill => 'Expressive pill';
+
+  @override
+  String get zedNavCompactDock => 'Compact dock';
+
+  @override
+  String get zedNavUnderline => 'Underline';
+
+  @override
+  String get zedNavMinimal => 'Minimal';
+
+  @override
+  String get zedNavDock => 'Dock';
+
+  @override
+  String get zedConnectButton => 'Button';
+
+  @override
+  String get zedConnectSwitch => 'Switch';
+
+  @override
+  String get zedConnectSlider => 'Slider';
+
+  @override
   String get testRelay => 'Проверить реле';
 
   @override

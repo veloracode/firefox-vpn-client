@@ -173,6 +173,19 @@ List<(SettingsSection, String)> settingsIndex(AppLocalizations l) => [
   (SettingsSection.general, l.startOnBoot),
   (SettingsSection.general, l.theme),
   (SettingsSection.general, l.uiDesign),
+  // The design rows _general spreads in from _zedDesignRows (round 3:
+  // their titles became l10n keys, so the search can find them now).
+  (SettingsSection.general, l.zedSetAccent),
+  (SettingsSection.general, l.zedSetBentoCorners),
+  (SettingsSection.general, l.zedSetBentoPalette),
+  (SettingsSection.general, l.zedSetConnectControl),
+  (SettingsSection.general, l.zedSetDockLabels),
+  (SettingsSection.general, l.zedSetGlassMaterial),
+  (SettingsSection.general, l.zedSetGlassTint),
+  (SettingsSection.general, l.zedSetNavBar),
+  (SettingsSection.general, l.zedSetThemeProfile),
+  (SettingsSection.general, l.zedSetTransition),
+  (SettingsSection.general, l.zedSetWallpaper),
   (SettingsSection.connection, l.connectionMode),
   (SettingsSection.connection, l.ipVersion),
   (SettingsSection.connection, l.listenAddress),
@@ -491,7 +504,9 @@ class _SettingsPageState extends State<SettingsPage> {
                         sections.any((e) => e.$1 == entry.$1) &&
                         settingOnThisPlatform(l, entry.$2) &&
                         !shown.any(
-                          (g) => g.$2.any((e) => e.$1 == entry.$1 && e.$3 == entry.$2),
+                          (g) => g.$2.any(
+                            (e) => e.$1 == entry.$1 && e.$3 == entry.$2,
+                          ),
                         ))
                       entry,
                 ];
@@ -3306,7 +3321,7 @@ List<Widget> _zedDesignRows(AppLocalizations l, AppSettings s) {
   // Material designs — so both designs' blocks offer the same row.
   Widget accentRow() => _Choice<int>(
     icon: Icons.palette_outlined,
-    title: 'Accent',
+    title: l.zedSetAccent,
     value: z.pixelAccent,
     onChanged: (v) => set(z.copyWith(pixelAccent: v)),
     options: [
@@ -3328,25 +3343,21 @@ List<Widget> _zedDesignRows(AppLocalizations l, AppSettings s) {
       rows.addAll([
         _Choice<BentoPalette>(
           icon: Icons.palette_outlined,
-          title: 'Bento palette',
+          title: l.zedSetBentoPalette,
           value: z.bentoPalette,
           onChanged: (v) => set(z.copyWith(bentoPalette: v)),
-          options: [
-            for (final p in BentoPalette.values) (p, p.name, null),
-          ],
+          options: [for (final p in BentoPalette.values) (p, p.name, null)],
         ),
         _Choice<BentoCorner>(
           icon: Icons.rounded_corner,
-          title: 'Bento corners',
+          title: l.zedSetBentoCorners,
           value: z.bentoCorner,
           onChanged: (v) => set(z.copyWith(bentoCorner: v)),
-          options: [
-            for (final c in BentoCorner.values) (c, c.name, null),
-          ],
+          options: [for (final c in BentoCorner.values) (c, c.name, null)],
         ),
         _Choice<BentoConnectStyle>(
           icon: Icons.power_settings_new_rounded,
-          title: 'Connect control',
+          title: l.zedSetConnectControl,
           value: z.bentoConnect,
           onChanged: (v) => set(z.copyWith(bentoConnect: v)),
           options: [
@@ -3355,16 +3366,25 @@ List<Widget> _zedDesignRows(AppLocalizations l, AppSettings s) {
         ),
         _Choice<BentoDockLabels>(
           icon: Icons.dock_rounded,
-          title: 'Dock labels',
+          title: l.zedSetDockLabels,
           value: z.bentoDockLabels,
           onChanged: (v) => set(z.copyWith(bentoDockLabels: v)),
           options: [
-            for (final c in BentoDockLabels.values) (c, c.name, null),
+            for (final c in BentoDockLabels.values)
+              (
+                c,
+                switch (c) {
+                  BentoDockLabels.active => l.zedDockActive,
+                  BentoDockLabels.always => l.zedDockAlways,
+                  BentoDockLabels.never => l.zedDockNever,
+                },
+                null,
+              ),
           ],
         ),
         toggle(
           Icons.dark_mode_rounded,
-          'AMOLED',
+          l.zedSetAmoled,
           z.bentoAmoled,
           (v) => set(z.copyWith(bentoAmoled: v)),
         ),
@@ -3373,25 +3393,21 @@ List<Widget> _zedDesignRows(AppLocalizations l, AppSettings s) {
       rows.addAll([
         _Choice<GlassMaterial>(
           icon: Icons.blur_on_rounded,
-          title: 'Glass material',
+          title: l.zedSetGlassMaterial,
           value: z.glassMaterial,
           onChanged: (v) => set(z.copyWith(glassMaterial: v)),
-          options: [
-            for (final m in GlassMaterial.values) (m, m.name, null),
-          ],
+          options: [for (final m in GlassMaterial.values) (m, m.name, null)],
         ),
         _Choice<GlassWallpaper>(
           icon: Icons.wallpaper_rounded,
-          title: 'Wallpaper',
+          title: l.zedSetWallpaper,
           value: z.glassWallpaper,
           onChanged: (v) => set(z.copyWith(glassWallpaper: v)),
-          options: [
-            for (final w in GlassWallpaper.values) (w, w.name, null),
-          ],
+          options: [for (final w in GlassWallpaper.values) (w, w.name, null)],
         ),
         _Choice<int>(
           icon: Icons.color_lens_outlined,
-          title: 'Glass tint',
+          title: l.zedSetGlassTint,
           value: z.glassTint,
           onChanged: (v) => set(z.copyWith(glassTint: v)),
           options: [
@@ -3411,99 +3427,125 @@ List<Widget> _zedDesignRows(AppLocalizations l, AppSettings s) {
         ),
         _Choice<GlassConnectStyle>(
           icon: Icons.power_settings_new_rounded,
-          title: 'Connect control',
+          title: l.zedSetConnectControl,
           value: z.glassConnect,
           onChanged: (v) => set(z.copyWith(glassConnect: v)),
           options: [
             (GlassConnectStyle.z, 'Z', null),
-            (GlassConnectStyle.button, 'Button', null),
-            (GlassConnectStyle.switchStyle, 'Switch', null),
-            (GlassConnectStyle.slider, 'Slider', null),
+            (GlassConnectStyle.button, l.zedConnectButton, null),
+            (GlassConnectStyle.switchStyle, l.zedConnectSwitch, null),
+            (GlassConnectStyle.slider, l.zedConnectSlider, null),
           ],
         ),
-        toggle(Icons.list_rounded, 'Glass lists', z.glassLists,
-            (v) => set(z.copyWith(glassLists: v))),
-        toggle(Icons.compress_rounded, 'Shrink tab bar', z.glassShrinkBar,
-            (v) => set(z.copyWith(glassShrinkBar: v))),
-        toggle(Icons.auto_awesome_rounded, 'Motion highlights',
-            z.glassMotionHighlights,
-            (v) => set(z.copyWith(glassMotionHighlights: v))),
-        toggle(Icons.opacity_rounded, 'Reduce transparency',
-            z.reduceTransparency,
-            (v) => set(z.copyWith(reduceTransparency: v))),
-        toggle(Icons.speed_rounded, 'Show speed', z.glassShowSpeed,
-            (v) => set(z.copyWith(glassShowSpeed: v))),
-        toggle(Icons.timer_outlined, 'Show timer', z.glassShowTimer,
-            (v) => set(z.copyWith(glassShowTimer: v))),
+        toggle(
+          Icons.list_rounded,
+          l.zedSetGlassLists,
+          z.glassLists,
+          (v) => set(z.copyWith(glassLists: v)),
+        ),
+        toggle(
+          Icons.compress_rounded,
+          l.zedSetShrinkTabBar,
+          z.glassShrinkBar,
+          (v) => set(z.copyWith(glassShrinkBar: v)),
+        ),
+        toggle(
+          Icons.auto_awesome_rounded,
+          l.zedSetMotionHighlights,
+          z.glassMotionHighlights,
+          (v) => set(z.copyWith(glassMotionHighlights: v)),
+        ),
+        toggle(
+          Icons.opacity_rounded,
+          l.zedSetReduceTransparency,
+          z.reduceTransparency,
+          (v) => set(z.copyWith(reduceTransparency: v)),
+        ),
+        toggle(
+          Icons.speed_rounded,
+          l.zedSetShowSpeed,
+          z.glassShowSpeed,
+          (v) => set(z.copyWith(glassShowSpeed: v)),
+        ),
+        toggle(
+          Icons.timer_outlined,
+          l.zedSetShowTimer,
+          z.glassShowTimer,
+          (v) => set(z.copyWith(glassShowTimer: v)),
+        ),
       ]);
     case ZedDesign.pixel:
       rows.addAll([
         accentRow(),
         _Choice<PixelConnectStyle>(
           icon: Icons.power_settings_new_rounded,
-          title: 'Connect control',
+          title: l.zedSetConnectControl,
           value: z.pixelConnect,
           onChanged: (v) => set(z.copyWith(pixelConnect: v)),
           options: [
             for (final c in PixelConnectStyle.values)
-              (c, c.name == 'switchStyle' ? 'Switch' : c.name, null),
+              (c, c.name == 'switchStyle' ? l.zedConnectSwitch : c.name, null),
           ],
         ),
-        toggle(Icons.nightlight_round, 'AMOLED', z.pixelAmoled,
-            (v) => set(z.copyWith(pixelAmoled: v))),
+        toggle(
+          Icons.nightlight_round,
+          l.zedSetAmoled,
+          z.pixelAmoled,
+          (v) => set(z.copyWith(pixelAmoled: v)),
+        ),
       ]);
     case ZedDesign.old:
       rows.addAll([
         accentRow(),
         _Choice<PixelConnectStyle>(
           icon: Icons.power_settings_new_rounded,
-          title: 'Connect control',
+          title: l.zedSetConnectControl,
           value: z.oldConnect,
           onChanged: (v) => set(z.copyWith(oldConnect: v)),
           options: [
             for (final c in PixelConnectStyle.values)
-              (c, c.name == 'switchStyle' ? 'Switch' : c.name, null),
+              (c, c.name == 'switchStyle' ? l.zedConnectSwitch : c.name, null),
           ],
         ),
-        toggle(Icons.nightlight_round, 'AMOLED', z.oldAmoled,
-            (v) => set(z.copyWith(oldAmoled: v))),
+        toggle(
+          Icons.nightlight_round,
+          l.zedSetAmoled,
+          z.oldAmoled,
+          (v) => set(z.copyWith(oldAmoled: v)),
+        ),
       ]);
   }
   rows.addAll([
     _Choice<NavBarStyle>(
       icon: Icons.dock_rounded,
-      title: 'Navigation bar',
+      title: l.zedSetNavBar,
       value: z.navStyle,
       // Nav style and transition are not profile-controlled fields:
       // editing them must not clear the profile selection.
       onChanged: (v) => s.update(zed: z.copyWith(navStyle: v)),
       options: [
-        (NavBarStyle.floatingPill, 'Floating pill', null),
-        (NavBarStyle.fullBar, 'Full bar', null),
-        (NavBarStyle.expressivePill, 'Expressive pill', null),
-        (NavBarStyle.compactDock, 'Compact dock', null),
-        (NavBarStyle.underline, 'Underline', null),
-        (NavBarStyle.minimal, 'Minimal', null),
-        (NavBarStyle.dock, 'Dock', null),
+        (NavBarStyle.floatingPill, l.zedNavFloatingPill, null),
+        (NavBarStyle.fullBar, l.zedNavFullBar, null),
+        (NavBarStyle.expressivePill, l.zedNavExpressivePill, null),
+        (NavBarStyle.compactDock, l.zedNavCompactDock, null),
+        (NavBarStyle.underline, l.zedNavUnderline, null),
+        (NavBarStyle.minimal, l.zedNavMinimal, null),
+        (NavBarStyle.dock, l.zedNavDock, null),
       ],
     ),
     _Choice<ZedTransitionStyle>(
       icon: Icons.animation_rounded,
-      title: 'Screen transition',
+      title: l.zedSetTransition,
       value: z.transitionStyle,
       onChanged: (v) => s.update(zed: z.copyWith(transitionStyle: v)),
-      options: [
-        for (final t in ZedTransitionStyle.values) (t, t.name, null),
-      ],
+      options: [for (final t in ZedTransitionStyle.values) (t, t.name, null)],
     ),
     _Choice<ZedThemeProfile>(
       icon: Icons.style_rounded,
-      title: 'Theme profile',
+      title: l.zedSetThemeProfile,
       value: z.profile,
       onChanged: (v) => s.update(zed: _applyZedProfile(z, v)),
-      options: [
-        for (final p in ZedThemeProfile.values) (p, p.name, null),
-      ],
+      options: [for (final p in ZedThemeProfile.values) (p, p.name, null)],
     ),
   ]);
   return rows;

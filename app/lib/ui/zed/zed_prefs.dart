@@ -35,9 +35,19 @@ enum BentoCorner { leaf, round, soft }
 
 /// Which dock items carry their label (BentoDockLabels in the
 /// original): only the active one, all of them, or none. The port
-/// defaults to [always] where the original defaults to active: this
-/// app's dock has two destinations, and an unlabelled Settings icon
-/// fails the app's own readability rule.
+/// defaults to [always] where the original defaults to active —
+/// a deliberate deviation, re-examined in round 3 and kept, for
+/// reasons the original's four-destination dock does not face:
+/// (1) with only two destinations there is no crowding for Active
+/// to relieve — both labels always fit; (2) this app's navigation
+/// contract treats both labels as always-present affordances —
+/// its widget tests find and tap the dock's Settings label by its
+/// text, and switching the default to Active failed seven of them
+/// (the gear icon stays visible under Active, but its label is
+/// part of how this app's users and tests address the tab);
+/// (3) the reference behaviour remains one settings tap away:
+/// Active is a stored option, honoured exactly as chosen. Only
+/// the DEFAULT differs.
 enum BentoDockLabels { active, always, never }
 
 /// Bento connect controls (§25). Slide is the wave-track control with a
@@ -202,8 +212,7 @@ class ZedPrefs {
     glassConnect: glassConnect ?? this.glassConnect,
     glassLists: glassLists ?? this.glassLists,
     glassShrinkBar: glassShrinkBar ?? this.glassShrinkBar,
-    glassMotionHighlights:
-        glassMotionHighlights ?? this.glassMotionHighlights,
+    glassMotionHighlights: glassMotionHighlights ?? this.glassMotionHighlights,
     reduceTransparency: reduceTransparency ?? this.reduceTransparency,
     glassShowSpeed: glassShowSpeed ?? this.glassShowSpeed,
     glassShowTimer: glassShowTimer ?? this.glassShowTimer,
@@ -250,9 +259,7 @@ class ZedPrefs {
   };
 
   static T _enum<T extends Enum>(List<T> values, Object? name, T fallback) =>
-      name is String
-      ? (values.asNameMap()[name] ?? fallback)
-      : fallback;
+      name is String ? (values.asNameMap()[name] ?? fallback) : fallback;
 
   /// Reads a stored block; anything missing or unknown falls back to the
   /// defaults, so a settings file from before this model existed (or a
@@ -265,8 +272,7 @@ class ZedPrefs {
     final glass = block('glass');
     final pixel = block('pixel');
     final old = block('old');
-    int index(Object? v, int max) =>
-        v is int && v >= 0 && v < max ? v : 0;
+    int index(Object? v, int max) => v is int && v >= 0 && v < max ? v : 0;
     return ZedPrefs(
       design: _enum(ZedDesign.values, j['design'], ZedDesign.bento),
       bentoPalette: _enum(
@@ -321,13 +327,21 @@ class ZedPrefs {
         PixelConnectStyle.pill,
       ),
       oldAmoled: old['amoled'] == true,
-      navStyle: _enum(NavBarStyle.values, j['nav_style'], NavBarStyle.expressivePill),
+      navStyle: _enum(
+        NavBarStyle.values,
+        j['nav_style'],
+        NavBarStyle.expressivePill,
+      ),
       transitionStyle: _enum(
         ZedTransitionStyle.values,
         j['transition'],
         ZedTransitionStyle.push,
       ),
-      profile: _enum(ZedThemeProfile.values, j['profile'], ZedThemeProfile.none),
+      profile: _enum(
+        ZedThemeProfile.values,
+        j['profile'],
+        ZedThemeProfile.none,
+      ),
     );
   }
 }

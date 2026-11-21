@@ -152,15 +152,40 @@ void main() {
     });
 
     testWidgets('slider toggles after a past-threshold drag', (tester) async {
-      final taps = await run(
-        tester,
-        const ZedPrefs(
-          design: ZedDesign.glass,
-          glassConnect: GlassConnectStyle.slider,
-        ),
-        act: () =>
-            tester.drag(find.byType(ZedConnectControl), const Offset(300, 0)),
+      // Not run(): the dedicated Glass slider's label shimmers on a
+      // perpetual 2600 ms loop (the original's behaviour), so the
+      // tree never settles and pumpAndSettle would time out. The
+      // toggle itself fires synchronously on pointer-up.
+      var taps = 0;
+      const prefs = ZedPrefs(
+        design: ZedDesign.glass,
+        glassConnect: GlassConnectStyle.slider,
       );
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ZedTheme.build(Brightness.dark, const Locale('en'), prefs),
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 320,
+                child: ZedConnectControl(
+                  prefs: prefs,
+                  state: ZedConnectState(
+                    on: false,
+                    busy: false,
+                    live: false,
+                    label: 'Off',
+                    onToggle: () => taps++,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.drag(find.byType(ZedConnectControl), const Offset(300, 0));
+      await tester.pump();
       expect(taps, 1);
     });
   });

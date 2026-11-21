@@ -82,7 +82,11 @@ abstract final class GlassTokens {
 /// at the scaffold; it never scrolls or animates (the recipe's
 /// smoothness rule).
 class GlassWallpaperView extends StatelessWidget {
-  const GlassWallpaperView({super.key, required this.prefs, required this.dark});
+  const GlassWallpaperView({
+    super.key,
+    required this.prefs,
+    required this.dark,
+  });
 
   final ZedPrefs prefs;
   final bool dark;
@@ -128,9 +132,7 @@ class GlassWallpaperView extends StatelessWidget {
             ? const [Color(0xFF121317), Color(0xFF050506)]
             : const [Color(0xFFE1E5EC), Color(0xFFECEEF2)],
         const [0.0, 1.0],
-        [
-          _Glow(0.80, 0.08, 0.85, 0.42, Color(dark ? 0x3D98989D : 0xE6FFFFFF)),
-        ],
+        [_Glow(0.80, 0.08, 0.85, 0.42, Color(dark ? 0x3D98989D : 0xE6FFFFFF))],
         null,
       ),
       GlassWallpaper.plain => (
@@ -255,7 +257,8 @@ class GlassModule extends StatelessWidget {
     }
     // Prefs reach the kit through the theme's card colour alpha for the
     // material; the rim/highlight are pure recipe constants.
-    final fill = Theme.of(context).cardTheme.color ??
+    final fill =
+        Theme.of(context).cardTheme.color ??
         GlassTokens.moduleFill(dark, GlassMaterial.clear);
     final body = DecoratedBox(
       decoration: BoxDecoration(
@@ -271,25 +274,18 @@ class GlassModule extends StatelessWidget {
           ),
           child: Stack(
             children: [
-              Padding(
-                padding: padding ?? EdgeInsets.zero,
-                child: child,
-              ),
-              // The specular sliver: one cached 1 dp line at the top.
-              Positioned(
-                top: 0,
-                left: radius * 0.6,
-                right: radius * 0.6,
-                child: Container(
-                  height: 1,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.transparent,
-                        GlassTokens.highlight(dark),
-                        Colors.transparent,
-                      ],
-                    ),
+              Padding(padding: padding ?? EdgeInsets.zero, child: child),
+              // The specular sliver: the top 1 dp slice of the
+              // module's own outline (the original's glassHighlight
+              // draws outline − outline-shifted-1dp, so the line
+              // follows the corner arcs across the full width —
+              // round 3, finding G-3: the port drew a straight
+              // inset bar that stopped short of the corners).
+              Positioned.fill(
+                child: CustomPaint(
+                  painter: _SliverPainter(
+                    radius: radius - 1,
+                    color: GlassTokens.highlight(dark),
                   ),
                 ),
               ),
@@ -302,6 +298,34 @@ class GlassModule extends StatelessWidget {
     if (tap == null) return body;
     return ZedPressable(onTap: tap, child: body);
   }
+}
+
+/// Paints the specular sliver as the top 1 dp slice of a rounded
+/// rect's outline: the shape minus itself shifted down 1 dp.
+class _SliverPainter extends CustomPainter {
+  const _SliverPainter({required this.radius, required this.color});
+
+  final double radius;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
+    final outline = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(radius)),
+      );
+    final slice = Path.combine(
+      PathOperation.difference,
+      outline,
+      outline.shift(const Offset(0, 1)),
+    );
+    canvas.drawPath(slice, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(_SliverPainter old) =>
+      old.radius != radius || old.color != color;
 }
 
 /// Real-glass chrome: the ONLY pieces allowed a backdrop blur (~12 dp).
@@ -390,11 +414,14 @@ class _GlassChromeState extends State<GlassChrome> {
     body = DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(radius),
-        boxShadow: const [
+        boxShadow: [
           BoxShadow(
-            color: Color(0x33000000),
+            // The recipe's shadow token (§2.1): 50% black in the
+            // dark, 12% in the light — the port used a fixed 20%
+            // for both (round 3, finding G-2).
+            color: dark ? const Color(0x80000000) : const Color(0x1F000000),
             blurRadius: 24,
-            offset: Offset(0, 8),
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -451,7 +478,12 @@ class _ZedPressableState extends State<ZedPressable> {
     onTapCancel: () => setState(() => _down = false),
     child: AnimatedScale(
       scale: _down ? (widget.pressScale ?? (widget.glass ? 1.07 : 1.03)) : 1,
-      duration: const Duration(milliseconds: 180),
+      // Reduced motion kills the press grow, as it does in the
+      // kit's own press wrappers (round 3, finding G-1: this one
+      // animated under the OS setting).
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : const Duration(milliseconds: 180),
       curve: Curves.easeOutBack,
       child: widget.child,
     ),
@@ -487,49 +519,50 @@ class GlassSwitch extends StatelessWidget {
     // off — and a 37×24 capsule knob travelling 2dp → 24dp.
     // (Round 2, finding G2: the port had a 52×32 tint-coloured
     // switch with a round knob.)
-    return Semantics(
-      toggled: value,
-      child: GestureDetector(
-        onTap: onChanged == null ? null : () => onChanged!(!value),
-        child: AnimatedContainer(
-          duration: duration,
-          curve: Curves.easeOut,
-          width: 63,
-          height: 28,
-          decoration: BoxDecoration(
-            color: value
-                ? (dark
-                      ? const Color(0xFF30D158)
-                      : const Color(0xFF34C759))
-                : (dark
-                      ? const Color(0x5C787880)
-                      : const Color(0x33787880)),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Stack(
-            children: [
-              AnimatedPositioned(
-                duration: duration,
-                curve: Curves.easeOut,
-                left: value ? 24 : 2,
-                top: 2,
-                child: Container(
-                  width: 37,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x33000000),
-                        blurRadius: 3,
-                        offset: Offset(0, 1),
-                      ),
-                    ],
+    // A disabled switch dims to 40% (§2.7) — the port only detached
+    // the tap handler and rendered it fully opaque (round 3, G-4).
+    return Opacity(
+      opacity: onChanged == null ? 0.4 : 1,
+      child: Semantics(
+        toggled: value,
+        child: GestureDetector(
+          onTap: onChanged == null ? null : () => onChanged!(!value),
+          child: AnimatedContainer(
+            duration: duration,
+            curve: Curves.easeOut,
+            width: 63,
+            height: 28,
+            decoration: BoxDecoration(
+              color: value
+                  ? (dark ? const Color(0xFF30D158) : const Color(0xFF34C759))
+                  : (dark ? const Color(0x5C787880) : const Color(0x33787880)),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Stack(
+              children: [
+                AnimatedPositioned(
+                  duration: duration,
+                  curve: Curves.easeOut,
+                  left: value ? 24 : 2,
+                  top: 2,
+                  child: Container(
+                    width: 37,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x33000000),
+                          blurRadius: 3,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

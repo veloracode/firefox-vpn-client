@@ -10,6 +10,9 @@ import 'package:firefox_vpn/ui/settings_page.dart';
 /// there belongs to that section.
 const _builders = {
   'general': SettingsSection.general,
+  // _zedDesignRows is not a section builder of its own: _general
+  // spreads its rows in, so its titles belong to General (round 3).
+  'zedDesignRows': SettingsSection.general,
   'connection': SettingsSection.connection,
   'bypass': SettingsSection.relay,
   'upstreamProxy': SettingsSection.upstreamProxy,
@@ -28,7 +31,11 @@ Set<(SettingsSection, String)> _titlesInSource(String source) {
       r'\n  Widget _(\w+)\(AppLocalizations l',
     ).allMatches(source))
       (m.start, m.group(1)!),
-  ];
+    for (final m in RegExp(
+      r'\nList<Widget> _(zedDesignRows)\(AppLocalizations l',
+    ).allMatches(source))
+      (m.start, m.group(1)!),
+  ]..sort((a, b) => a.$1.compareTo(b.$1));
   SettingsSection? sectionAt(int position) {
     SettingsSection? found;
     for (final (at, name) in starts) {

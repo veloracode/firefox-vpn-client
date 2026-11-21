@@ -64,7 +64,10 @@ class _MobileShellState extends State<MobileShell> {
     AndroidCore.homeRequests.addListener(_openHome);
   }
 
-  void _openHome() => setState(() => _tab = 0);
+  void _openHome() => setState(() {
+    _tab = 0;
+    _dockShrunk = false;
+  });
 
   @override
   void dispose() {
@@ -78,13 +81,34 @@ class _MobileShellState extends State<MobileShell> {
       MaterialPageRoute<void>(
         builder: (context) => ListenableBuilder(
           listenable: widget.core,
-          builder: (context, _) => Scaffold(
-            appBar: AppBar(title: Text(title)),
-            body: SafeArea(
+          builder: (context, _) {
+            final body = SafeArea(
               top: false,
               child: OwnTopBar(child: _readable(page())),
-            ),
-          ),
+            );
+            return Scaffold(
+              appBar: AppBar(title: Text(title)),
+              // Under Glass the scaffold is transparent (the design's
+              // theme), so a pushed page needs the wallpaper behind
+              // it like every in-shell surface — without it the
+              // translucent glass surfaces rendered over the plain
+              // window background (round-3 integration finding F2).
+              body: widget.settings.zed.design == ZedDesign.glass
+                  ? Stack(
+                      children: [
+                        Positioned.fill(
+                          child: GlassWallpaperView(
+                            prefs: widget.settings.zed,
+                            dark:
+                                Theme.of(context).brightness == Brightness.dark,
+                          ),
+                        ),
+                        body,
+                      ],
+                    )
+                  : body,
+            );
+          },
         ),
       ),
     );
@@ -175,8 +199,9 @@ class _MobileShellState extends State<MobileShell> {
         widget.noCore ??
         ZedPageSwitcher(
           prefs: settings.zed,
-          reduceMotion: !settings.animationsEnabled ||
-          MediaQuery.disableAnimationsOf(context),
+          reduceMotion:
+              !settings.animationsEnabled ||
+              MediaQuery.disableAnimationsOf(context),
           direction: _tabDirection,
           child: KeyedSubtree(
             key: ValueKey(tab),
@@ -200,7 +225,16 @@ class _MobileShellState extends State<MobileShell> {
           settings.zed.design == ZedDesign.glass &&
           settings.zed.glassShrinkBar &&
           _dockShrunk,
-      onSelect: (i) => setState(() => _tab = i),
+      // A tab change always lands on a fresh page at its top, so a
+      // scroll-collapsed dock must restore with it: the flag is only
+      // ever written by the scroll listener, and a freshly mounted
+      // list at rest emits no scroll notification to clear it — the
+      // dock used to stay mini on the new tab until the user
+      // scrolled down and back up (round-3 integration finding F1).
+      onSelect: (i) => setState(() {
+        _tab = i;
+        _dockShrunk = false;
+      }),
       items: [
         (Icons.home_outlined, Icons.home_rounded, l.navHome),
         (Icons.settings_outlined, Icons.settings_rounded, l.navSettings),
@@ -210,7 +244,12 @@ class _MobileShellState extends State<MobileShell> {
     return PopScope(
       canPop: tab == 0,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) setState(() => _tab = 0);
+        if (!didPop) {
+          setState(() {
+            _tab = 0;
+            _dockShrunk = false;
+          });
+        }
       },
       child: Scaffold(
         // Glass gets the wallpaper + floating dock stack; every other
@@ -266,7 +305,6 @@ class _MobileShellState extends State<MobileShell> {
       ),
     );
   }
-
 }
 
 /// The Settings tab: what the app manages, the groups of settings, and the
@@ -367,60 +405,56 @@ class _SettingsListState extends State<_SettingsList> {
         // Language and theme first, what someone looks for before anything
         // else, with which country and account; then how the traffic goes,
         // what helps when Mozilla is blocked, and the app itself.
-        section(
-          SettingsSection.general,
-          Icons.tune_rounded,
-          l.sectionGeneral,
-        ),
+        section(SettingsSection.general, Icons.tune_rounded, l.sectionGeneral),
         row(Icons.public_rounded, l.navServers, onOpenServers),
         row(Icons.people_outline_rounded, l.navAccounts, onOpenAccounts),
       ]),
       ?group(l.groupNetwork, [
-          section(
-            SettingsSection.connection,
-            Icons.vpn_lock_outlined,
-            l.sectionConnection,
-          ),
-          section(
-            SettingsSection.routing,
-            Icons.alt_route_rounded,
-            l.sectionRouting,
-          ),
-          section(SettingsSection.dns, Icons.dns_rounded, l.sectionDns),
-        ]),
+        section(
+          SettingsSection.connection,
+          Icons.vpn_lock_outlined,
+          l.sectionConnection,
+        ),
+        section(
+          SettingsSection.routing,
+          Icons.alt_route_rounded,
+          l.sectionRouting,
+        ),
+        section(SettingsSection.dns, Icons.dns_rounded, l.sectionDns),
+      ]),
       ?group(l.sectionBypass, [
-          section(SettingsSection.relay, Icons.cloud_outlined, l.apiRelay),
-          section(
-            SettingsSection.fragment,
-            Icons.content_cut_rounded,
-            l.tlsFragment,
-          ),
-          section(
-            SettingsSection.upstreamProxy,
-            Icons.lan_outlined,
-            l.upstreamProxy,
-          ),
-        ]),
+        section(SettingsSection.relay, Icons.cloud_outlined, l.apiRelay),
+        section(
+          SettingsSection.fragment,
+          Icons.content_cut_rounded,
+          l.tlsFragment,
+        ),
+        section(
+          SettingsSection.upstreamProxy,
+          Icons.lan_outlined,
+          l.upstreamProxy,
+        ),
+      ]),
       ?group(l.groupApp, [
-          // The app's port and the web dashboard: computers only (a narrow
-          // window shows this layout too).
-          if (!Platform.isAndroid)
-            section(
-              SettingsSection.advanced,
-              Icons.build_outlined,
-              l.sectionAdvanced,
-            ),
-          row(
-            Icons.receipt_long_outlined,
-            l.navLogs,
-            () => push(l.navLogs, () => LogsPage(core: core)),
+        // The app's port and the web dashboard: computers only (a narrow
+        // window shows this layout too).
+        if (!Platform.isAndroid)
+          section(
+            SettingsSection.advanced,
+            Icons.build_outlined,
+            l.sectionAdvanced,
           ),
-          row(
-            Icons.info_outline_rounded,
-            l.navAbout,
-            () => push(l.navAbout, () => AboutPage(core: core)),
-          ),
-        ]),
+        row(
+          Icons.receipt_long_outlined,
+          l.navLogs,
+          () => push(l.navLogs, () => LogsPage(core: core)),
+        ),
+        row(
+          Icons.info_outline_rounded,
+          l.navAbout,
+          () => push(l.navAbout, () => AboutPage(core: core)),
+        ),
+      ]),
     ];
     return ListView(
       padding: pagePadding(context),
@@ -439,9 +473,8 @@ class _SettingsListState extends State<_SettingsList> {
               suffixIcon: _search.text.isEmpty
                   ? null
                   : IconButton(
-                      tooltip: MaterialLocalizations.of(
-                        context,
-                      ).deleteButtonTooltip,
+                      tooltip: MaterialLocalizations.of(context)
+                          .deleteButtonTooltip,
                       icon: const Icon(Icons.close_rounded),
                       onPressed: () => setState(() {
                         _search.clear();

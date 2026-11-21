@@ -9,6 +9,7 @@ import 'package:firefox_vpn/app_settings.dart';
 import 'package:firefox_vpn/core/core_api.dart';
 import 'package:firefox_vpn/core/core_controller.dart';
 import 'package:firefox_vpn/ui/zed/zed_kit.dart' show ZedDock;
+import 'package:firefox_vpn/ui/zed/zed_glass.dart' show GlassWallpaperView;
 import 'package:firefox_vpn/core/models.dart';
 import 'package:firefox_vpn/core/relay_test.dart';
 import 'package:firefox_vpn/core/tun_service.dart';
@@ -1716,10 +1717,7 @@ void main() {
           }),
         );
         await tester.pumpAndSettle();
-        expect(
-          find.text(l.relayTestFailed),
-          findsOneWidget,
-        );
+        expect(find.text(l.relayTestFailed), findsOneWidget);
         expect(find.textContaining('HTTP 429:'), findsOneWidget);
         final closeButton = find.widgetWithText(FilledButton, l.close);
         final copyLabel = tester.getRect(find.text(l.relayTestCopy));
@@ -2592,6 +2590,61 @@ void main() {
     await tester.tap(find.text('Logs'));
     await tester.pumpAndSettle();
     expect(find.textContaining('proxy started'), findsNothing);
+
+    await tester.pumpWidget(const SizedBox());
+    core.dispose();
+  });
+
+  testWidgets('glass phone: the shrunk dock restores on a tab switch, '
+      'and pushed pages keep the wallpaper', (tester) async {
+    stillMotion(tester);
+    tester.view.physicalSize = const Size(400, 860);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final settings = AppSettings()
+      ..update(
+        zed: const ZedPrefs(design: ZedDesign.glass, glassShrinkBar: true),
+      );
+    final core = CoreController(
+      () async => FakeApi(),
+      pollInterval: const Duration(hours: 1),
+    );
+    await tester.pumpWidget(VpnApp(core: core, settings: settings));
+    core.start();
+    await tester.pumpAndSettle();
+
+    // One wallpaper behind the shell; the dock starts full-size.
+    expect(find.byType(GlassWallpaperView), findsOneWidget);
+    expect(tester.widget<ZedDock>(find.byType(ZedDock)).shrunk, isFalse);
+
+    // On the Settings tab, scroll the (always overflowing) list
+    // down: the shrink preference collapses the dock.
+    await tester.tap(find.bySemanticsLabel('Settings'));
+    await tester.pumpAndSettle();
+    await tester.dragFrom(const Offset(200, 500), const Offset(0, -320));
+    await tester.pumpAndSettle();
+    expect(tester.widget<ZedDock>(find.byType(ZedDock)).shrunk, isTrue);
+
+    // Switch tabs: the fresh page starts at its top, so the dock
+    // must be restored with it (round-3 integration finding F1 —
+    // the flag is only written by the scroll listener, and a fresh
+    // list at rest emits no notification to clear it).
+    await tester.tap(find.bySemanticsLabel('Home'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<ZedDock>(find.byType(ZedDock)).shrunk, isFalse);
+
+    // A pushed page under Glass keeps a wallpaper behind it
+    // (round-3 integration finding F2): the shell's plus its own
+    // (the covered shell counts only with skipOffstage: false).
+    await tester.tap(find.bySemanticsLabel('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Accounts'));
+    await tester.pumpAndSettle();
+    expect(
+      find.byType(GlassWallpaperView, skipOffstage: false),
+      findsNWidgets(2),
+    );
 
     await tester.pumpWidget(const SizedBox());
     core.dispose();
@@ -3936,9 +3989,8 @@ class FakeTunService implements TunService {
 // only while connecting, animated while motion is on, a still arc when
 // it is off.
 void _connectingRingTests() {
-  Finder ring() => find.byWidgetPredicate(
-    (w) => w.runtimeType.toString() == '_BusyMark',
-  );
+  Finder ring() =>
+      find.byWidgetPredicate((w) => w.runtimeType.toString() == '_BusyMark');
 
   for (final desktop in [false, true]) {
     final layout = desktop ? 'desktop' : 'phone';

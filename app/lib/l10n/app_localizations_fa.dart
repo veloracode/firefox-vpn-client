@@ -1869,10 +1869,103 @@ class AppLocalizationsFa extends AppLocalizations {
   String get zedSpeedLive => 'فعال';
 
   @override
-  String get zedDownload => 'دانلود';
+  String get zedDownload => 'سرعت دانلود';
 
   @override
-  String get zedUpload => 'آپلود';
+  String get zedUpload => 'سرعت آپلود';
+
+  @override
+  String get zedSetAccent => 'رنگ تاکیدی';
+
+  @override
+  String get zedSetBentoPalette => 'پالت بنتو';
+
+  @override
+  String get zedSetBentoCorners => 'گوشه‌های بنتو';
+
+  @override
+  String get zedSetConnectControl => 'کنترل اتصال';
+
+  @override
+  String get zedSetDockLabels => 'برچسب‌های داک';
+
+  @override
+  String get zedSetAmoled => 'AMOLED';
+
+  @override
+  String get zedSetGlassMaterial => 'جنس شیشه';
+
+  @override
+  String get zedSetWallpaper => 'پس‌زمینه';
+
+  @override
+  String get zedSetGlassTint => 'رنگ شیشه';
+
+  @override
+  String get zedSetGlassLists => 'فهرست‌های شیشه‌ای';
+
+  @override
+  String get zedSetShrinkTabBar => 'جمع‌کردن نوار تب';
+
+  @override
+  String get zedSetMotionHighlights => 'هایلایت‌های حرکتی';
+
+  @override
+  String get zedSetReduceTransparency => 'کاهش شفافیت';
+
+  @override
+  String get zedSetShowSpeed => 'نمایش سرعت';
+
+  @override
+  String get zedSetShowTimer => 'نمایش تایمر';
+
+  @override
+  String get zedSetNavBar => 'نوار ناوبری';
+
+  @override
+  String get zedSetTransition => 'ترانزیشن صفحه';
+
+  @override
+  String get zedSetThemeProfile => 'پروفایل تم';
+
+  @override
+  String get zedDockActive => 'فقط فعال';
+
+  @override
+  String get zedDockAlways => 'همیشه';
+
+  @override
+  String get zedDockNever => 'هرگز';
+
+  @override
+  String get zedNavFloatingPill => 'کپسول شناور';
+
+  @override
+  String get zedNavFullBar => 'نوار کامل';
+
+  @override
+  String get zedNavExpressivePill => 'کپسول اکسپرسیو';
+
+  @override
+  String get zedNavCompactDock => 'داک فشرده';
+
+  @override
+  String get zedNavUnderline => 'زیرخط‌دار';
+
+  @override
+  String get zedNavMinimal => 'مینیمال';
+
+  @override
+  String get zedNavDock => 'داک';
+
+  @override
+  String get zedConnectButton => 'دکمه';
+
+  @override
+  String get zedConnectSwitch => 'سوییچ';
+
+  @override
+  String get zedConnectSlider => 'اسلایدر';
 
   @override
   String get testRelay => 'تست سلامت رله';
