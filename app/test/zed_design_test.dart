@@ -244,29 +244,13 @@ void main() {
       expect(glassTintColor(99, true), glassTintColor(11, true));
     });
 
-    test('bento shapes are the extract radii', () {
-      // The Leaf corners are directional: resolved LTR they are the
-      // extract's (36, 36, 36, 12); resolved RTL the small corner
-      // mirrors to the start (right) side.
-      expect(
-        bentoModuleRadius(BentoCorner.leaf).resolve(TextDirection.ltr),
-        const BorderRadius.only(
-          topLeft: Radius.circular(36),
-          topRight: Radius.circular(36),
-          bottomRight: Radius.circular(36),
-          bottomLeft: Radius.circular(12),
-        ),
-      );
-      expect(
-        bentoModuleRadius(BentoCorner.leaf).resolve(TextDirection.rtl),
-        const BorderRadius.only(
-          topLeft: Radius.circular(36),
-          topRight: Radius.circular(36),
-          bottomRight: Radius.circular(12),
-          bottomLeft: Radius.circular(36),
-        ),
-      );
-      expect(bentoModuleRadius(BentoCorner.round), BorderRadius.circular(36));
+    test('bento shapes are the source radii', () {
+      // BentoShapes.card() (BentoKit.kt): a uniform 30 in every
+      // corner style, 20 for Soft — Leaf cards are NOT asymmetric
+      // (rounds 1–3 pinned tile(prominent)'s 36 values here).
+      expect(bentoModuleRadius(BentoCorner.leaf), BorderRadius.circular(30));
+      expect(bentoModuleRadius(BentoCorner.round), BorderRadius.circular(30));
+      expect(bentoModuleRadius(BentoCorner.soft), BorderRadius.circular(20));
       expect(bentoHeroRadius(BentoCorner.soft), BorderRadius.circular(22));
     });
 
@@ -349,7 +333,9 @@ void main() {
         const ZedPrefs(bentoConnect: BentoConnectStyle.button),
         () => taps++,
       );
-      await tester.tap(find.byType(FilledButton));
+      // The source's Bento Button is a custom block, not a Material
+      // FilledButton (round 4): tap the control itself.
+      await tester.tap(find.byType(ZedConnectControl));
       expect(taps, 1);
     });
 
@@ -403,7 +389,9 @@ void main() {
         const ZedPrefs(design: ZedDesign.glass),
         () => taps++,
       );
-      await tester.tap(find.text('Z'));
+      // The Z is custom-painted since round 4 (no text glyph to
+      // find): tap the control itself.
+      await tester.tap(find.byType(ZedConnectControl));
       expect(taps, 1);
     });
 

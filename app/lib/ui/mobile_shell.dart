@@ -295,6 +295,18 @@ class _MobileShellState extends State<MobileShell> {
                       ),
                     ),
                   ),
+                  // The status-bar top edge (the recipe's fourth
+                  // blur site): content scrolling under the status
+                  // bar blurs and tints through it (round 4).
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    top: 0,
+                    child: GlassTopEdge(
+                      prefs: settings.zed,
+                      dark: Theme.of(context).brightness == Brightness.dark,
+                    ),
+                  ),
                   // The dock floats OVER the page (real-glass chrome),
                   // outside the page transition like every dock here.
                   Positioned(left: 0, right: 0, bottom: 0, child: dock),

@@ -242,11 +242,21 @@ void main() {
       expect(taps, 1);
     });
 
-    testWidgets('busy shows the wait mark and stops the shimmer', (
+    testWidgets('busy keeps the Z mark and stops the shimmer', (
       tester,
     ) async {
       await pumpSlider(tester, busy: true, cb: () {});
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      // Round 4 (source, GlassControls.kt): the slider's knob
+      // carries the Z mark in EVERY phase — the round-3 port swapped
+      // in the wait mark while busy, which the original never does.
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byType(ZedConnectControl),
+          matching: find.byType(CustomPaint),
+        ),
+        findsWidgets,
+      );
       expect(find.byType(ShaderMask), findsNothing);
     });
 

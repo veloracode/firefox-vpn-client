@@ -449,12 +449,14 @@ void main() {
     expect(api.mode, 'set');
     expect(find.text('Connected'), findsOneWidget);
 
-    // The button turns the proxy off, and on again.
-    await tester.tap(find.byTooltip('Click to disconnect'));
+    // The button turns the proxy off, and on again. (The Bento
+    // slide toggles on a past-threshold DRAG — a tap only nudges
+    // it, exactly as in the original; round 4.)
+    await tester.drag(find.byTooltip('Click to disconnect'), const Offset(-800, 0));
     await tester.pumpAndSettle();
     expect(api.on, isFalse);
     expect(find.text('Disconnected'), findsOneWidget);
-    await tester.tap(find.byTooltip('Click to connect'));
+    await tester.drag(find.byTooltip('Click to connect'), const Offset(800, 0));
     await tester.pumpAndSettle();
     expect(api.on, isTrue);
     expect(find.text('Connected'), findsOneWidget);
@@ -2626,10 +2628,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.widget<ZedDock>(find.byType(ZedDock)).shrunk, isTrue);
 
-    // Switch tabs: the fresh page starts at its top, so the dock
-    // must be restored with it (round-3 integration finding F1 —
-    // the flag is only written by the scroll listener, and a fresh
-    // list at rest emits no notification to clear it).
+    // The shrunk bar is the source's Mini form (round 4): the
+    // current tab alone in a glass circle. Tapping it expands the
+    // full bar (the shell's select resets the shrink flag — the
+    // round-3 F1 stale-flag path), and only then can the tab switch.
+    await tester.tap(find.bySemanticsLabel('Settings'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<ZedDock>(find.byType(ZedDock)).shrunk, isFalse);
     await tester.tap(find.bySemanticsLabel('Home'));
     await tester.pumpAndSettle();
     expect(tester.widget<ZedDock>(find.byType(ZedDock)).shrunk, isFalse);
@@ -2746,7 +2751,9 @@ void main() {
     // The local address is not shown unless shared with the LAN.
     expect(find.textContaining('10810'), findsNothing);
 
-    await tester.tap(find.byTooltip('Tap to disconnect'));
+    // The Bento slide toggles on a past-threshold drag (a tap only
+    // nudges it, as in the original; round 4).
+    await tester.drag(find.byTooltip('Tap to disconnect'), const Offset(-800, 0));
     await tester.pumpAndSettle();
     expect(api.on, isFalse);
     expect(find.text('Disconnected'), findsOneWidget);
@@ -2754,7 +2761,7 @@ void main() {
     expect(find.text('Location'), findsOneWidget);
     expect(find.text('Recommended location'), findsOneWidget);
 
-    await tester.tap(find.byTooltip('Tap to connect'));
+    await tester.drag(find.byTooltip('Tap to connect'), const Offset(800, 0));
     await tester.pumpAndSettle();
     expect(api.on, isTrue);
     expect(find.text('Connected'), findsOneWidget);
@@ -2844,8 +2851,10 @@ void main() {
       core.start();
       await tester.pumpAndSettle();
 
-      await tester.tap(
+      // The Bento slide toggles on a past-threshold drag (round 4).
+      await tester.drag(
         find.byTooltip(desktop ? l.tapToConnect : l.tapToConnectPhone),
+        const Offset(800, 0),
       );
       await tester.pumpAndSettle();
       expect(find.text(l.stateConnecting), findsOneWidget);
@@ -2936,8 +2945,9 @@ void main() {
     core.start();
     await tester.pumpAndSettle();
 
-    // Waiting for an account counts as on: the button would disconnect.
-    await tester.tap(find.byTooltip('Click to disconnect'));
+    // Waiting for an account counts as on: the button would
+    // disconnect. (The Bento slide toggles on a drag; round 4.)
+    await tester.drag(find.byTooltip('Click to disconnect'), const Offset(-800, 0));
     await tester.pumpAndSettle();
     // The page that explains accounts, not the sign-in form.
     expect(find.byType(Dialog), findsNothing);
@@ -3984,14 +3994,15 @@ class FakeTunService implements TunService {
 // connected or idle app animates nothing, and it must respect the system's
 // "reduce motion" setting.
 //
-// Zed rebuild note: the classic hero's ring is gone with the hero; the
-// same contract now binds the Zed connect control's busy mark — present
-// only while connecting, animated while motion is on, a still arc when
-// it is off.
+// Zed rebuild note: the classic hero's ring is gone with the hero.
+// Round-4 note: the default home's control is the Bento slide, whose
+// busy language is the original's — the state word, the cancel hint,
+// and the wave's untravelled part DASHING (its phase turning over
+// 900 ms). There is no spinner on it, in any state. The contract
+// below binds that: progress is shown only while connecting, the
+// dash animates only while it waits, and with motion off it stands
+// still.
 void _connectingRingTests() {
-  Finder ring() =>
-      find.byWidgetPredicate((w) => w.runtimeType.toString() == '_BusyMark');
-
   for (final desktop in [false, true]) {
     final layout = desktop ? 'desktop' : 'phone';
     testWidgets('the $layout home shows progress only while connecting', (
@@ -4017,17 +4028,24 @@ void _connectingRingTests() {
       core.start();
       await tester.pumpAndSettle();
 
-      // Off: nothing animates.
-      expect(ring(), findsNothing);
+      // Off: no connecting state anywhere.
+      expect(find.text(l.stateConnecting), findsNothing);
 
-      await tester.tap(
+      // The slide toggles on a past-threshold drag (round 4).
+      await tester.drag(
         find.byTooltip(desktop ? l.tapToConnect : l.tapToConnectPhone),
+        const Offset(800, 0),
       );
       await tester.pumpAndSettle();
       expect(find.text(l.stateConnecting), findsOneWidget);
-      expect(ring(), findsOneWidget, reason: 'the wait must show progress');
+      // The wait shows its progress: the slide offers the cancel.
+      expect(
+        find.text(l.cancel),
+        findsOneWidget,
+        reason: 'the wait must show progress',
+      );
 
-      // Connected and confirmed: the ring goes away again.
+      // Connected and confirmed: the connecting state goes away.
       api
         ..on = true
         ..connectPending = false;
@@ -4036,9 +4054,9 @@ void _connectingRingTests() {
       await tester.pumpAndSettle();
       expect(find.text(l.stateConnected), findsOneWidget);
       expect(
-        ring(),
+        find.text(l.stateConnecting),
         findsNothing,
-        reason: 'a connected app must animate nothing',
+        reason: 'a connected app shows no connecting state',
       );
 
       await tester.pumpWidget(const SizedBox());
@@ -4046,11 +4064,9 @@ void _connectingRingTests() {
     });
   }
 
-  // The classic hero's drifting contours cost some 3,400 trigonometric
-  // calls to paint, so they were rasterized once and only transformed.
-  // The Zed home has no such painter at all; what must hold instead is
-  // that the wait animates only its small indicator — and that a
-  // connected app animates nothing, so an idle screen costs no frames.
+  // What must hold for the frame budget: the wait animates only its
+  // small indicator (the wave's dash phase) — and a connected app
+  // animates nothing, so an idle screen costs no frames.
   testWidgets('the connecting wait animates only while it waits', (
     tester,
   ) async {
@@ -4059,6 +4075,7 @@ void _connectingRingTests() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
+    final l = await AppLocalizations.delegate.load(const Locale('en'));
     final api = FakeApi()..on = false;
     final core = CoreController(
       () async => api,
@@ -4073,9 +4090,13 @@ void _connectingRingTests() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 16));
 
-    expect(ring(), findsOneWidget, reason: 'the connecting state must be on');
+    expect(
+      find.text(l.stateConnecting),
+      findsOneWidget,
+      reason: 'the connecting state must be on',
+    );
 
-    // A second of frames, which the indicator animates through.
+    // A second of frames, which the dash phase animates through.
     for (var frame = 0; frame < 60; frame++) {
       await tester.pump(const Duration(milliseconds: 16));
     }
@@ -4085,14 +4106,14 @@ void _connectingRingTests() {
       reason: 'the frames must really be running, or this proves nothing',
     );
 
-    // Connected and confirmed: the mark goes away and the frames stop.
+    // Connected and confirmed: the state goes away and frames stop.
     api
       ..on = true
       ..connectPending = false;
     await core.refresh();
     await core.runTest();
     await tester.pumpAndSettle();
-    expect(ring(), findsNothing);
+    expect(find.text(l.stateConnecting), findsNothing);
     expect(
       tester.binding.hasScheduledFrame,
       isFalse,
@@ -4113,6 +4134,7 @@ void _connectingRingTests() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
 
+    final l = await AppLocalizations.delegate.load(const Locale('en'));
     final api = FakeApi()..on = false;
     final core = CoreController(
       () async => api,
@@ -4125,9 +4147,9 @@ void _connectingRingTests() {
 
     api.connectPending = true;
     await core.refresh();
-    // It settles: with motion off the mark schedules no further frames.
+    // It settles: with motion off the dash schedules no frames.
     await tester.pumpAndSettle();
-    expect(ring(), findsOneWidget);
+    expect(find.text(l.stateConnecting), findsOneWidget);
     expect(
       tester.binding.hasScheduledFrame,
       isFalse,

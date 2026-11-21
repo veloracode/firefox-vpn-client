@@ -80,6 +80,27 @@ class ZedHomeData {
         busy: busy,
         live: live,
         label: stateLabel,
+        // The fuller controls' instruction line, from the app's own
+        // localized words: the retry word on error, the cancel word
+        // while busy, else the tap-to phrase for the current side.
+        hint: hasError
+            ? l.retry
+            : busy
+            ? l.cancel
+            : on
+            ? (phone
+                  ? (Platform.isAndroid && AndroidCore.isTv
+                        ? l.tapToDisconnectTv
+                        : l.tapToDisconnectPhone)
+                  : l.tapToDisconnect)
+            : (phone
+                  ? (Platform.isAndroid && AndroidCore.isTv
+                        ? l.tapToConnectTv
+                        : l.tapToConnectPhone)
+                  : l.tapToConnect),
+        error: hasError,
+        serverName: place.name,
+        since: since,
         tooltip: on
             ? (phone
                   ? (Platform.isAndroid && AndroidCore.isTv

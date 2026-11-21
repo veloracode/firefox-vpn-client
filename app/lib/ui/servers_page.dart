@@ -33,6 +33,11 @@ const _pingStale = Duration(minutes: 10);
 class _ServersPageState extends State<ServersPage> {
   List<Location>? _locations;
   DateTime? _pingedAt;
+
+  /// When the location list first composed — the anchor of the
+  /// design system's 800 ms entrance window (rows composed later
+  /// render final, unanimated; ServersScreen.kt springEntrance).
+  DateTime? _listComposedAt;
   String _country = '';
   bool _testing = false;
 
@@ -60,6 +65,7 @@ class _ServersPageState extends State<ServersPage> {
       setState(() {
         _locations = list.locations;
         _pingedAt = list.pingedAt;
+        _listComposedAt ??= DateTime.now();
         if (config['proxy'] case {'country': final String country}) {
           _country = country;
         }
@@ -231,30 +237,40 @@ class _ServersPageState extends State<ServersPage> {
           _ChoiceCard(
             children: [
               // The design system's one entrance stagger (§25): each
-              // row rises in, delayed by its place in the list.
+              // row rises in, delayed by its place in the list. The
+              // source enables it for the Pixel/Bento/Glass designs
+              // only (not Old) and only inside an 800 ms window from
+              // the list's composition (round 4).
               for (var i = 0; i < countries.length; i++)
-                ZedEntrance(
-                  index: i,
-                  reduceMotion:
-                      !widget.settings.animationsEnabled ||
-                      MediaQuery.disableAnimationsOf(context),
-                  child: _ChoiceRow(
-                    leading: CountryFlag(code: countries[i].code, width: 36),
-                    title: locationName(
-                      l,
-                      countries[i].code,
-                      countries[i].name,
-                    ),
-                    subtitle: _subtitle(countries[i]),
-                    delay: _Delay(location: countries[i], testing: _testing),
-                    selected: chosen == countries[i].code.toLowerCase(),
-                    busy: _busy?.toLowerCase() == countries[i].code.toLowerCase(),
-                    onTap: () => _choose(countries[i].code),
+                if (widget.settings.zed.design == ZedDesign.old)
+                  _choiceRow(i, countries, chosen)
+                else
+                  ZedEntrance(
+                    index: i,
+                    startedAt: _listComposedAt,
+                    reduceMotion:
+                        !widget.settings.animationsEnabled ||
+                        MediaQuery.disableAnimationsOf(context),
+                    child: _choiceRow(i, countries, chosen),
                   ),
-                ),
             ],
           ),
       ],
+    );
+  }
+
+  /// One country row of the choice list (extracted so the entrance
+  /// wrapper and the Old design's plain path share the row).
+  Widget _choiceRow(int i, List<Location> countries, String chosen) {
+    final l = AppLocalizations.of(context);
+    return _ChoiceRow(
+      leading: CountryFlag(code: countries[i].code, width: 36),
+      title: locationName(l, countries[i].code, countries[i].name),
+      subtitle: _subtitle(countries[i]),
+      delay: _Delay(location: countries[i], testing: _testing),
+      selected: chosen == countries[i].code.toLowerCase(),
+      busy: _busy?.toLowerCase() == countries[i].code.toLowerCase(),
+      onTap: () => _choose(countries[i].code),
     );
   }
 

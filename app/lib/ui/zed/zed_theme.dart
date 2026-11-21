@@ -563,15 +563,12 @@ const _bentoLight = <BentoPalette, BentoTokens>{
   ),
 };
 
-/// The canonical accent seeds the four algorithmic palettes derive
-/// from (the original derives them from the user's accent colour; the
-/// port's presets are these fixed seeds).
-const _algorithmicSeeds = <BentoPalette, int>{
-  BentoPalette.accent: 0xFF5B5BD6,
-  BentoPalette.pastel: 0xFFD77FA1,
-  BentoPalette.vivid: 0xFFE64A19,
-  BentoPalette.mono: 0xFF616161,
-};
+/// The four algorithmic palettes derive from the USER'S accent seed
+/// in the original — `system?.primary ?: accentSeed(accentColor)`
+/// (Theme.kt:64), the same seed the Pixel accent presets provide.
+/// Round 4: the port previously substituted four fixed invented
+/// seeds; it now takes the accent seed like the original. The
+/// fallback (picker dots, tests) is the default accent, Iris.
 
 Color _tone(TonalPalette p, int t) => Color(p.get(t));
 
@@ -694,11 +691,12 @@ BentoTokens bentoTokensFor(
   BentoPalette palette,
   bool dark, {
   bool amoled = false,
+  int seed = 0xFF5646D6, // accentSeed() of the default accent (Iris)
 }) {
   var tokens = switch (palette) {
     BentoPalette.accent || BentoPalette.pastel || BentoPalette.vivid =>
-      _tonalTokens(_algorithmicSeeds[palette]!, dark, palette),
-    BentoPalette.mono => _monoTokens(_algorithmicSeeds[palette]!, dark),
+      _tonalTokens(seed, dark, palette),
+    BentoPalette.mono => _monoTokens(seed, dark),
     _ => (dark ? _bentoDark : _bentoLight)[palette]!,
   };
   if (amoled && dark) {
@@ -756,8 +754,11 @@ const pixelAccents = <Color>[
 ];
 
 /// Corner radius for a design's modules: Bento follows its corner style
-/// (Leaf is asymmetric — see [bentoModuleShape]), Pixel/Old follow the
-/// personalization corner style, Glass modules are always 24.
+/// (Leaf is asymmetric — see [bentoModuleShape]), Glass modules are
+/// always 24. Pixel/Old: the original's personalization offers
+/// Squared 6 / Rounded 22 / Pill 34; the port models only the
+/// Rounded default (22) — the corner-style preference itself is
+/// not ported (documented deviation, round 4).
 double zedModuleRadius(ZedPrefs prefs) => switch (prefs.design) {
   ZedDesign.bento => switch (prefs.bentoCorner) {
     BentoCorner.leaf => 36,
@@ -768,19 +769,15 @@ double zedModuleRadius(ZedPrefs prefs) => switch (prefs.design) {
   ZedDesign.pixel || ZedDesign.old => 22,
 };
 
-/// Bento's module (tile) shape, exact (§1.5): Leaf is the asymmetric
-/// (36, 36, 36, 12), Round a uniform 36, Soft a uniform 24. The Leaf
-/// corners are directional (start/end), so the small corner mirrors
-/// to the start side in RTL instead of staying physical-left.
+/// Bento's module (card) shape: BentoShapes.card() — a UNIFORM
+/// 30 dp (20 dp Soft) in every corner style, Leaf included
+/// (BentoKit.kt). Rounds 1–3 used tile(prominent = true)'s 36 dp
+/// values here, which made every card and group one step rounder
+/// than the original's cards; the prominent hub tile (36/36/24)
+/// has no separate widget in the port (round 4, documented).
 BorderRadiusGeometry bentoModuleRadius(BentoCorner corner) => switch (corner) {
-  BentoCorner.leaf => const BorderRadiusDirectional.only(
-    topStart: Radius.circular(36),
-    topEnd: Radius.circular(36),
-    bottomEnd: Radius.circular(36),
-    bottomStart: Radius.circular(12),
-  ),
-  BentoCorner.round => BorderRadius.circular(36),
-  BentoCorner.soft => BorderRadius.circular(24),
+  BentoCorner.soft => BorderRadius.circular(20),
+  _ => BorderRadius.circular(30),
 };
 
 /// Bento's hero shape (§1.5): Leaf (34, 34, 34, 12), Round 34, Soft 22.
@@ -793,6 +790,27 @@ BorderRadiusGeometry bentoHeroRadius(BentoCorner corner) => switch (corner) {
   ),
   BentoCorner.round => BorderRadius.circular(34),
   BentoCorner.soft => BorderRadius.circular(22),
+};
+
+/// Bento's block shape (BentoShapes.block()): the connect controls'
+/// own radius — 26 dp in every corner style, 18 for Soft. Uniform
+/// even for Leaf (the Leaf asymmetry lives in hero/tile shapes).
+BorderRadiusGeometry bentoBlockRadius(BentoCorner corner) =>
+    BorderRadius.circular(corner == BentoCorner.soft ? 18 : 26);
+
+/// Bento's prominent tile shape (BentoShapes.tile(true)): Leaf is
+/// the asymmetric (36, 36, 36, 12), Round a uniform 36, Soft 24.
+/// (These are the values rounds 1–3 wrongly used for EVERY module;
+/// since round 4 they belong to the Tile connect control alone.)
+BorderRadiusGeometry bentoTileRadius(BentoCorner corner) => switch (corner) {
+  BentoCorner.leaf => const BorderRadiusDirectional.only(
+    topStart: Radius.circular(36),
+    topEnd: Radius.circular(36),
+    bottomEnd: Radius.circular(36),
+    bottomStart: Radius.circular(12),
+  ),
+  BentoCorner.round => BorderRadius.circular(36),
+  BentoCorner.soft => BorderRadius.circular(24),
 };
 
 /// The original's glassColorScheme() verbatim (GlassTheme.kt): a
@@ -897,6 +915,11 @@ abstract final class ZedTheme {
       prefs.bentoPalette,
       dark,
       amoled: prefs.bentoAmoled,
+      // The original's bentoSeed: the user's accent colour
+      // (Theme.kt:64). Dynamic system colour is not read by the
+      // port; the accent preset is the seed, as on a device
+      // without dynamic colour.
+      seed: pixelAccents[prefs.pixelAccent.clamp(0, 9)].toARGB32(),
     );
     final (scheme, bg, surface) = switch (prefs.design) {
       ZedDesign.bento => (

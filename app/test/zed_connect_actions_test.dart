@@ -90,7 +90,9 @@ void main() {
           design: ZedDesign.pixel,
           pixelConnect: PixelConnectStyle.switchStyle,
         ),
-        act: () => tester.tap(find.byType(Switch)),
+        // The Pixel Switch is the source's sliding-knob capsule
+        // since round 4, not a stock Material Switch: tap it.
+        act: () => tapControl(tester),
       );
       expect(taps, 1);
     });
@@ -120,7 +122,9 @@ void main() {
           design: ZedDesign.old,
           oldConnect: PixelConnectStyle.switchStyle,
         ),
-        act: () => tester.tap(find.byType(Switch)),
+        // The Pixel Switch is the source's sliding-knob capsule
+        // since round 4, not a stock Material Switch: tap it.
+        act: () => tapControl(tester),
       );
       expect(taps, 1);
     });

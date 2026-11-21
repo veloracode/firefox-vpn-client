@@ -235,7 +235,9 @@ void main() {
             matching: find.byType(CustomPaint),
           ),
           findsOneWidget,
-          reason: 'the reduced-motion busy mark is a still painted arc',
+          reason:
+              'the reduced-motion busy morph is a still painted blob '
+              '(round 4: the source spins the blob, it has no spinner)',
         );
       },
     );
@@ -245,7 +247,24 @@ void main() {
     ) async {
       await pump(tester, on: false, cb: () {}, morphBusy: true);
       await tester.pump(const Duration(milliseconds: 100));
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      // Round 4 (source, BentoConnectVariants.kt): the busy morph
+      // shows NO spinner — its blob spins (2400 ms). Proof of motion:
+      // the blob's painter is rebuilt with a new rotation between
+      // frames, so the painter object itself changes.
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      final blob = find.descendant(
+        of: find.byType(ZedConnectControl),
+        matching: find.byType(CustomPaint),
+      );
+      expect(blob, findsOneWidget);
+      final first = tester.widget<CustomPaint>(blob).painter;
+      await tester.pump(const Duration(milliseconds: 120));
+      final second = tester.widget<CustomPaint>(blob).painter;
+      expect(
+        identical(first, second),
+        isFalse,
+        reason: 'the busy blob must be turning between frames',
+      );
     });
   });
 

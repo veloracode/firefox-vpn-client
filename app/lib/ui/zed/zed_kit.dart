@@ -44,6 +44,10 @@ class ZedModule extends StatelessWidget {
     switch (prefs.design) {
       case ZedDesign.glass:
         return GlassModule(
+          // A group cell wears the CELL shape (26), a free module
+          // the module shape (24) — the flag used to reach only
+          // the fill, so group containers rendered at 24 (round 4).
+          radius: cell ? GlassTokens.cellRadius : GlassTokens.moduleRadius,
           padding: padding,
           onTap: onTap,
           solid: cell && !prefs.glassLists,
@@ -121,17 +125,35 @@ class ZedGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final glass = prefs.design == ZedDesign.glass;
+    final dark = Theme.of(context).brightness == Brightness.dark;
     final children = <Widget>[];
     for (var i = 0; i < rows.length; i++) {
       if (i > 0) {
         children.add(
-          Divider(
-            height: 1,
-            indent: 16,
-            endIndent: 16,
-            color: Theme.of(context).colorScheme.outlineVariant
-                .withValues(alpha: 0.5),
-          ),
+          glass
+              // The group draws its own separators in Glass
+              // (GlassKit.kt GlassGroup): a 0.5 dp line in the
+              // separator token, inset 16 dp from the start side
+              // ONLY — the line runs to the trailing edge. Rounds
+              // 1–3 used a Material divider inset on both ends in a
+              // scheme colour (round 4).
+              ? Divider(
+                  height: 0.5,
+                  thickness: 0.5,
+                  indent: 16,
+                  endIndent: 0,
+                  color: dark
+                      ? const Color(0x1FFFFFFF)
+                      : const Color(0x293C3C43),
+                )
+              : Divider(
+                  height: 1,
+                  indent: 16,
+                  endIndent: 16,
+                  color: Theme.of(context).colorScheme.outlineVariant
+                      .withValues(alpha: 0.5),
+                ),
         );
       }
       children.add(rows[i]);
@@ -215,20 +237,28 @@ class ZedDock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (prefs.navStyle == NavBarStyle.fullBar ||
-        prefs.navStyle == NavBarStyle.underline) {
-      return NavigationBar(
-        selectedIndex: selected,
-        onDestinationSelected: onSelect,
-        destinations: [
-          for (var i = 0; i < items.length; i++)
-            NavigationDestination(
-              icon: Icon(items[i].$1),
-              selectedIcon: Icon(items[i].$2),
-              label: items[i].$3,
-            ),
-        ],
-      );
+    // The nav STYLE (full bar / underline) is a Pixel/Old
+    // personalization: Glass always gets its glass tab bar and
+    // Bento its own dock, whatever the style pref says — the
+    // style branch must not run first (round 4; under Glass with
+    // a full-bar style the port served a Material NavigationBar
+    // and lost the glass pill entirely).
+    if (prefs.design == ZedDesign.pixel || prefs.design == ZedDesign.old) {
+      if (prefs.navStyle == NavBarStyle.fullBar ||
+          prefs.navStyle == NavBarStyle.underline) {
+        return NavigationBar(
+          selectedIndex: selected,
+          onDestinationSelected: onSelect,
+          destinations: [
+            for (var i = 0; i < items.length; i++)
+              NavigationDestination(
+                icon: Icon(items[i].$1),
+                selectedIcon: Icon(items[i].$2),
+                label: items[i].$3,
+              ),
+          ],
+        );
+      }
     }
     final scheme = Theme.of(context).colorScheme;
     final bento = prefs.design == ZedDesign.bento
@@ -237,17 +267,46 @@ class ZedDock extends StatelessWidget {
     // Bento's dock is its own geometry (§1.8): 56 dp bar, 30 dp shape,
     // the palette's dock fill and line, the active item in lime.
     final isBento = bento != null;
+    final isGlass = prefs.design == ZedDesign.glass;
+    if (isGlass) {
+      // The Glass tab bar is its own widget (GlassTabBar.kt): a
+      // full-width pill of equal slots with a sliding platter, or
+      // the 62 dp current-tab circle in the shrunk (Mini) form —
+      // rounds 1–3 squeezed it through the generic dock item
+      // (round 4).
+      return SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 22),
+          child: Row(
+            children: [
+              if (shrunk)
+                _GlassMiniTab(prefs: prefs, items: items, selected: selected, onSelect: onSelect)
+              else
+                Expanded(
+                  child: _GlassTabBar(
+                    prefs: prefs,
+                    items: items,
+                    selected: selected,
+                    onSelect: onSelect,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      );
+    }
     final pill = Container(
       // Minimum height (see _DockItem): the pill grows with large
       // text instead of clipping its labels.
-      constraints: BoxConstraints(
-        minHeight: isBento ? 56 : (shrunk ? 48 : GlassTokens.dockHeight),
-      ),
+      constraints: BoxConstraints(minHeight: isBento ? 56 : 62),
       padding: EdgeInsets.symmetric(horizontal: isBento ? 4 : 8),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          for (var i = 0; i < items.length; i++)
+          for (var i = 0; i < items.length; i++) ...[
+            // Bento spaces its items 2 dp apart (BentoDock.kt).
+            if (isBento && i > 0) const SizedBox(width: 2),
             _DockItem(
               icon: items[i].$1,
               selectedIcon: items[i].$2,
@@ -255,11 +314,8 @@ class ZedDock extends StatelessWidget {
               selected: i == selected,
               // Bento follows its dock-labels setting (active item
               // only by default); the other designs name every
-              // destination except in the two compact styles. The
-              // shrunk (scroll-collapsed) form is icon-only.
-              showLabel: shrunk
-                  ? false
-                  : isBento
+              // destination except in the two compact styles.
+              showLabel: isBento
                   ? switch (prefs.bentoDockLabels) {
                       BentoDockLabels.active => i == selected,
                       BentoDockLabels.always => true,
@@ -272,26 +328,46 @@ class ZedDock extends StatelessWidget {
               activeForeground: bento?.onLime,
               inactiveForeground: bento?.muted,
               itemHeight: isBento ? 48 : null,
+              // BentoDock.kt item metrics: icon 22 in BOTH states,
+              // label 14sp SemiBold in both states, horizontal
+              // padding 16 with a label / 13 without, min width 50,
+              // 7 dp between icon and label (round 4 — the generic
+              // item ran 25/22 icons and w700/w600 labels).
+              iconSize: isBento ? 22 : null,
+              labelFontSize: isBento ? 14 : null,
+              labelWeight: isBento ? FontWeight.w600 : null,
+              padLabel: isBento ? 16 : null,
+              padIcon: isBento ? 13 : null,
+              minWidth: isBento ? 50 : null,
+              gap: isBento ? 7 : null,
               onTap: () => onSelect(i),
             ),
+          ],
         ],
       ),
     );
-    final Widget bar = prefs.design == ZedDesign.glass
-        ? GlassChrome(prefs: prefs, radius: 36, child: pill)
+    final Widget bar = isBento
+        ? Container(
+            decoration: BoxDecoration(
+              color: bento.dock,
+              borderRadius: BorderRadius.circular(30),
+              border: Border.all(color: bento.dockLine, width: 1),
+              boxShadow: [
+                // BentoDock.kt: shadow(10.dp, ink at 18%).
+                BoxShadow(
+                  color: bento.ink.withValues(alpha: 0.18),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: pill,
+          )
         : Material(
-            color: bento?.dock ?? scheme.surfaceContainerHigh,
-            borderRadius: BorderRadius.circular(isBento ? 30 : 36),
+            color: scheme.surfaceContainerHigh,
+            borderRadius: BorderRadius.circular(36),
             elevation: 6,
-            child: isBento
-                ? DecoratedBox(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(30),
-                      border: Border.all(color: bento.dockLine, width: 1),
-                    ),
-                    child: pill,
-                  )
-                : pill,
+            child: pill,
           );
     // No Center here: as a Scaffold's bottom bar this widget is laid
     // out with loose constraints, and a Center would claim the whole
@@ -300,15 +376,167 @@ class ZedDock extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          16,
-          0,
-          16,
-          prefs.design == ZedDesign.glass ? 22 : (isBento ? 20 : 10),
-        ),
+        padding: EdgeInsets.fromLTRB(16, 0, 16, isBento ? 20 : 10),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [bar],
+        ),
+      ),
+    );
+  }
+}
+
+/// The Glass tab bar (GlassTabBar.kt), full form: a 62 dp pill
+/// spanning the bar's width, inner padding 4, EQUAL slots, and the
+/// `platter` token sliding under the selected slot (spring
+/// 0.72/MediumLow, as an ease curve here). A cell is the icon (25 dp)
+/// over its label (tabLabel: 10sp SemiBold, tracking +0.1, 1 dp gap);
+/// the selected cell takes the tint, the rest the label colour. The
+/// source's hold-to-scrub magnifier is not ported (documented,
+/// round 4): a tap selects on release, as the source's quick tap
+/// does.
+class _GlassTabBar extends StatelessWidget {
+  const _GlassTabBar({
+    required this.prefs,
+    required this.items,
+    required this.selected,
+    required this.onSelect,
+  });
+
+  final ZedPrefs prefs;
+  final List<(IconData, IconData, String)> items;
+  final int selected;
+  final ValueChanged<int> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final reduced = MediaQuery.disableAnimationsOf(context);
+    final tint = scheme.primary;
+    final labelColor = scheme.onSurface;
+    final platter = dark
+        ? const Color(0x1CFFFFFF)
+        : const Color(0x12000000);
+    return GlassChrome(
+      prefs: prefs,
+      radius: 31,
+      child: SizedBox(
+        height: 60,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final slot = (constraints.maxWidth - 8) / items.length;
+            return Stack(
+              children: [
+                AnimatedPositioned(
+                  duration: reduced
+                      ? Duration.zero
+                      : const Duration(milliseconds: 300),
+                  curve: Curves.easeOut,
+                  left: 4 + selected * slot,
+                  top: 4,
+                  bottom: 4,
+                  width: slot,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: platter,
+                      borderRadius: BorderRadius.circular(27),
+                    ),
+                  ),
+                ),
+                Row(
+                  children: [
+                    for (var i = 0; i < items.length; i++)
+                      Expanded(
+                        child: Semantics(
+                          label: items[i].$3,
+                          button: true,
+                          selected: i == selected,
+                          onTap: () => onSelect(i),
+                          child: ExcludeSemantics(
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => onSelect(i),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    i == selected
+                                        ? items[i].$2
+                                        : items[i].$1,
+                                    size: 25,
+                                    color: i == selected
+                                        ? tint
+                                        : labelColor,
+                                  ),
+                                  const SizedBox(height: 1),
+                                  Text(
+                                    items[i].$3,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      letterSpacing: 0.1,
+                                      color: i == selected
+                                          ? tint
+                                          : labelColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+/// The Glass tab bar's shrunk (Mini) form: the current tab alone in
+/// a 62 dp glass circle, its icon (26 dp) in the tint. Tapping it
+/// re-selects the current tab, which is the shell's cue to restore
+/// the full bar. (The source pairs it with a search circle; this
+/// app has no search tab, so the companion is omitted.)
+class _GlassMiniTab extends StatelessWidget {
+  const _GlassMiniTab({
+    required this.prefs,
+    required this.items,
+    required this.selected,
+    required this.onSelect,
+  });
+
+  final ZedPrefs prefs;
+  final List<(IconData, IconData, String)> items;
+  final int selected;
+  final ValueChanged<int> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final i = selected.clamp(0, items.length - 1);
+    return Semantics(
+      label: items[i].$3,
+      button: true,
+      selected: true,
+      onTap: () => onSelect(i),
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          onTap: () => onSelect(i),
+          child: GlassChrome(
+            prefs: prefs,
+            radius: 31,
+            child: SizedBox(
+              width: 60,
+              height: 60,
+              child: Icon(items[i].$2, size: 26, color: scheme.primary),
+            ),
+          ),
         ),
       ),
     );
@@ -328,6 +556,13 @@ class _DockItem extends StatelessWidget {
     this.activeForeground,
     this.inactiveForeground,
     this.itemHeight,
+    this.iconSize,
+    this.labelFontSize,
+    this.labelWeight,
+    this.padLabel,
+    this.padIcon,
+    this.minWidth,
+    this.gap,
   });
 
   final IconData icon;
@@ -345,6 +580,19 @@ class _DockItem extends StatelessWidget {
   final Color? activeForeground;
   final Color? inactiveForeground;
   final double? itemHeight;
+
+  /// Design-exact item metrics (BentoDock.kt), overriding the
+  /// generic expressive-pill values when set: a constant icon size
+  /// for both states, the label's size and (single) weight, the
+  /// horizontal padding with/without a label, a minimum width, and
+  /// the icon-label gap.
+  final double? iconSize;
+  final double? labelFontSize;
+  final FontWeight? labelWeight;
+  final double? padLabel;
+  final double? padIcon;
+  final double? minWidth;
+  final double? gap;
 
   @override
   Widget build(BuildContext context) {
@@ -378,11 +626,14 @@ class _DockItem extends StatelessWidget {
             // A minimum, not a fixed height: at large OS text
             // scales the label must grow the item, not be clipped
             // by it (round-2 DeepSeek finding, ds-01).
-            constraints: itemHeight == null
-                ? null
-                : BoxConstraints(minHeight: itemHeight!),
+            constraints: BoxConstraints(
+              minHeight: itemHeight ?? 0,
+              minWidth: minWidth ?? 0,
+            ),
             padding: EdgeInsets.symmetric(
-              horizontal: selected && showLabel ? 14 : 10,
+              horizontal:
+                  (showLabel ? padLabel : padIcon) ??
+                  (selected && showLabel ? 14 : 10),
               vertical: 8,
             ),
             decoration: BoxDecoration(
@@ -391,19 +642,23 @@ class _DockItem extends StatelessWidget {
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
                   selected ? selectedIcon : icon,
-                  size: selected ? 25 : 22,
+                  size: iconSize ?? (selected ? 25 : 22),
                   color: selected ? activeFg : inactiveFg,
                 ),
                 if (showLabel) ...[
-                  const SizedBox(width: 6),
+                  SizedBox(width: gap ?? 6),
                   Text(
                     label,
                     style: TextStyle(
+                      fontSize: labelFontSize,
                       color: selected ? activeFg : inactiveFg,
-                      fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                      fontWeight:
+                          labelWeight ??
+                          (selected ? FontWeight.w700 : FontWeight.w600),
                     ),
                   ),
                 ],

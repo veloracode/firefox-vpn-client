@@ -25,7 +25,7 @@ abstract final class ZedMotion {
 
   /// The spec's fades are SHORTER than the transforms they ride
   /// with (§6.1: Slide fades 220/180 within 320, Push 120/340,
-  /// Depth 160/200 within 300, Elastic 180 in / 160 out, Curtain
+  /// Depth 220/180 within 300, Elastic 180 in / 160 out, Curtain
   /// 200/260 within 360): the fade completes early and the
   /// transform finishes alone. Maps the shared progress onto the
   /// fade's own window (DeepSeek's round-3 draft formulation).
@@ -140,8 +140,12 @@ abstract final class ZedMotion {
                   v,
                   exiting: _exiting(animation),
                   total: 300,
-                  fadeIn: 160,
-                  fadeOut: 200,
+                  // Source fadeIn 220 / fadeOut 180 (ScreenTransitions.kt
+                  // Depth branch). Rounds 1–3 ran 160/200 — a
+                  // transcription error in neither the source nor the
+                  // extract; fixed round 4.
+                  fadeIn: 220,
+                  fadeOut: 180,
                 ),
                 child: child,
               ),
@@ -259,8 +263,18 @@ abstract final class ZedMotion {
               0.0,
               1.0,
             );
+            // Spec (§6.1): the decoration rides a ContentTransform
+            // fade pair — the entering page fades IN over 220 ms
+            // starting 90 ms in, the leaving page fades OUT over the
+            // first 160 ms of its 360 ms run. Rounds 1–3 shipped
+            // only the decoration alpha; the pair multiplies in
+            // (round 4). The switcher drives the leaving page's
+            // animation in reverse, so its exit progress is 1 − t.
+            final fadePair = _exiting(animation)
+                ? 1 - ((1 - t) * 360 / 160).clamp(0.0, 1.0)
+                : ((t * 360 - 90) / 220).clamp(0.0, 1.0);
             return Opacity(
-              opacity: alpha,
+              opacity: alpha * fadePair,
               child: Transform(
                 transform: Matrix4.identity()
                   ..setEntry(3, 2, 0.0018)
@@ -368,13 +382,18 @@ class ZedPageSwitcher extends StatelessWidget {
 
 /// The one entrance stagger in the design system (server list, §25):
 /// an 800 ms window, each row delayed min(index, 12) × 45 ms, rising
-/// 26 dp with alpha and a 0.96→1 scale on a spring-like curve.
+/// 26 dp with alpha and a 0.96→1 scale on a spring-like curve. The
+/// window is anchored at the LIST's composition ([startedAt]): a row
+/// composed after it closes renders its final state with no
+/// animation at all (ServersScreen.kt springEntrance) — rounds 1–3
+/// animated every row whenever it happened to compose (round 4).
 class ZedEntrance extends StatefulWidget {
   const ZedEntrance({
     super.key,
     required this.index,
     required this.child,
     this.reduceMotion = false,
+    this.startedAt,
   });
 
   final int index;
@@ -386,6 +405,10 @@ class ZedEntrance extends StatefulWidget {
   /// directly in [State.didChangeDependencies], so a caller that
   /// passes nothing still honours the OS setting.
   final bool reduceMotion;
+
+  /// When the owning list first composed. Null keeps the legacy
+  /// always-animate behaviour for callers that don't track it.
+  final DateTime? startedAt;
 
   @override
   State<ZedEntrance> createState() => _ZedEntranceState();
@@ -400,12 +423,29 @@ class _ZedEntranceState extends State<ZedEntrance>
 
   bool _reduced = false;
   bool _started = false;
+
+  /// Rendered final with no animation wrapper at all (the source's
+  /// post-window state): set by the 800 ms window gate.
+  bool _settled = false;
   Timer? _startTimer;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _reduced = widget.reduceMotion || MediaQuery.disableAnimationsOf(context);
+    final startedAt = widget.startedAt;
+    if (startedAt != null &&
+        DateTime.now().difference(startedAt) >
+            const Duration(milliseconds: 800)) {
+      // The 800 ms entrance window already closed before this row
+      // composed (scrolled into view, list refreshed): the source
+      // renders the final state with no animation (round 4).
+      _startTimer?.cancel();
+      _c.value = 1;
+      _started = true;
+      _settled = true;
+      return;
+    }
     if (_reduced) {
       // Reduced motion: render the end state and never schedule the
       // staggered start at all (a pending start timer outliving the
@@ -435,7 +475,7 @@ class _ZedEntranceState extends State<ZedEntrance>
 
   @override
   Widget build(BuildContext context) {
-    if (_reduced) return widget.child;
+    if (_reduced || _settled) return widget.child;
     return AnimatedBuilder(
       animation: _c,
       child: widget.child,

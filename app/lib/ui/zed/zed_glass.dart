@@ -76,6 +76,82 @@ abstract final class GlassTokens {
   /// light — §2.1's highlight token).
   static Color highlight(bool dark) =>
       Colors.white.withValues(alpha: dark ? 0.22 : 0.95);
+
+  /// The tone at the wallpaper's top edge (GlassTheme.kt
+  /// wallpaperTop): the top-edge strip tints itself with it.
+  static Color wallpaperTop(GlassWallpaper kind, bool dark) =>
+      switch (kind) {
+        GlassWallpaper.live =>
+          dark ? const Color(0xFF17191E) : const Color(0xFFE4E8EF),
+        GlassWallpaper.lagoon =>
+          dark ? const Color(0xFF031327) : const Color(0xFFE2EFFF),
+        GlassWallpaper.dusk =>
+          dark ? const Color(0xFF1A0712) : const Color(0xFFFFF0E6),
+        GlassWallpaper.graphite =>
+          dark ? const Color(0xFF121317) : const Color(0xFFE1E5EC),
+        GlassWallpaper.plain =>
+          dark ? const Color(0xFF000000) : const Color(0xFFF2F2F7),
+      };
+}
+
+/// The status-bar top edge (GlassChrome.kt GlassTopEdge) — the
+/// fourth sanctioned blur site, missing from the port until round 4:
+/// a strip as tall as the status bar + 14 dp that blurs what scrolls
+/// beneath it (10 dp), tinted with the wallpaper's top tone at 35%,
+/// and masked with a DstIn fade (full to 55% of the strip, then out).
+/// Under reduce-transparency there is no blur: a plain tone gradient
+/// (0.96 → 0.90 at 0.55 → 0). With no status-bar inset the strip
+/// does not exist at all.
+class GlassTopEdge extends StatelessWidget {
+  const GlassTopEdge({super.key, required this.prefs, required this.dark});
+
+  final ZedPrefs prefs;
+  final bool dark;
+
+  @override
+  Widget build(BuildContext context) {
+    final top = MediaQuery.viewPaddingOf(context).top;
+    if (top <= 0) return const SizedBox.shrink();
+    final tone = GlassTokens.wallpaperTop(prefs.glassWallpaper, dark);
+    final height = top + 14;
+    if (prefs.reduceTransparency) {
+      return SizedBox(
+        height: height,
+        width: double.infinity,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                tone.withValues(alpha: 0.96),
+                tone.withValues(alpha: 0.90),
+                tone.withValues(alpha: 0),
+              ],
+              stops: const [0, 0.55, 1],
+            ),
+          ),
+        ),
+      );
+    }
+    return SizedBox(
+      height: height,
+      width: double.infinity,
+      child: ShaderMask(
+        blendMode: BlendMode.dstIn,
+        shaderCallback: (rect) => const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.black, Colors.black, Colors.transparent],
+          stops: [0, 0.55, 1],
+        ).createShader(rect),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: ColoredBox(color: tone.withValues(alpha: 0.35)),
+        ),
+      ),
+    );
+  }
 }
 
 /// The procedural, static wallpaper behind Glass pages. Captured once
@@ -202,7 +278,24 @@ class _GlowPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_GlowPainter old) => old.glows != glows;
+  bool shouldRepaint(_GlowPainter old) {
+    // Value comparison, not list identity: the wallpaper's build
+    // creates a fresh glow list on every shell rebuild, and identity
+    // comparison repainted the full-screen gradient layer on every
+    // core notification (round 4, lag audit).
+    if (old.glows.length != glows.length) return true;
+    for (var i = 0; i < glows.length; i++) {
+      final a = old.glows[i], b = glows[i];
+      if (a.cx != b.cx ||
+          a.cy != b.cy ||
+          a.rx != b.rx ||
+          a.ry != b.ry ||
+          a.color != b.color) {
+        return true;
+      }
+    }
+    return false;
+  }
 }
 
 /// A simulated-glass module: translucent fill + 1 dp gradient rim + the
@@ -377,7 +470,12 @@ class _GlassChromeState extends State<GlassChrome> {
     final fill = solid
         ? GlassTokens.chromeSolid(dark)
         : GlassTokens.chromeFill(dark, prefs.glassMaterial);
-    final motion = prefs.glassMotionHighlights && !solid;
+    // Motion highlights also honour the OS reduce-motion setting
+    // (round 4): a pointer-tracked rim is still motion.
+    final motion =
+        prefs.glassMotionHighlights &&
+        !solid &&
+        !MediaQuery.disableAnimationsOf(context);
     Widget body = DecoratedBox(
       decoration: BoxDecoration(
         gradient: GlassTokens.rimGradient(
@@ -406,6 +504,14 @@ class _GlassChromeState extends State<GlassChrome> {
           child: body,
         ),
       );
+    } else {
+      // The reduced path clips too: a DecoratedBox does not clip
+      // its child, so an opaque child could paint square corners
+      // over the rounded chrome (round 4).
+      body = ClipRRect(
+        borderRadius: BorderRadius.circular(radius),
+        child: body,
+      );
     }
     // The drop shadow lives OUTSIDE the clip: a shadow painted by
     // the clipped body is cut off at the chrome's own outline, so
@@ -420,25 +526,36 @@ class _GlassChromeState extends State<GlassChrome> {
             // dark, 12% in the light — the port used a fixed 20%
             // for both (round 3, finding G-2).
             color: dark ? const Color(0x80000000) : const Color(0x1F000000),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
+            // Backdrop path: Shadow(radius 24) with NO offset (the
+            // (0, 8) drop belongs to the hold-magnifier bubble, not
+            // to chrome). Reduced path: the source falls back to an
+            // 8 dp elevation shadow — smaller and softer (round 4).
+            blurRadius: solid ? 12 : 24,
+            offset: solid ? const Offset(0, 2) : Offset.zero,
           ),
         ],
       ),
       child: body,
     );
     if (!motion) return body;
-    return Listener(
-      behavior: HitTestBehavior.translucent,
-      onPointerMove: _track,
-      onPointerHover: _track,
-      onPointerUp: (_) {
+    return MouseRegion(
+      // A hover that leaves without an up event must not strand
+      // the tilt (round 4).
+      onExit: (_) {
         if (_tilt != Offset.zero) setState(() => _tilt = Offset.zero);
       },
-      onPointerCancel: (_) {
-        if (_tilt != Offset.zero) setState(() => _tilt = Offset.zero);
-      },
-      child: body,
+      child: Listener(
+        behavior: HitTestBehavior.translucent,
+        onPointerMove: _track,
+        onPointerHover: _track,
+        onPointerUp: (_) {
+          if (_tilt != Offset.zero) setState(() => _tilt = Offset.zero);
+        },
+        onPointerCancel: (_) {
+          if (_tilt != Offset.zero) setState(() => _tilt = Offset.zero);
+        },
+        child: body,
+      ),
     );
   }
 }
@@ -493,8 +610,11 @@ class _ZedPressableState extends State<ZedPressable> {
 /// The glass switch: a platter and knob on the recipe's springs
 /// (knob 0.62/MediumLow, thumb+platter 0.72/MediumLow — expressed here
 /// as the matching ease curves, since Flutter springs are curve-driven
-/// in this kit).
-class GlassSwitch extends StatelessWidget {
+/// in this kit). While pressed, the knob SQUASHES (GlassKit.kt
+/// GlassSwitch: scaleX 1+0.22·s, scaleY 1+0.12·s on a Medium spring,
+/// the knob lerping toward white at 55% and gaining its highlight) —
+/// rounds 1–3 shipped no press state at all (round 4).
+class GlassSwitch extends StatefulWidget {
   const GlassSwitch({
     super.key,
     required this.value,
@@ -507,7 +627,21 @@ class GlassSwitch extends StatelessWidget {
   final ZedPrefs prefs;
 
   @override
+  State<GlassSwitch> createState() => _GlassSwitchState();
+}
+
+class _GlassSwitchState extends State<GlassSwitch> {
+  bool _pressed = false;
+
+  void _setPressed(bool down) {
+    if (widget.onChanged == null) down = false;
+    if (down != _pressed) setState(() => _pressed = down);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final value = widget.value;
+    final onChanged = widget.onChanged;
     final dark = Theme.of(context).brightness == Brightness.dark;
     final reduced = MediaQuery.disableAnimationsOf(context);
     final duration = reduced
@@ -525,43 +659,84 @@ class GlassSwitch extends StatelessWidget {
       opacity: onChanged == null ? 0.4 : 1,
       child: Semantics(
         toggled: value,
-        child: GestureDetector(
-          onTap: onChanged == null ? null : () => onChanged!(!value),
-          child: AnimatedContainer(
-            duration: duration,
-            curve: Curves.easeOut,
-            width: 63,
-            height: 28,
-            decoration: BoxDecoration(
-              color: value
-                  ? (dark ? const Color(0xFF30D158) : const Color(0xFF34C759))
-                  : (dark ? const Color(0x5C787880) : const Color(0x33787880)),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Stack(
-              children: [
-                AnimatedPositioned(
-                  duration: duration,
-                  curve: Curves.easeOut,
-                  left: value ? 24 : 2,
-                  top: 2,
-                  child: Container(
-                    width: 37,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x33000000),
-                          blurRadius: 3,
-                          offset: Offset(0, 1),
-                        ),
-                      ],
+        child: Listener(
+          onPointerDown: (_) => _setPressed(true),
+          onPointerUp: (_) => _setPressed(false),
+          onPointerCancel: (_) => _setPressed(false),
+          child: GestureDetector(
+            onTap: onChanged == null ? null : () => onChanged(!value),
+            child: AnimatedContainer(
+              duration: duration,
+              curve: Curves.easeOut,
+              width: 63,
+              height: 28,
+              decoration: BoxDecoration(
+                color: value
+                    ? (dark
+                          ? const Color(0xFF30D158)
+                          : const Color(0xFF34C759))
+                    : (dark
+                          ? const Color(0x5C787880)
+                          : const Color(0x33787880)),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Stack(
+                children: [
+                  AnimatedPositioned(
+                    duration: duration,
+                    curve: Curves.easeOut,
+                    left: value ? 24 : 2,
+                    top: 2,
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(end: _pressed ? 1 : 0),
+                      duration: reduced
+                          ? Duration.zero
+                          : const Duration(milliseconds: 180),
+                      curve: Curves.easeOut,
+                      builder: (context, squash, _) {
+                        return Transform(
+                          alignment: Alignment.center,
+                          transform: Matrix4.diagonal3Values(
+                            1 + 0.22 * squash,
+                            1 + 0.12 * squash,
+                            1,
+                          ),
+                          child: Container(
+                            width: 37,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              // lerp(white, white @ 0.55, squash).
+                              color: Color.lerp(
+                                Colors.white,
+                                Colors.white.withValues(alpha: 0.55),
+                                squash,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x33000000),
+                                  blurRadius: 3,
+                                  offset: Offset(0, 1),
+                                ),
+                              ],
+                            ),
+                            child: squash > 0.01
+                                ? CustomPaint(
+                                    painter: _SliverPainter(
+                                      radius: 12,
+                                      color: Colors.white.withValues(
+                                        alpha: squash,
+                                      ),
+                                    ),
+                                  )
+                                : null,
+                          ),
+                        );
+                      },
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
