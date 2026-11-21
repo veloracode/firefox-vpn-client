@@ -25,7 +25,18 @@ mixin ScrollDirectionTracker<T extends StatefulWidget> on State<T> {
   ScrollController? _controller;
   double _lastOffset = 0;
   bool scrollingDown = false;
+  bool _anchorStale = false;
   Timer? _idleTimer;
+
+  @override
+  void didUpdateWidget(T oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // A rebuild can mean a page change (the shell rebuilds the bar
+    // with a new tab index) whose scroll position attached/detached
+    // without any scroll event: never judge the next event against
+    // the previous page's offset.
+    _anchorStale = true;
+  }
 
   void _attach() {
     final c = PrimaryScrollController.of(context);
@@ -33,30 +44,48 @@ mixin ScrollDirectionTracker<T extends StatefulWidget> on State<T> {
     _controller?.removeListener(_onScroll);
     _controller = c;
     _controller?.addListener(_onScroll);
-    _lastOffset = _safeOffset(c);
+    // The primary controller is shared: while two pages coexist (a
+    // transition), it has two positions and [ScrollController.offset]
+    // is undefined — keep the last known offset then, never reset
+    // to 0 (a nonzero resume offset would read as a fast down-scroll).
+    if (c.positions.length == 1) {
+      _lastOffset = c.offset;
+    } else {
+      _anchorStale = true;
+    }
   }
-
-  /// The primary controller is shared: while two pages coexist (a
-  /// transition), it has two positions and [ScrollController.offset]
-  /// is undefined — keep the last known offset then.
-  static double _safeOffset(ScrollController c) =>
-      c.positions.length == 1 ? c.offset : 0;
 
   void _onScroll() {
     final controller = _controller;
-    if (controller == null || controller.positions.length != 1) return;
+    if (controller == null) return;
+    if (controller.positions.length != 1) {
+      _anchorStale = true;
+      return;
+    }
     final offset = controller.offset;
+    if (_anchorStale) {
+      // First event after a transition: re-anchor without judging
+      // direction — the offset may have jumped with the page change.
+      _anchorStale = false;
+      _lastOffset = offset;
+      return;
+    }
+    // Judge against the anchor, not the previous event: a slow
+    // scroll moves less than the 4 dp threshold per event but must
+    // still register once it has accumulated past it. The anchor
+    // only moves when a direction is established (hysteresis).
     final down = offset > _lastOffset + 4;
     final up = offset < _lastOffset - 4;
-    if (down && !scrollingDown) {
-      setState(() => scrollingDown = true);
-    } else if (up && scrollingDown) {
-      setState(() => scrollingDown = false);
+    if (down) {
+      _lastOffset = offset;
+      if (!scrollingDown) setState(() => scrollingDown = true);
+    } else if (up) {
+      _lastOffset = offset;
+      if (scrollingDown) setState(() => scrollingDown = false);
     }
     if (offset <= 0 && scrollingDown) {
       setState(() => scrollingDown = false);
     }
-    _lastOffset = offset;
     _idleTimer?.cancel();
     _idleTimer = Timer(const Duration(milliseconds: 1600), () {
       if (mounted && scrollingDown) setState(() => scrollingDown = false);
@@ -253,10 +282,17 @@ class GlassTabBar extends StatefulWidget {
 
 class _GlassTabBarState extends State<GlassTabBar>
     with ScrollDirectionTracker<GlassTabBar>, TickerProviderStateMixin {
-  late final AnimationController _platter = AnimationController(vsync: this);
+  // Unbounded: the platter's value IS a tab index (0..tabs-1); a
+  // bounded controller clamps it to 1 and the pill can never reach
+  // the third or fourth tab.
+  late final AnimationController _platter = AnimationController.unbounded(
+    vsync: this,
+  );
   bool _shrunk = false;
   double _downAccum = 0;
+  double _upAccum = 0;
   double _lastSeen = 0;
+  bool _shrinkAnchorStale = false;
   ScrollController? _shrinkController;
 
   @override
@@ -268,9 +304,12 @@ class _GlassTabBarState extends State<GlassTabBar>
   @override
   void didUpdateWidget(GlassTabBar old) {
     super.didUpdateWidget(old);
+    _shrinkAnchorStale = true; // page changes rebuild the bar too
+    if (widget.shrinkEnabled != old.shrinkEnabled) _downAccum = 0;
     if (!widget.shrinkEnabled && _shrunk) _shrunk = false;
     if (widget.index != old.index) {
       _shrunk = false;
+      _downAccum = 0;
       _platter.animateWith(
         SpringSimulation(
           springPlatter,
@@ -291,24 +330,53 @@ class _GlassTabBarState extends State<GlassTabBar>
       _shrinkController?.removeListener(_shrinkListener);
       _shrinkController = c;
       _shrinkController?.addListener(_shrinkListener);
-      _lastSeen = c.positions.length == 1 ? c.offset : 0;
+      if (c.positions.length == 1) {
+        _lastSeen = c.offset;
+      } else {
+        _shrinkAnchorStale = true;
+      }
     }
   }
 
   void _shrinkListener() {
-    if (!widget.shrinkEnabled) return;
     final c = _shrinkController;
-    if (c == null || !mounted || c.positions.length != 1) return;
+    if (c == null || !mounted) return;
+    if (c.positions.length != 1) {
+      _shrinkAnchorStale = true;
+      return;
+    }
+    if (_shrinkAnchorStale) {
+      _shrinkAnchorStale = false;
+      _lastSeen = c.offset;
+      _downAccum = 0;
+      _upAccum = 0;
+      return;
+    }
+    // Keep the anchor fresh even while shrink is disabled, or the
+    // first scroll after re-enabling reads the whole disabled-period
+    // travel as one delta and shrinks instantly.
     final d = c.offset - _lastSeen;
     _lastSeen = c.offset;
+    if (!widget.shrinkEnabled) return;
     if (d > 0) {
+      _upAccum = 0;
       _downAccum += d;
       if (_downAccum > 48 && !_shrunk) setState(() => _shrunk = true);
-    } else if (d < -2) {
-      _downAccum = 0;
-      if (_shrunk) setState(() => _shrunk = false);
+    } else if (d < 0) {
+      // Accumulate: a slow up-scroll moves <2 dp per event and
+      // would never reach a per-event threshold.
+      _upAccum += -d;
+      if (_upAccum > 8) {
+        _upAccum = 0;
+        _downAccum = 0;
+        if (_shrunk) setState(() => _shrunk = false);
+      }
     }
-    if (c.offset <= 0 && _shrunk) setState(() => _shrunk = false);
+    if (c.offset <= 0 && _shrunk) {
+      _downAccum = 0;
+      _upAccum = 0;
+      setState(() => _shrunk = false);
+    }
   }
 
   @override
@@ -323,9 +391,14 @@ class _GlassTabBarState extends State<GlassTabBar>
     final tokens = widget.tokens;
     if (_shrunk) {
       final tab = widget.tabs[widget.index];
-      return Center(
-        child: GestureDetector(
-          onTap: () => setState(() => _shrunk = false),
+      return SizedBox(
+        height: 62,
+        child: Center(
+          child: GestureDetector(
+          onTap: () => setState(() {
+            _shrunk = false;
+            _downAccum = 0;
+          }),
           child: GlassChromeSurface(
             tokens: tokens,
             radius: BorderRadius.circular(31),
@@ -334,6 +407,7 @@ class _GlassTabBarState extends State<GlassTabBar>
               height: 62,
               child: Icon(tab.icon, size: 24, color: tokens.label),
             ),
+          ),
           ),
         ),
       );

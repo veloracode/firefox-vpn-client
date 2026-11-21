@@ -37,10 +37,18 @@ bool zedReduceMotion(BuildContext context, ZedPrefs prefs) =>
     prefs.reduceMotion || MediaQuery.disableAnimationsOf(context);
 
 class _Entry {
-  _Entry(this.key, this.child, this.entering);
+  _Entry(this.key, this.child, this.entering, this.forward);
   final Key key;
   final Widget child;
   final bool entering;
+
+  /// The navigation direction this entry belongs to. An exit
+  /// already on screen keeps its direction even if the user
+  /// reverses direction again; an exit created FOR a navigation
+  /// takes that navigation's direction (the current widget.forward
+  /// at creation time), matching how the source picks the exit
+  /// spec from the navigation's (initial, target) pair.
+  final bool forward;
   late final AnimationController controller;
 }
 
@@ -78,14 +86,19 @@ class _ZedPageTransitionState extends State<ZedPageTransition>
   }
 
   void _add(Widget child, {required bool entering, bool first = false}) {
-    final entry = _Entry(child.key!, child, entering);
-    entry.controller = AnimationController(vsync: this);
+    final entry = _Entry(child.key!, child, entering, widget.forward);
+    final spec = _specFor(widget.style, entering, widget.reduceMotion);
+    // Spring-driven entries need an unbounded controller: a bounded
+    // one clamps the simulation at 1.0 and the overshoot (the whole
+    // point of the spring) never renders.
+    entry.controller = spec.spring != null && entering
+        ? AnimationController.unbounded(vsync: this)
+        : AnimationController(vsync: this);
     _entries.add(entry);
     if (first) {
       entry.controller.value = 1;
       return;
     }
-    final spec = _specFor(widget.style, entering, widget.reduceMotion);
     if (spec.spring != null && entering) {
       entry.controller
           .animateWith(SpringSimulation(spec.spring!, 0, 1, 0))
@@ -114,10 +127,20 @@ class _ZedPageTransitionState extends State<ZedPageTransition>
     super.didUpdateWidget(old);
     final newKey = widget.child.key;
     if (_entries.isEmpty || _entries.last.key != newKey) {
+      // A page whose exit is still running and is being returned
+      // to: cancel the stale exit, or the stack would hold two
+      // entries (and two sibling keys) for the same page.
+      _entries.removeWhere((e) {
+        if (e.key == newKey && !e.entering) {
+          e.controller.dispose();
+          return true;
+        }
+        return false;
+      });
       // Current top becomes an exit.
       if (_entries.isNotEmpty) {
         final top = _entries.last;
-        final exit = _Entry(top.key, top.child, false);
+        final exit = _Entry(top.key, top.child, false, widget.forward);
         exit.controller = AnimationController(vsync: this);
         top.controller.dispose();
         _entries[_entries.length - 1] = exit;
@@ -127,8 +150,10 @@ class _ZedPageTransitionState extends State<ZedPageTransition>
       }
       _add(widget.child, entering: true);
     } else {
-      _entries[_entries.length - 1] = _Entry(newKey!, widget.child, true)
-        ..controller = _entries.last.controller;
+      final old = _entries.last;
+      _entries[_entries.length - 1] =
+          _Entry(newKey!, widget.child, true, old.forward)
+            ..controller = old.controller;
     }
   }
 
@@ -144,20 +169,22 @@ class _ZedPageTransitionState extends State<ZedPageTransition>
   Widget build(BuildContext context) {
     final rtl = Directionality.of(context) == TextDirection.rtl;
     final layoutSign = rtl ? -1 : 1;
-    final sign = (widget.forward ? 1 : -1) * layoutSign;
     return Stack(
       clipBehavior: Clip.none,
       children: [
         for (final e in _entries)
           Positioned.fill(
+            key: ValueKey(e.key),
             child: AnimatedBuilder(
               animation: e.controller,
               builder: (context, child) => _transform(
                 context,
                 e.controller.value,
                 e.entering,
-                sign,
+                (e.forward ? 1 : -1) * layoutSign,
+                e.forward,
                 child!,
+                elapsed: e.controller.lastElapsedDuration ?? Duration.zero,
               ),
               child: e.child,
             ),
@@ -168,14 +195,25 @@ class _ZedPageTransitionState extends State<ZedPageTransition>
 
   Widget _transform(
     BuildContext context,
-    double t,
+    double rawT,
     bool entering,
     int sign,
-    Widget child,
-  ) {
+    bool forward,
+    Widget child, {
+    Duration elapsed = Duration.zero,
+  }) {
     if (widget.reduceMotion) {
-      return Opacity(opacity: entering ? t : 1 - t, child: child);
+      return Opacity(
+        opacity: (entering ? rawT : 1 - rawT).clamp(0.0, 1.0),
+        child: child,
+      );
     }
+    // Only the elastic entrance consumes t raw (its dy/scale are
+    // linear in the spring value, overshoot included). Every other
+    // branch feeds t to easing curves, which assert outside [0, 1].
+    final t = entering && widget.style == ZedTransition.elastic
+        ? rawT
+        : rawT.clamp(0.0, 1.0);
     final size = MediaQuery.sizeOf(context);
     // Sub-window fade: opacity runs on its own duration inside the
     // controller's total duration.
@@ -210,7 +248,7 @@ class _ZedPageTransitionState extends State<ZedPageTransition>
           ),
         );
       case ZedTransition.depth:
-        final (from, to) = widget.forward ? (0.88, 1.12) : (1.12, 0.88);
+        final (from, to) = forward ? (0.88, 1.12) : (1.12, 0.88);
         final scale = entering
             ? from + (1 - from) * zedFastOutSlowIn.transform(t)
             : 1 + (to - 1) * zedFastOutSlowIn.transform(t);
@@ -224,13 +262,19 @@ class _ZedPageTransitionState extends State<ZedPageTransition>
       case ZedTransition.elastic:
         if (entering) {
           // t is the spring simulation's value (may overshoot).
+          // The fade is a separate 180 ms tween in the source, so
+          // it runs on elapsed time — feeding it the spring value
+          // saturated it within the first frames.
           final dy = size.height / 8 * (1 - t);
           final scale = 0.9 + 0.1 * t;
           return Transform.translate(
             offset: Offset(0, dy),
             child: Transform.scale(
               scale: scale,
-              child: Opacity(opacity: fade(180, 1000), child: child),
+              child: Opacity(
+                opacity: (elapsed.inMilliseconds / 180).clamp(0.0, 1.0),
+                child: child,
+              ),
             ),
           );
         }
@@ -240,7 +284,7 @@ class _ZedPageTransitionState extends State<ZedPageTransition>
           child: Opacity(opacity: 1 - fade(160, 220), child: child),
         );
       case ZedTransition.curtain:
-        if (widget.forward) {
+        if (forward) {
           if (entering) {
             final dy = size.height / 2 * (1 - zedFastOutSlowIn.transform(t));
             return Transform.translate(
@@ -272,7 +316,7 @@ class _ZedPageTransitionState extends State<ZedPageTransition>
         final angleDeg = entering ? 78.0 * sign * (1 - t) : -78.0 * sign * t;
         final alpha = 1 - angleDeg.abs() / 110;
         final opacity = entering
-            ? (t < 90 / 360 ? 0.0 : fade(220, 360))
+            ? ((t * 360 - 90) / 220).clamp(0.0, 1.0)
             : 1 - fade(160, 360);
         return Opacity(
           opacity: opacity * alpha.clamp(0.0, 1.0),
@@ -351,11 +395,25 @@ class ZedEntrance extends StatefulWidget {
   final bool enabled;
   final Widget child;
 
-  /// The shared window anchor: set by the first entrance that runs.
+  /// The shared window anchor: set by the first entrance of a mount
+  /// group. A group is delimited by mounted-ness: while any entrance
+  /// of the group is still mounted, later mounts (lazy rows built
+  /// during a scroll) share the anchor and do NOT restart it; when
+  /// nothing is mounted, the next mount is a new screen and starts
+  /// a fresh window.
   static DateTime? windowStart;
 
+  /// Entrances currently mounted across the app.
+  static int mountedCount = 0;
+
+  /// When the most recent entrance mounted (kept for tests/debug).
+  static DateTime? lastEntranceInit;
+
   /// Test hook: forget the window.
-  static void resetWindow() => windowStart = null;
+  static void resetWindow() {
+    windowStart = null;
+    lastEntranceInit = null;
+  }
 
   @override
   State<ZedEntrance> createState() => _ZedEntranceState();
@@ -370,15 +428,35 @@ class _ZedEntranceState extends State<ZedEntrance>
   @override
   void initState() {
     super.initState();
-    if (!widget.enabled) return;
+    // The mount group is delimited by mounted-ness: every mounted
+    // entrance holds it open, enabled or not.
+    if (ZedEntrance.mountedCount == 0) {
+      ZedEntrance.windowStart = DateTime.now();
+    }
+    ZedEntrance.mountedCount++;
+    if (widget.enabled) _start();
+  }
+
+  @override
+  void didUpdateWidget(ZedEntrance old) {
+    super.didUpdateWidget(old);
+    if (widget.enabled == old.enabled) return;
+    if (widget.enabled) {
+      _start();
+    } else {
+      _stop();
+    }
+  }
+
+  void _start() {
     final now = DateTime.now();
-    ZedEntrance.windowStart ??= now;
-    if (now.difference(ZedEntrance.windowStart!) >
-        const Duration(milliseconds: 800)) {
+    ZedEntrance.lastEntranceInit = now;
+    final start = ZedEntrance.windowStart ??= now;
+    if (now.difference(start) > const Duration(milliseconds: 800)) {
       return; // Outside the window: render unanimated.
     }
     _animate = true;
-    _controller = AnimationController(vsync: this);
+    _controller = AnimationController.unbounded(vsync: this);
     final delay = Duration(
       milliseconds: (widget.index < 12 ? widget.index : 12) * 45,
     );
@@ -388,8 +466,17 @@ class _ZedEntranceState extends State<ZedEntrance>
     });
   }
 
+  void _stop() {
+    _timer?.cancel();
+    _timer = null;
+    _controller?.dispose();
+    _controller = null;
+    _animate = false;
+  }
+
   @override
   void dispose() {
+    ZedEntrance.mountedCount--;
     _timer?.cancel();
     _controller?.dispose();
     super.dispose();
@@ -439,16 +526,30 @@ class ZedPressScale extends StatefulWidget {
 
 class _ZedPressScaleState extends State<ZedPressScale>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    value: 1,
-  );
+  int _pointers = 0;
+
+  // Unbounded: the Glass press target is 1.07 — a bounded controller
+  // clamps the spring at 1.0 and the press never renders.
+  late final AnimationController _controller =
+      AnimationController.unbounded(vsync: this, value: 1);
 
   void _to(double target) {
-    if (!widget.enabled) return;
+    // Returning to rest is always allowed: if the widget is
+    // disabled mid-press, the release must still spring back or
+    // the child stays scaled forever.
+    if (!widget.enabled && target != 1) return;
     _controller.animateWith(
       SpringSimulation(widget.spring, _controller.value, target, 0),
     );
+  }
+
+  @override
+  void didUpdateWidget(ZedPressScale old) {
+    super.didUpdateWidget(old);
+    if (!widget.enabled &&
+        (_controller.value != 1 || _controller.isAnimating)) {
+      _to(1);
+    }
   }
 
   @override
@@ -457,11 +558,19 @@ class _ZedPressScaleState extends State<ZedPressScale>
     super.dispose();
   }
 
+  void _release() {
+    if (_pointers > 0) _pointers--;
+    if (_pointers == 0) _to(1);
+  }
+
   @override
   Widget build(BuildContext context) => Listener(
-    onPointerDown: (_) => _to(widget.pressedScale),
-    onPointerUp: (_) => _to(1),
-    onPointerCancel: (_) => _to(1),
+    onPointerDown: (_) {
+      _pointers++;
+      _to(widget.pressedScale);
+    },
+    onPointerUp: (_) => _release(),
+    onPointerCancel: (_) => _release(),
     child: AnimatedBuilder(
       animation: _controller,
       builder: (context, child) =>

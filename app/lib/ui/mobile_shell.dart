@@ -66,13 +66,17 @@ class _MobileShellState extends State<MobileShell> {
 
   /// Opens [page] under a top bar named [title]; it follows the core.
   void _push(String title, Widget Function() page) {
-    final prefs = widget.settings.zedPrefs;
-    final glass = prefs.design == ZedDesign.glass;
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (context) => ListenableBuilder(
-          listenable: widget.core,
+          listenable: Listenable.merge([widget.core, widget.settings]),
           builder: (context, _) {
+            // Read the prefs inside the builder: a design or
+            // wallpaper change made while this route is open (the
+            // settings sections are pushed routes) must restyle the
+            // route's own chrome, not wait for a reopen.
+            final prefs = widget.settings.zedPrefs;
+            final glass = prefs.design == ZedDesign.glass;
             final dark = Theme.of(context).brightness == Brightness.dark;
             final tokens = glass ? glassTokensFor(prefs.glass, dark) : null;
             return Scaffold(
@@ -238,7 +242,15 @@ class _MobileShellState extends State<MobileShell> {
                     ?widget.banner,
                     Expanded(
                       child: Padding(
-                        padding: EdgeInsets.only(bottom: contentInset),
+                        // The bar's bottom offset adds the safe-area
+                        // padding; the content inset must add it too,
+                        // or on gesture-nav devices the last slice of
+                        // the page stays hidden under the bar.
+                        padding: EdgeInsets.only(
+                          bottom:
+                              contentInset +
+                              MediaQuery.paddingOf(context).bottom,
+                        ),
                         child: ZedPageTransition(
                           style: prefs.transition,
                           forward: forward,

@@ -1316,7 +1316,10 @@ class _PhoneHome extends StatelessWidget {
             _ => p.busy,
           };
     final label = confirming ? l.stateConnecting : look.label;
-    final press = on ? l.tapToDisconnectPhone : l.tapToConnectPhone;
+    final tv = Platform.isAndroid && AndroidCore.isTv;
+    final press = on
+        ? (tv ? l.tapToDisconnectTv : l.tapToDisconnectPhone)
+        : (tv ? l.tapToConnectTv : l.tapToConnectPhone);
     final place = homeLocation(l, status, connected: connected);
     // Glass homeCard off hides the server module card.
     final showPlaceCard =

@@ -100,6 +100,85 @@ void main() {
       await tester.pumpAndSettle();
       expect(taps, 1);
     });
+
+    testWidgets('a busy tap cancels', (tester) async {
+      // Regression (DeepSeek pass 4a): _pressDown returned early
+      // while busy, so _holding was never set and the busy-cancel
+      // branch in _pressUp was dead code.
+      var taps = 0;
+      await tester.pumpWidget(
+        _host(
+          BentoHoldConnect(
+            prefs: BentoPrefs(),
+            spec: _spec(ZedPhase.busy, () => taps++),
+          ),
+        ),
+      );
+      await tester.tap(find.byType(BentoHoldConnect));
+      await tester.pump();
+      expect(taps, 1);
+    });
+
+    testWidgets('a fired hold does not toggle again on release', (
+      tester,
+    ) async {
+      // Regression (DeepSeek pass 4a): after the 650 ms hold fired
+      // and the parent went busy, releasing the pointer hit the
+      // busy-cancel branch and toggled a second time.
+      var taps = 0;
+      var phase = ZedPhase.off;
+      await tester.pumpWidget(
+        StatefulBuilder(
+          builder: (context, setState) => _host(
+            BentoHoldConnect(
+              prefs: BentoPrefs(),
+              spec: _spec(phase, () {
+                taps++;
+                setState(() => phase = ZedPhase.busy);
+              }),
+            ),
+          ),
+        ),
+      );
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byType(BentoHoldConnect)),
+      );
+      await tester.pump(const Duration(milliseconds: 700));
+      expect(taps, 1);
+      await gesture.up();
+      await tester.pump();
+      expect(taps, 1);
+    });
+  });
+
+  group('Glass Z', () {
+    testWidgets('pumps and animates with animations enabled', (tester) async {
+      // Regression (DeepSeek pass 4b): the Z's clock controller had
+      // no duration, so repeat() asserted on the first frame the
+      // Glass home rendered.
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ZedTheme.build(
+            Brightness.dark,
+            const Locale('en'),
+            ZedPrefs()..design = ZedDesign.glass,
+          ),
+          home: Scaffold(
+            body: Center(
+              child: GlassZConnect(
+                tokens: glassTokensFor(GlassPrefs(), true),
+                spec: _spec(ZedPhase.off, () {}),
+                width: 300,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.byType(GlassZConnect), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   });
 
   group('Glass slider', () {

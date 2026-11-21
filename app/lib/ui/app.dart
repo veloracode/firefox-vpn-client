@@ -94,6 +94,21 @@ class Shell extends StatefulWidget {
 
 enum _Page { overview, servers, accounts, settings, logs, about }
 
+/// The desktop rail's leading when extended: logo + app title.
+Widget _railTitle(BuildContext context, AppLocalizations l) => Row(
+  mainAxisSize: MainAxisSize.min,
+  children: [
+    const AppLogo(size: 34),
+    const SizedBox(width: 10),
+    Text(
+      l.appTitle,
+      style: Theme.of(
+        context,
+      ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+    ),
+  ],
+);
+
 class _ShellState extends State<Shell> {
   _Page _page = _Page.overview;
   int _prevIndex = 0;
@@ -286,19 +301,23 @@ class _ShellState extends State<Shell> {
                       _ => prefs.navStyle != ZedNavStyle.minimal,
                     },
                     minExtendedWidth: 190,
+                    // The leading collapses with the rail: the full
+                    // logo+title row is wider than the collapsed
+                    // rail and would overflow it.
                     leading: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-                      child: Row(
-                        children: [
-                          const AppLogo(size: 34),
-                          const SizedBox(width: 10),
-                          Text(
-                            l.appTitle,
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w600),
-                          ),
-                        ],
-                      ),
+                      child: switch (prefs.design) {
+                        ZedDesign.bento =>
+                          prefs.bento.navStyle != ZedNavStyle.minimal &&
+                                  prefs.bento.navStyle !=
+                                      ZedNavStyle.compactDock
+                              ? _railTitle(context, l)
+                              : const AppLogo(size: 34),
+                        _ =>
+                          prefs.navStyle != ZedNavStyle.minimal
+                              ? _railTitle(context, l)
+                              : const AppLogo(size: 34),
+                      },
                     ),
                     destinations: [
                       for (final (icon, selected, label) in items)

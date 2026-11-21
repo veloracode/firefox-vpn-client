@@ -369,13 +369,25 @@ class _TrafficStrip extends StatefulWidget {
 class _TrafficStripState extends State<_TrafficStrip> {
   final List<double> _history = [];
 
+  void _sample() {
+    _history.add(widget.downRate + widget.upRate);
+    if (_history.length > 24) _history.removeAt(0);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _sample();
+  }
+
   @override
   void didUpdateWidget(_TrafficStrip old) {
     super.didUpdateWidget(old);
-    if (old.downRate != widget.downRate || old.upRate != widget.upRate) {
-      _history.add(widget.downRate + widget.upRate);
-      if (_history.length > 24) _history.removeAt(0);
-    }
+    // Sample on every rebuild, not only on change: the strip is
+    // rebuilt by the overview's poll stream, and steady traffic
+    // (an idle 0/0 above all) is still a time series — gating on
+    // change froze the graph and left the text fallback up forever.
+    _sample();
   }
 
   @override

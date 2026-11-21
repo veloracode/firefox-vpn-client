@@ -197,7 +197,13 @@ class GlassZConnect extends StatefulWidget {
 
 class _GlassZConnectState extends State<GlassZConnect>
     with TickerProviderStateMixin {
-  late final AnimationController _clock = AnimationController(vsync: this);
+  // repeat() requires a duration: this clock is a free-running
+  // time source (the painter reads lastElapsedDuration and reduces
+  // it modulo each effect's cycle), so its cycle is a year.
+  late final AnimationController _clock = AnimationController(
+    vsync: this,
+    duration: const Duration(days: 365),
+  );
   late final AnimationController _blend = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 450),
@@ -240,7 +246,8 @@ class _GlassZConnectState extends State<GlassZConnect>
       widget.tokens.tint,
     );
     if (widget.spec.phase != old.spec.phase ||
-        widget.tokens.dark != old.tokens.dark) {
+        widget.tokens.dark != old.tokens.dark ||
+        widget.tokens.tint != old.tokens.tint) {
       _from = ZLook.lerp(_from, _to, _blend.value);
       _to = next;
       _blend.forward(from: 0);
@@ -292,7 +299,7 @@ class _GlassZConnectState extends State<GlassZConnect>
                           : null,
                       busy: spec.busy,
                       glyphWidth: w,
-                      tiltX: _tiltX,
+                      tiltX: widget.parallax ? _tiltX : 0,
                     ),
                   );
                 },
@@ -917,7 +924,7 @@ class _GlassSliderConnectState extends State<GlassSliderConnect>
                   _pos.stop();
                 },
                 onPointerMove: (e) {
-                  if (!_dragging) return;
+                  if (!_dragging || !spec.enabled) return;
                   final rtl = Directionality.of(context) == TextDirection.rtl;
                   var dx = e.localPosition.dx - _startX;
                   if (rtl) dx = -dx;
@@ -926,6 +933,10 @@ class _GlassSliderConnectState extends State<GlassSliderConnect>
                 onPointerUp: (_) {
                   if (!_dragging) return;
                   _dragging = false;
+                  if (!spec.enabled) {
+                    _settle(_engaged ? 1 : 0);
+                    return;
+                  }
                   final moved = (_pos.value - _startPos).abs();
                   if (moved < 0.02) {
                     // A tap toggles (a busy tap cancels the attempt).

@@ -1,0 +1,9 @@
+- **lib/ui/zed/zed_motion.dart — `_ZedPageTransitionState.didUpdateWidget` / `build`**: Reverse navigation to a page whose exit is still active adds a second entry with the same page key. Example: A→B, then back to A before A’s exit completes. `_entries` still contains the exiting A, and `didUpdateWidget` only checks `_entries.last.key != newKey`, so it calls `_add(A, entering: true)` without removing/reusing the existing A. `build` then emits two `Positioned.fill` siblings with `key: ValueKey(e.key)` where both keys are A, causing Flutter’s duplicate-key assertion/corruption.
+
+- **lib/ui/zed/zed_kit.dart — `ScrollDirectionTracker._onScroll`**: The hysteresis anchor is overwritten on every scroll event by the final `_lastOffset = offset;`, including when neither `down` nor `up` crossed the 4 dp threshold. A slow scroll with 3 dp increments never accumulates past the threshold, so `scrollingDown` never changes. This directly contradicts the comment that “the anchor only moves when a direction is established.”
+
+- **lib/ui/zed/zed_motion.dart — `ZedEntrance._start` / `_stop`**: `mountedCount` is decremented in `_stop` when `enabled` becomes false, even though the widget is still mounted. The documented group boundary is mounted-ness, but the implementation counts enabled entrances. If all entrances are disabled while still mounted, a later enabled entrance sees `mountedCount == 0`, resets `windowStart`, and reanimates inside the same still-mounted group.
+
+- **lib/ui/zed/zed_motion.dart — `ZedEntrance.resetWindow` / `_ZedEntranceState._start`**: `resetWindow()` nulls `windowStart` without resetting `mountedCount`. If it is called while any enabled entrance is mounted (`mountedCount > 0`), a subsequent `_start` skips the `mountedCount == 0` initialization and evaluates `now.difference(ZedEntrance.windowStart!)`, throwing a null-check exception.
+
+TOTAL FINDINGS: 4

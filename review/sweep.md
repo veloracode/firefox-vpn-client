@@ -20,9 +20,13 @@ not passes.
   (manifest 485/485, see below), and `grep` shows zero references to
   the zed prefs anywhere in `core/` or `app/lib/core/` — the sing-box
   config inputs cannot differ.
-- **A4 (shipped-artifact capabilities)** — PENDING CI artifacts
-  (aapt dump of package/versionCode/permissions + ZIP listing are
-  run on the built artifacts before handoff).
+- **A4 (shipped-artifact capabilities)** — PASS. CI run 44910505420
+  (branch zed-v2-Muse, tree ffcf8d2d) succeeded; the arm64 APK was
+  dumped with aapt: package com.arman.firefoxvpn, versionName 1.1.0,
+  versionCode 2257, INTERNET + the stock permission set present.
+  The Windows portable ZIP lists firefox-vpn.exe,
+  flutter_windows.dll, core/arman-vpn-core.exe (14.8 MB — the name
+  core_process.dart:62 actually spawns) and core/arman-vpn-tun.exe.
 - **A5 (fragile gating fetch)** — PASS by construction: no new
   network calls were added; the UI layer only re-renders existing
   core state.
@@ -125,8 +129,9 @@ not passes.
 - **F3 (version parseability)** — PASS in lab: pubspec 1.1.0+257;
   split-APK arithmetic gives arm64 versionCode 2257
   (257 + 1000×2), to be read back from the built APK (A4).
-- **F4 (one version, all platforms)** — PENDING CI: one dispatch
-  must yield both the Android APK and the Windows portable ZIP.
+- **F4 (one version, all platforms)** — PASS: the single dispatch
+  (run 44910505420) produced android, windows, linux, linux-desktop
+  and macos artifacts under the one version 1.1.0+257.
 - **F5 (no one-shot helpers)** — PASS: no publish helper was
   executed; the push uses hand-written Git Database API calls via
   the scoped connector credential.
@@ -176,3 +181,22 @@ not passes.
 ## Core integrity
 `sha256sum -c review/core-manifest-baseline.txt` → **485/485 OK**
 (`core/` + `app/lib/core/` byte-identical to upstream-119).
+
+## Addendum (DeepSeek loop close, 2026-11-21)
+- The DeepSeek bug-review loop ran 10 passes + 6 confirmation
+  rounds: 60 findings confirmed and fixed by Muse, 7 refuted.
+  Full record: review/deepseek-review.md. Structural findings:
+  the Glass Z clock asserted on first render; unkeyed transition
+  entries destroyed the incoming page's State at cleanup; the
+  keying fix itself introduced a duplicate-key crash on fast
+  reverse navigation, caught and fixed in the next round. A
+  seventh confirmation round could not be obtained (HTTP 529).
+- Final gates: flutter analyze clean; 271/275 tests pass; core
+  manifest re-verified 485/485 identical at loop close.
+- IMPORTANT: the CI artifacts (run 44910505420) predate passes
+  2b-9 — they contain only the pass-1 fix. The reviewed code is
+  in local commits on top of the pushed tree (HEAD 30a4a49);
+  matching artifacts need one more CI dispatch, which was NOT
+  done (the brief allowed one dispatch; flagged for the parent).
+- D4/E1/E2/G6 remain UNPROVEN (no emulator/KVM on this VM);
+  A1/D2 remain PARTIAL (lab-proven only). No smoothness claim.

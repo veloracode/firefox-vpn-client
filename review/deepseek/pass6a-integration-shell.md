@@ -1,0 +1,11 @@
+1. `app/lib/ui/app.dart` — `_ShellState.build` and `app/lib/ui/overview_page.dart` — `_zedHomePalette`: `pixelAccents[prefs.pixel.accentIndex.clamp(0, 9)]` uses the result of `clamp` as a list index. In Dart, `clamp` on an `int` returns `num`, not `int`, so this is a compile-time error (`argument type 'num' can't be assigned to 'int'`) and the app cannot build.
+
+2. `app/lib/ui/app.dart` — `_ShellState.build`: When `extended` becomes `false` (minimal nav style, or Bento minimal/compactDock), the rail collapses to roughly its unextended width, but `leading` is still an unconditional `Padding` containing `AppLogo(34) + SizedBox(10) + Text(appTitle)` with 16 px horizontal padding. Those non-flex children are wider than the collapsed rail, causing a RenderFlex overflow and clipping the title. Evidence: `extended` is conditional, but the `leading` Row is not.
+
+3. `app/lib/ui/mobile_shell.dart` — `_MobileShellState.build`: The floating bar is positioned with `bottom: barBottom + MediaQuery.paddingOf(context).bottom`, while the page content uses `SafeArea(bottom: false)` and only `Padding(bottom: contentInset)`. On a device with bottom safe-area padding, the bar’s top can sit above the page’s padded bottom by `(barBottom + padding.bottom + barHeight) - contentInset`; for glass, with `contentInset == 94`, `barBottom == 16`, and a typical home-indicator inset, the bar overlaps the bottom of the page, covering content and intercepting taps in that region.
+
+4. `app/lib/ui/overview_page.dart` — `_PhoneHome._content`: `final press = on ? l.tapToDisconnectPhone : l.tapToConnectPhone;` removed the previous `Platform.isAndroid && AndroidCore.isTv` branch. On Android TV the hint now always uses the phone “tap” text instead of the TV remote/OK text, so the UI gives the wrong instruction for the active input device.
+
+5. `app/lib/ui/mobile_shell.dart` — `_MobileShellState._push`: `prefs` and `glass` are captured before `Navigator.push`, and the pushed route’s `ListenableBuilder` listens only to `widget.core`. If the user changes Zed design/wallpaper while that pushed route is open (for example inside a settings section), the route does not rebuild and keeps the old glass/non-glass background and wallpaper until it is closed and reopened.
+
+TOTAL FINDINGS: 5

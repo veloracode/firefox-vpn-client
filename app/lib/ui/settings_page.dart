@@ -1093,7 +1093,14 @@ class _SettingsPageState extends State<SettingsPage> {
             value: zedProfileOf(p.profileId) != null ? p.profileId : '',
             onChanged: (id) {
               final profile = zedProfileOf(id);
-              if (profile != null) applyZedProfile(p, profile);
+              if (profile != null) {
+                applyZedProfile(p, profile);
+              } else {
+                // "Custom": clear the preset id, or the dropdown
+                // snaps back to the preset and the user's own
+                // colours can never be re-selected.
+                p.profileId = '';
+              }
               save();
             },
             options: [

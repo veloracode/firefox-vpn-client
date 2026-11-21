@@ -89,6 +89,45 @@ void main() {
       expect(t.module.a, 1.0);
     });
 
+    test('amoled reaches the scaffold and card surfaces', () {
+      // Regression (DeepSeek pass 2b): pixelScheme computed the
+      // AMOLED role set but ZedTheme.build used fixed greys for the
+      // scaffold/card, so the toggle changed nothing visible.
+      final p = ZedPrefs()..design = ZedDesign.pixel;
+      p.pixel.amoled = true;
+      final theme = ZedTheme.build(Brightness.dark, const Locale('en'), p);
+      expect(theme.scaffoldBackgroundColor, const Color(0xFF000000));
+      expect(theme.cardTheme.color, const Color(0xFF0F0F0F));
+      final plain = ZedTheme.build(
+        Brightness.dark,
+        const Locale('en'),
+        ZedPrefs()..design = ZedDesign.pixel,
+      );
+      expect(plain.scaffoldBackgroundColor, const Color(0xFF111218));
+    });
+
+    test('the glass rail uses the chrome material, not the solid', () {
+      // Regression (DeepSeek pass 2b): the rail bypassed the
+      // reduceTransparency/tinted logic by always using chromeSolid.
+      final p = ZedPrefs()..design = ZedDesign.glass;
+      p.glass.material = GlassMaterial.tinted;
+      final theme = ZedTheme.build(Brightness.dark, const Locale('en'), p);
+      expect(
+        theme.navigationRailTheme.backgroundColor,
+        glassTokensFor(p.glass, true).chrome,
+      );
+      p.glass.reduceTransparency = true;
+      final reduced = ZedTheme.build(
+        Brightness.dark,
+        const Locale('en'),
+        p,
+      );
+      expect(
+        reduced.navigationRailTheme.backgroundColor,
+        glassTokensFor(p.glass, true).chromeSolid,
+      );
+    });
+
     test('theme profiles write a whole pixel block at once', () {
       final p = PixelPrefs();
       final profile = zedProfileOf('aurora');
@@ -96,6 +135,11 @@ void main() {
       applyZedProfile(p, profile!);
       expect(p.profileId, 'aurora');
       expect(p.customDownload, isNotNull);
+      // The extract's applyThemeProfile list includes the connect
+      // and connected colours (only the connect STYLE is untouched).
+      expect(p.customConnect, profile.connect.toARGB32());
+      expect(p.customConnected, profile.connected.toARGB32());
+      expect(p.cornerStyle, CardCornerStyle.rounded);
     });
 
     test('ZedTheme.build carries the design extensions', () {

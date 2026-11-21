@@ -1,0 +1,4 @@
+/tmp/theme_a.dart — `_monoTokens`, `lime`/`onLime` initialization  
+Failure scenario: light mode + mono palette. `_monoTokens` returns `lime: _tone(n, t(94, 12))` and `onLime: _tone(n, t(8, 96))`; when `dark == false`, this resolves lime to tone 12 (dark) and onLime to tone 96 (light). But `bentoScheme`'s light branch uses `primaryContainer: c.lime` and `onPrimaryContainer: c.onLime`, so mono light gets an inverted primary-container pair: dark container with light content. Every other light palette keeps lime light and onLime dark (`_light` hardcoded values; `_tonalTokens` uses `lime: _tone(accent, 88)` / `onLime: _tone(accent, 14)`), so this is a concrete wrong value for mono in light mode.
+
+TOTAL FINDINGS: 1

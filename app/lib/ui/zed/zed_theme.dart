@@ -1506,7 +1506,10 @@ ZedProfile? zedProfileOf(String id) {
 }
 
 /// `AppSettings.applyThemeProfile`: writes the profile's whole block
-/// into the personalisation prefs (design/corner/connect untouched).
+/// into the personalisation prefs, including the connect/connected
+/// colours (the extract's list is explicit). Untouched, per the same
+/// source: the design, the corner style, the connect STYLE, the nav
+/// style and the Bento/Glass palettes.
 void applyZedProfile(PixelPrefs prefs, ZedProfile profile) {
   prefs.accentIndex = profile.accentIndex;
   prefs.amoled = profile.amoled;
@@ -1548,10 +1551,22 @@ abstract final class ZedTheme {
           ),
         ) as ShapeBorder,
       ),
+      // AMOLED (§3.1): the scaffold and card surfaces take the
+      // scheme's black roles, not the standard dark greys — the
+      // eight-role set in pixelScheme would otherwise never reach
+      // the two surfaces the user actually sees.
       ZedDesign.pixel => (
         pixelScheme(prefs.pixel, brightness),
-        dark ? const Color(0xFF111218) : const Color(0xFFF5F5FA),
-        dark ? const Color(0xFF1A1B23) : Colors.white,
+        prefs.pixel.amoled && dark
+            ? const Color(0xFF000000)
+            : dark
+            ? const Color(0xFF111218)
+            : const Color(0xFFF5F5FA),
+        prefs.pixel.amoled && dark
+            ? const Color(0xFF0F0F0F)
+            : dark
+            ? const Color(0xFF1A1B23)
+            : Colors.white,
         RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(
             cornerStyleServerRadius(prefs.pixel.cornerStyle),
@@ -1560,8 +1575,16 @@ abstract final class ZedTheme {
       ),
       ZedDesign.old => (
         pixelScheme(prefs.old, brightness),
-        dark ? const Color(0xFF111218) : const Color(0xFFF5F5FA),
-        dark ? const Color(0xFF1A1B23) : Colors.white,
+        prefs.old.amoled && dark
+            ? const Color(0xFF000000)
+            : dark
+            ? const Color(0xFF111218)
+            : const Color(0xFFF5F5FA),
+        prefs.old.amoled && dark
+            ? const Color(0xFF0F0F0F)
+            : dark
+            ? const Color(0xFF1A1B23)
+            : Colors.white,
         RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(
             cornerStyleServerRadius(prefs.old.cornerStyle),
@@ -1612,7 +1635,7 @@ abstract final class ZedTheme {
         backgroundColor: prefs.design == ZedDesign.bento
             ? bento.dock
             : prefs.design == ZedDesign.glass
-            ? glass.chromeSolid
+            ? glass.chrome
             : (dark ? const Color(0xFF15161D) : const Color(0xFFECECF4)),
         selectedLabelTextStyle: TextStyle(
           fontFamily: font,

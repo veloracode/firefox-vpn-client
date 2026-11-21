@@ -207,7 +207,13 @@ class _BentoSlideConnectState extends State<BentoSlideConnect>
   @override
   void didUpdateWidget(BentoSlideConnect old) {
     super.didUpdateWidget(old);
-    if (!_dragging && _engaged != old.spec.active) {
+    // Settle on an active change — and on a direct off→error
+    // transition, where active stays false but a crossed drag has
+    // already sent the knob to the on end.
+    final becameError =
+        widget.spec.phase == ZedPhase.error &&
+        old.spec.phase != ZedPhase.error;
+    if (!_dragging && (_engaged != old.spec.active || becameError)) {
       _settleTo(_engaged ? 1 : 0);
     }
     _syncWave();
@@ -273,6 +279,10 @@ class _BentoSlideConnectState extends State<BentoSlideConnect>
         onPointerUp: (e) {
           if (!_dragging) return;
           _dragging = false;
+          if (!spec.enabled) {
+            _settleTo(_engaged ? 1 : 0);
+            return;
+          }
           final moved = (_pos.value - _dragStartPos).abs();
           if (moved < 0.02) {
             // A tap toggles (a busy tap cancels the attempt), with
@@ -347,6 +357,7 @@ class _BentoSlideConnectState extends State<BentoSlideConnect>
                           wavePhase: _wave.value,
                           busy: spec.busy,
                           connected: spec.on,
+                          rtl: Directionality.of(context) == TextDirection.rtl,
                         ),
                         child: const SizedBox.expand(),
                       ),
@@ -392,6 +403,7 @@ class _SlidePainter extends CustomPainter {
     required this.wavePhase,
     required this.busy,
     required this.connected,
+    required this.rtl,
   });
 
   final BentoTokens colors;
@@ -401,12 +413,20 @@ class _SlidePainter extends CustomPainter {
   final bool busy;
   final bool connected;
 
+  /// In RTL the track's start (pos 0) is the RIGHT edge: the knob
+  /// and the wave's phase coordinate mirror with the layout, so the
+  /// knob follows the finger instead of moving against it.
+  final bool rtl;
+
   @override
   void paint(Canvas canvas, Size size) {
     final knobR = 20.0;
     final cy = size.height / 2;
     final range = size.width - knobR * 2;
-    final knobX = knobR + range * pos;
+    final knobX = rtl ? size.width - (knobR + range * pos) : knobR + range * pos;
+    // Wave phase coordinate: measured from the track's start edge
+    // (the left edge in LTR, the right edge in RTL).
+    double phaseX(double x) => rtl ? size.width - x : x;
     if (wave) {
       // Wavelength snapped to an even number of half-waves (32 dp
       // preferred) so the wave starts/ends at a zero crossing.
@@ -427,7 +447,7 @@ class _SlidePainter extends CustomPainter {
               cy +
               4.5 *
                   math.sin(
-                    2 * math.pi * (x - knobR) / wavelength -
+                    2 * math.pi * (phaseX(x) - knobR) / wavelength -
                         2 * math.pi * wavePhase,
                   );
           p.lineTo(x, y);
@@ -441,14 +461,17 @@ class _SlidePainter extends CustomPainter {
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round
         ..color = colors.onLime.withValues(alpha: connected ? 1 : 0.85);
-      canvas.drawPath(wavePath(0, knobX), behindPaint);
+      canvas.drawPath(
+        rtl ? wavePath(knobX, size.width) : wavePath(0, knobX),
+        behindPaint,
+      );
       final aheadPaint = Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 4.5
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round
         ..color = colors.onLime.withValues(alpha: busy ? 0.9 : 0.3);
-      final ahead = wavePath(knobX, size.width);
+      final ahead = rtl ? wavePath(0, knobX) : wavePath(knobX, size.width);
       if (busy) {
         // Dashed 10 on / 9 off (Flutter has no path effects; walk the
         // path metrics and draw the "on" segments).
@@ -474,7 +497,7 @@ class _SlidePainter extends CustomPainter {
       final rideY =
           4.5 *
           math.sin(
-            2 * math.pi * (knobX - knobR) / wavelength -
+            2 * math.pi * (phaseX(knobX) - knobR) / wavelength -
                 2 * math.pi * wavePhase,
           );
       _knob(canvas, Offset(knobX, cy + rideY), knobR);
@@ -504,6 +527,8 @@ class _SlidePainter extends CustomPainter {
   @override
   bool shouldRepaint(_SlidePainter old) =>
       old.pos != pos ||
+      old.wave != wave ||
+      old.rtl != rtl ||
       old.wavePhase != wavePhase ||
       old.busy != busy ||
       old.connected != connected ||
@@ -1043,16 +1068,21 @@ class _BentoHoldConnectState extends State<BentoHoldConnect>
   }
 
   void _pressDown() {
-    if (!widget.spec.enabled || widget.spec.busy) return;
+    if (!widget.spec.enabled) return;
+    // Register the press even while busy: a busy tap (down + up)
+    // cancels the attempt in _pressUp. Without this the cancel
+    // branch could never fire.
     _holding = true;
+    if (widget.spec.busy) return;
     _fired = false;
     _fill.animateTo(
       1,
       duration: const Duration(milliseconds: 650),
       curve: Curves.linear,
     );
+    _holdTimer?.cancel();
     _holdTimer = Timer(const Duration(milliseconds: 650), () {
-      if (_holding && mounted) {
+      if (_holding && mounted && !_fired) {
         _fired = true;
         HapticFeedback.mediumImpact();
         widget.spec.onToggle();
@@ -1062,8 +1092,10 @@ class _BentoHoldConnectState extends State<BentoHoldConnect>
 
   void _pressUp({required bool cancelled}) {
     _holdTimer?.cancel();
-    if (widget.spec.busy && !cancelled && _holding) {
+    if (widget.spec.busy && !cancelled && _holding && !_fired) {
       // A busy tap (up without cancellation) cancels the attempt.
+      // !_fired: a press whose hold already toggled must not toggle
+      // a second time on release when the parent has gone busy.
       widget.spec.onToggle();
     }
     _holding = false;
@@ -1248,7 +1280,13 @@ class _HoldDialPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_HoldDialPainter old) =>
-      old.progress != progress || old.rotation != rotation || old.arc != arc;
+      old.progress != progress ||
+      old.rotation != rotation ||
+      old.arc != arc ||
+      old.busy != busy ||
+      old.track != track ||
+      old.disc != disc ||
+      old.glyph != glyph;
 }
 
 /// §4.6 Tile — 132 dp prominent tile with a morphing badge.

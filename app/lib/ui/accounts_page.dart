@@ -390,6 +390,14 @@ class _CreateAccountGuide extends StatelessWidget {
   }
 }
 
+/// Wraps [child] in the custom config-card text colour when one is
+/// set. (A DefaultTextStyle.merge with a null style is not a
+/// guaranteed no-op for descendants reading the ambient style, so
+/// the unset case must not wrap at all.)
+Widget _maybeCardText(Color? cardText, Widget child) => cardText == null
+    ? child
+    : DefaultTextStyle.merge(style: TextStyle(color: cardText), child: child);
+
 class _AccountCard extends StatelessWidget {
   const _AccountCard({
     required this.core,
@@ -437,9 +445,9 @@ class _AccountCard extends StatelessWidget {
               ? BorderSide(color: theme.colorScheme.primary, width: 1.5)
               : BorderSide.none,
         ),
-        child: DefaultTextStyle.merge(
-          style: cardText == null ? null : TextStyle(color: cardText),
-          child: LayoutBuilder(
+        child: _maybeCardText(
+          cardText,
+          LayoutBuilder(
             builder: (context, box) {
               // A phone: the controls go under the account.
               final narrow = box.maxWidth < 520;
