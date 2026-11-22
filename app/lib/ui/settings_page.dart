@@ -137,6 +137,8 @@ bool settingOnThisPlatform(AppLocalizations l, String name) {
     l.startOnBoot,
     l.autostartShowsWindow,
     l.connectOnStartup,
+    // The TUN service exists only where a service can be installed.
+    l.removeTunService,
   };
   final androidOnly = {
     l.showAppModeSwitch,
@@ -244,7 +246,6 @@ List<(SettingsSection, String)> settingsIndex(AppLocalizations l) => [
   (SettingsSection.routing, l.bypassApps),
   (SettingsSection.routing, l.directRules),
   (SettingsSection.routing, l.region),
-  (SettingsSection.routing, l.removeTunService),
   (SettingsSection.routing, l.resolveDomains),
   (SettingsSection.routing, l.routingDirect),
   (SettingsSection.routing, l.routingLists),
@@ -264,7 +265,7 @@ List<(SettingsSection, String)> settingsIndex(AppLocalizations l) => [
   (SettingsSection.advanced, l.listSource),
   (SettingsSection.advanced, l.removeTunService),
   (SettingsSection.advanced, l.updateLists),
-  (SettingsSection.advanced, l.upstreamProxy),
+  (SettingsSection.upstreamProxy, l.upstreamProxy),
   (SettingsSection.advanced, l.webDashboard),
 ];
 
@@ -316,21 +317,66 @@ class _SettingsPageState extends State<SettingsPage> {
   String _query = '';
   final _search = TextEditingController();
 
+  /// The search index, rebuilt only when the locale changes: the
+  /// search field rebuilds this page per keystroke, and rebuilding
+  /// ~120 localized entries with it was pure churn.
+  List<(SettingsSection, String)>? _indexCache;
+  String? _indexLocale;
+
+  List<(SettingsSection, String)> _index(AppLocalizations l) {
+    if (_indexCache == null || _indexLocale != l.localeName) {
+      _indexCache = settingsIndex(l);
+      _indexLocale = l.localeName;
+    }
+    return _indexCache!;
+  }
+
   /// The core's config.json as raw JSON; null until read.
   Map<String, Object?>? _config;
+
+  /// The last load failed: sections show a retry instead of spinning
+  /// forever on a config that will never arrive on its own.
+  bool _loadFailed = false;
   bool _saving = false;
   String? _dnsPreset;
 
   CoreController get _core => widget.core;
 
+  /// The status facts the sections' build reads: TUN support, the
+  /// system-proxy offer, TUN mode, TUN programs, TUN installed. The
+  /// page rebuilds when one of them flips — the shell used to
+  /// rebuild the whole page on every 2 s poll (+259 narrowed it).
+  (bool, bool, bool, bool, bool)? _statusFacts;
+
+  (bool, bool, bool, bool, bool) get _factsNow {
+    final status = _core.status;
+    return (
+      status?.tunSupported ?? false,
+      status?.systemProxySupported ?? false,
+      status?.tunMode ?? false,
+      status?.tun?.programsSupported ?? false,
+      status?.tun?.installed ?? false,
+    );
+  }
+
+  void _statusChanged() {
+    final next = _factsNow;
+    if (next == _statusFacts) return;
+    _statusFacts = next;
+    if (mounted) setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
+    _statusFacts = _factsNow;
+    _core.addListener(_statusChanged);
     _load();
   }
 
   @override
   void dispose() {
+    _core.removeListener(_statusChanged);
     _search.dispose();
     super.dispose();
   }
@@ -338,11 +384,20 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _load() async {
     try {
       final config = await _core.settings();
-      if (mounted) setState(() => _config = config);
+      if (mounted) {
+        setState(() {
+          _config = config;
+          _loadFailed = false;
+        });
+      }
     } on CoreApiException catch (e) {
-      if (mounted) showError(context, e.message);
+      if (mounted) {
+        setState(() => _loadFailed = true);
+        showError(context, e.message);
+      }
     } on CoreUnavailable {
       // The shell shows the problem.
+      if (mounted) setState(() => _loadFailed = true);
     }
   }
 
@@ -367,6 +422,28 @@ class _SettingsPageState extends State<SettingsPage> {
   /// Saves [values] (path → value) through the core and reads the config
   /// again; true when the core accepted it.
   Future<bool> _save(Map<List<String>, Object?> values) async {
+    // Refuse a save whose path crosses a non-map node in the loaded
+    // config: the edit below would replace that node with an empty
+    // map and silently drop a value this page does not own.
+    final current = _config;
+    if (current != null) {
+      for (final path in values.keys) {
+        var node = current;
+        for (final key in path.take(path.length - 1)) {
+          final next = node[key];
+          if (next == null) break;
+          if (next is Map<String, Object?>) {
+            node = next;
+          } else {
+            showError(
+              context,
+              AppLocalizations.of(context).settingsPathBlocked,
+            );
+            return false;
+          }
+        }
+      }
+    }
     setState(() => _saving = true);
     final ok = await runShowingErrors(
       context,
@@ -418,6 +495,8 @@ class _SettingsPageState extends State<SettingsPage> {
     switch (result) {
       case TunServiceDone():
         showError(context, l.tunServiceRemoved);
+        // The config and the TUN facts changed under the page.
+        await _load();
       case TunServiceCancelled():
         break;
       case TunServiceFailed(:final error):
@@ -538,7 +617,7 @@ class _SettingsPageState extends State<SettingsPage> {
           final hits = _query.isEmpty
               ? const <(SettingsSection, String)>[]
               : [
-                  for (final entry in settingsIndex(l))
+                  for (final entry in _index(l))
                     if (foldForSearch(entry.$2).contains(_query) &&
                         sections.any((e) => e.$1 == entry.$1) &&
                         settingOnThisPlatform(l, entry.$2) &&
@@ -640,6 +719,15 @@ class _SettingsPageState extends State<SettingsPage> {
             if (!fixed) const SizedBox(height: 16),
             if (open == SettingsSection.general)
               _general(l, s)
+            else if (_config == null && _loadFailed)
+              Column(
+                children: [
+                  const SizedBox(height: 24),
+                  Text(l.settingsLoadFailed),
+                  const SizedBox(height: 12),
+                  FilledButton.tonal(onPressed: _load, child: Text(l.tryAgain)),
+                ],
+              )
             else if (_config == null)
               const LinearProgressIndicator()
             else
@@ -669,6 +757,19 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _general(AppLocalizations l, AppSettings s) {
+    // The glass-aware switch, defined before the panels that use it:
+    // on the Glass design every switch row in this section renders
+    // the glass switch, not a plain Material one.
+    final glassNow = ZedGlass.of(context);
+    Widget sw(bool value, ValueChanged<bool>? onChanged, {String? label}) =>
+        glassNow != null
+        ? GlassSwitch(
+            tokens: glassNow,
+            value: value,
+            onChanged: onChanged,
+            semanticLabel: label,
+          )
+        : Switch(value: value, onChanged: onChanged);
     final generalPanel = Panel(
       title: l.sectionGeneral,
       icon: Icons.tune_rounded,
@@ -712,9 +813,10 @@ class _SettingsPageState extends State<SettingsPage> {
             icon: Icons.visibility_outlined,
             label: l.showPublicIp,
             onTap: () => s.update(showPublicIp: !s.showPublicIp),
-            child: Switch(
-              value: s.showPublicIp,
-              onChanged: (v) => s.update(showPublicIp: v),
+            child: sw(
+              s.showPublicIp,
+              (v) => s.update(showPublicIp: v),
+              label: l.showPublicIp,
             ),
           ),
           if (Platform.isAndroid)
@@ -722,9 +824,10 @@ class _SettingsPageState extends State<SettingsPage> {
               icon: Icons.apps_rounded,
               label: l.showAppModeSwitch,
               onTap: () => s.update(showAppModeSwitch: !s.showAppModeSwitch),
-              child: Switch(
-                value: s.showAppModeSwitch,
-                onChanged: (v) => s.update(showAppModeSwitch: v),
+              child: sw(
+                s.showAppModeSwitch,
+                (v) => s.update(showAppModeSwitch: v),
+                label: l.showAppModeSwitch,
               ),
             ),
           if (Platform.isAndroid)
@@ -737,12 +840,13 @@ class _SettingsPageState extends State<SettingsPage> {
                   context,
                   () => AndroidCore.setShowSpeed(!on),
                 ),
-                child: Switch(
-                  value: on,
-                  onChanged: (v) => runShowingErrors(
+                child: sw(
+                  on,
+                  (v) => runShowingErrors(
                     context,
                     () => AndroidCore.setShowSpeed(v),
                   ),
+                  label: l.speedInNotification,
                 ),
               ),
             ),
@@ -751,9 +855,10 @@ class _SettingsPageState extends State<SettingsPage> {
               icon: Icons.power_settings_new_rounded,
               label: l.startOnBoot,
               onTap: () => s.update(autostart: !s.autostart),
-              child: Switch(
-                value: s.autostart,
-                onChanged: (v) => s.update(autostart: v),
+              child: sw(
+                s.autostart,
+                (v) => s.update(autostart: v),
+                label: l.startOnBoot,
               ),
             ),
           // Only with the start at sign-in: dimmed without it. Both rows are
@@ -770,11 +875,10 @@ class _SettingsPageState extends State<SettingsPage> {
                         autostartShowsWindow: !s.autostartShowsWindow,
                       )
                     : null,
-                child: Switch(
-                  value: s.autostartShowsWindow,
-                  onChanged: s.autostart
-                      ? (v) => s.update(autostartShowsWindow: v)
-                      : null,
+                child: sw(
+                  s.autostartShowsWindow,
+                  s.autostart ? (v) => s.update(autostartShowsWindow: v) : null,
+                  label: l.autostartShowsWindow,
                 ),
               ),
             ),
@@ -787,11 +891,10 @@ class _SettingsPageState extends State<SettingsPage> {
                 onTap: s.autostart
                     ? () => s.update(autoConnect: !s.autoConnect)
                     : null,
-                child: Switch(
-                  value: s.autoConnect,
-                  onChanged: s.autostart
-                      ? (v) => s.update(autoConnect: v)
-                      : null,
+                child: sw(
+                  s.autoConnect,
+                  s.autostart ? (v) => s.update(autoConnect: v) : null,
+                  label: l.connectOnStartup,
                 ),
               ),
             ),
@@ -800,10 +903,6 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
     );
 
-    final glassNow = ZedGlass.of(context);
-    Widget sw(bool value, ValueChanged<bool> onChanged) => glassNow != null
-        ? GlassSwitch(tokens: glassNow, value: value, onChanged: onChanged)
-        : Switch(value: value, onChanged: onChanged);
     Widget boolRow(
       IconData icon, {
       required String label,
@@ -816,7 +915,7 @@ class _SettingsPageState extends State<SettingsPage> {
       // label that misses the small switch read as a dead button on
       // device (defect I1).
       onTap: () => onChanged(!value),
-      child: sw(value, onChanged),
+      child: sw(value, onChanged, label: label),
     );
 
     Widget bentoLook(ZedPrefs prefs, VoidCallback save) {
@@ -1018,8 +1117,14 @@ class _SettingsPageState extends State<SettingsPage> {
 
     Widget pixelLook(ZedPrefs prefs, PixelPrefs p, VoidCallback save) {
       final glass = ZedGlass.of(context);
-      Widget sw(bool value, ValueChanged<bool> onChanged) => glass != null
-          ? GlassSwitch(tokens: glass, value: value, onChanged: onChanged)
+      Widget sw(bool value, ValueChanged<bool> onChanged, {String? label}) =>
+          glass != null
+          ? GlassSwitch(
+              tokens: glass,
+              value: value,
+              onChanged: onChanged,
+              semanticLabel: label,
+            )
           : Switch(value: value, onChanged: onChanged);
       return Column(
         children: [
@@ -1142,7 +1247,7 @@ class _SettingsPageState extends State<SettingsPage> {
             child: sw(p.amoled, (v) {
               p.amoled = v;
               save();
-            }),
+            }, label: l.zedAmoled),
           ),
           ZedSectionHeader(title: l.zedCustomColors),
           _zedColorRow(
@@ -1266,6 +1371,7 @@ class _SettingsPageState extends State<SettingsPage> {
           ZedSwatchRow(
             title: l.zedTint,
             colors: [for (final t in GlassTint.values) glassTintColor(t, dark)],
+            names: [for (final t in GlassTint.values) glassTintName(t)],
             selected: g.tint.index,
             onSelect: (i) {
               g.tint = GlassTint.values[i];
@@ -2699,6 +2805,9 @@ class _ChoiceChip extends StatelessWidget {
       button: true,
       selected: selected,
       label: label,
+      // The label above is the announcement; without this the chip's
+      // own text is announced a second time.
+      excludeSemantics: true,
       child: Material(
         color: selected ? scheme.secondaryContainer : Colors.transparent,
         shape: RoundedRectangleBorder(
@@ -2711,7 +2820,9 @@ class _ChoiceChip extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            // 12 dp vertical padding puts the tap target at ~44 dp:
+            // at 8 dp the chip was ~36 dp tall, under the minimum.
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [

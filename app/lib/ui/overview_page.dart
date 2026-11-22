@@ -56,11 +56,27 @@ class OverviewPage extends StatelessWidget {
   final VoidCallback? onOpenUpstreamProxy;
 
   @override
-  Widget build(BuildContext context) {
-    final status = core.status!;
-    final showIp = settings.showPublicIp;
-    if (phone) {
-      return _PhoneHome(
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: core,
+    builder: (context, _) {
+      // The home page IS the live data (state, traffic, quota), so
+      // it keeps the core's 2 s cadence — but it listens itself now:
+      // the shell no longer rebuilds every page on every poll (+259).
+      final status = core.status!;
+      final showIp = settings.showPublicIp;
+      if (phone) {
+        return _PhoneHome(
+          core: core,
+          status: status,
+          showIp: showIp,
+          settings: settings,
+          onOpenServers: onOpenServers,
+          onOpenAccounts: onOpenAccounts,
+          onOpenConnection: onOpenConnection,
+          onOpenUpstreamProxy: onOpenUpstreamProxy,
+        );
+      }
+      return _DesktopHome(
         core: core,
         status: status,
         showIp: showIp,
@@ -70,18 +86,8 @@ class OverviewPage extends StatelessWidget {
         onOpenConnection: onOpenConnection,
         onOpenUpstreamProxy: onOpenUpstreamProxy,
       );
-    }
-    return _DesktopHome(
-      core: core,
-      status: status,
-      showIp: showIp,
-      settings: settings,
-      onOpenServers: onOpenServers,
-      onOpenAccounts: onOpenAccounts,
-      onOpenConnection: onOpenConnection,
-      onOpenUpstreamProxy: onOpenUpstreamProxy,
-    );
-  }
+    },
+  );
 }
 
 /// Opens the connection settings under "Mozilla's servers are blocked":

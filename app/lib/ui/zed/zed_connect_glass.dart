@@ -94,6 +94,46 @@ class ZLook {
   final Color glowC;
   final double glow;
 
+  /// Value equality over every painted field: the Z painter's
+  /// shouldRepaint compares looks, and comparing only the two main
+  /// colours let a tint/dark change that moved only the rim, spec or
+  /// caustics slip through unpainted.
+  @override
+  bool operator ==(Object other) =>
+      other is ZLook &&
+      other.a == a &&
+      other.b == b &&
+      other.hi == hi &&
+      other.lo == lo &&
+      other.shade == shade &&
+      other.spec == spec &&
+      other.rim == rim &&
+      other.shadow == shadow &&
+      other.caust == caust &&
+      other.shine == shine &&
+      other.glowA == glowA &&
+      other.glowB == glowB &&
+      other.glowC == glowC &&
+      other.glow == glow;
+
+  @override
+  int get hashCode => Object.hash(
+    a,
+    b,
+    hi,
+    lo,
+    shade,
+    spec,
+    rim,
+    shadow,
+    caust,
+    shine,
+    glowA,
+    glowB,
+    glowC,
+    glow,
+  );
+
   static ZLook lerp(ZLook x, ZLook y, double t) => ZLook(
     a: Color.lerp(x.a, y.a, t)!,
     b: Color.lerp(x.b, y.b, t)!,
@@ -248,9 +288,17 @@ class _GlassZConnectState extends State<GlassZConnect>
     if (widget.spec.phase != old.spec.phase ||
         widget.tokens.dark != old.tokens.dark ||
         widget.tokens.tint != old.tokens.tint) {
-      _from = ZLook.lerp(_from, _to, _blend.value);
-      _to = next;
-      _blend.forward(from: 0);
+      if (_animate) {
+        _from = ZLook.lerp(_from, _to, _blend.value);
+        _to = next;
+        _blend.forward(from: 0);
+      } else {
+        // Reduced motion: the phase colour snaps instead of blending
+        // — the blend is an animation and disableAnimations forbids it.
+        _from = next;
+        _to = next;
+        _blend.value = 1;
+      }
     }
   }
 
@@ -269,6 +317,7 @@ class _GlassZConnectState extends State<GlassZConnect>
     return Semantics(
       button: true,
       toggled: spec.on,
+      enabled: spec.enabled,
       label: spec.stateLabel,
       child: ZedPressScale(
         pressedScale: 1.06,
@@ -527,9 +576,7 @@ class _ZPainter extends CustomPainter {
       old.elapsedMs != elapsedMs ||
       old.busy != busy ||
       old.tiltX != tiltX ||
-      old.look.a != look.a ||
-      old.look.b != look.b ||
-      old.look.glow != look.glow;
+      old.look != look;
 }
 
 /// §2.7 Button — 56 dp capsule; tint fill off/busy, chrome on.
@@ -637,12 +684,18 @@ class GlassSwitch extends StatefulWidget {
     required this.value,
     required this.onChanged,
     this.enabled = true,
+    this.semanticLabel,
   });
 
   final GlassTokens tokens;
   final bool value;
   final ValueChanged<bool>? onChanged;
   final bool enabled;
+
+  /// The owning row's name, for screen readers: the switch's own
+  /// semantics node carries the toggled state but, without a label,
+  /// announces as an unnamed switch (the +256 F-finding class).
+  final String? semanticLabel;
 
   @override
   State<GlassSwitch> createState() => _GlassSwitchState();
@@ -686,8 +739,10 @@ class _GlassSwitchState extends State<GlassSwitch>
   Widget build(BuildContext context) {
     final c = widget.tokens;
     return Opacity(
-      opacity: widget.enabled ? 1 : 0.4,
+      // Compose's disabled-content alpha for the source switch.
+      opacity: widget.enabled ? 1 : 0.38,
       child: Semantics(
+        label: widget.semanticLabel,
         toggled: widget.value,
         child: Listener(
           onPointerDown: (_) => _squash.animateWith(
@@ -735,10 +790,11 @@ class _GlassSwitchState extends State<GlassSwitch>
                                 width: 37,
                                 height: 24,
                                 decoration: BoxDecoration(
+                                  // Continuous in the squash: the
+                                  // old threshold at 0.05 popped the
+                                  // alpha by ~0.02 in one frame.
                                   color: Colors.white.withValues(
-                                    alpha: _squash.value > 0.05
-                                        ? 0.55 + 0.45 * (1 - _squash.value)
-                                        : 1,
+                                    alpha: 0.55 + 0.45 * (1 - _squash.value),
                                   ),
                                   borderRadius: BorderRadius.circular(999),
                                   boxShadow: const [
@@ -920,6 +976,7 @@ class _GlassSliderConnectState extends State<GlassSliderConnect>
     return Semantics(
       button: true,
       toggled: spec.on,
+      enabled: spec.enabled,
       label: spec.stateLabel,
       child: GlassChromeSurface(
         tokens: tokens,

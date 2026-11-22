@@ -543,6 +543,13 @@ class AppLocalizationsPt extends AppLocalizations {
   String get saved => 'Salvo';
 
   @override
+  String get settingsPathBlocked =>
+      'Couldn\'t save: the settings data has an unexpected shape.';
+
+  @override
+  String get settingsLoadFailed => 'Couldn\'t load the settings.';
+
+  @override
   String get dataFolder => 'Pasta de dados';
 
   @override

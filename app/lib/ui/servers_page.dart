@@ -47,10 +47,31 @@ class _ServersPageState extends State<ServersPage> {
   /// answer only an account's pass), so the page says to add one instead.
   bool get _noAccounts => _core.status?.totalAccounts == 0;
 
+  /// The last [_noAccounts] value a core notification produced; the
+  /// page rebuilds only when it flips (the shell used to rebuild the
+  /// page on every 2 s poll; +259 narrowed that, and this page's one
+  /// status read rides on the flip instead).
+  bool? _noAccountsSeen;
+
   @override
   void initState() {
     super.initState();
+    _noAccountsSeen = _noAccounts;
+    _core.addListener(_accountsChanged);
     _load();
+  }
+
+  void _accountsChanged() {
+    final now = _noAccounts;
+    if (now == _noAccountsSeen) return;
+    _noAccountsSeen = now;
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    _core.removeListener(_accountsChanged);
+    super.dispose();
   }
 
   Future<void> _load() async {

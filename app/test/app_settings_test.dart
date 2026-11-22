@@ -106,6 +106,30 @@ void main() {
     expect(s.signInMethod, SignInMethod.api);
   });
 
+  test('a corrupt settings file does not count as welcome-done', () async {
+    File('${dir.path}/app-settings.json')
+        .writeAsStringSync('{"language": "fa", "welcome_done": tr');
+    final s = await AppSettings.load(dir.path);
+    // Defaults, and the welcome page runs again: a broken file must
+    // not skip the first run (defect class F: corrupt file counted
+    // as welcome-done).
+    expect(s.language, '');
+    expect(s.firstRun, isTrue);
+  });
+
+  test('a non-object settings file does not count as welcome-done', () async {
+    File('${dir.path}/app-settings.json').writeAsStringSync('[1, 2, 3]');
+    final s = await AppSettings.load(dir.path);
+    expect(s.firstRun, isTrue);
+  });
+
+  test('a saved welcome_done still skips the welcome page', () async {
+    File('${dir.path}/app-settings.json')
+        .writeAsStringSync('{"welcome_done": true}');
+    final s = await AppSettings.load(dir.path);
+    expect(s.firstRun, isFalse);
+  });
+
   test('takes the core executable from --core', () {
     expect(
       CoreProcess.executableFrom(['--core=C:/bin/core.exe']),

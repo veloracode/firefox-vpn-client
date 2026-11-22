@@ -241,12 +241,20 @@ class AppSettings extends ChangeNotifier {
         if (j['hidden_connection_columns'] case final List<Object?> v) {
           s.hiddenConnectionColumns = {...v.whereType<String>()};
         }
+      } else {
+        // Valid JSON but not a settings object: as broken as a file
+        // that does not parse — the welcome was never finished in
+        // any state we can trust, so it runs again.
+        s.firstRun = true;
       }
     } on FileSystemException {
       // First run: defaults, and the welcome page.
       s.firstRun = true;
     } on FormatException {
-      // A broken file: defaults, rewritten on the next change.
+      // A broken file: defaults, rewritten on the next change. The
+      // welcome counts as NOT done: a corrupt file must not skip it
+      // (the field default alone would read as finished).
+      s.firstRun = true;
     }
     return s;
   }

@@ -540,6 +540,13 @@ class AppLocalizationsFa extends AppLocalizations {
   String get saved => 'ذخیره شد';
 
   @override
+  String get settingsPathBlocked =>
+      'ذخیره نشد: شکل داده‌های تنظیمات غیرمنتظره است.';
+
+  @override
+  String get settingsLoadFailed => 'تنظیمات بارگذاری نشد.';
+
+  @override
   String get dataFolder => 'پوشه داده';
 
   @override

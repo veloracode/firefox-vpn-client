@@ -30,6 +30,7 @@ final springPlatter = composeSpring(0.72, 400); // glass platter / thumb
 final springKnob = composeSpring(0.62, 400); // glass switch knob
 final springPressGlass = composeSpring(0.5, 1500); // glass press 1.07
 final springPressCard = composeSpring(0.62, 1500); // bento card press
+final springDockHold = composeSpring(0.55, 1500); // dock item hold 1.03
 
 /// Whether motion must collapse: the in-app pref OR the platform's
 /// reduce-motion setting.
@@ -151,9 +152,12 @@ class _ZedPageTransitionState extends State<ZedPageTransition>
       _add(widget.child, entering: true);
     } else {
       final old = _entries.last;
-      _entries[_entries.length - 1] =
-          _Entry(newKey!, widget.child, true, old.forward)
-            ..controller = old.controller;
+      _entries[_entries.length - 1] = _Entry(
+        newKey!,
+        widget.child,
+        true,
+        old.forward,
+      )..controller = old.controller;
     }
   }
 
@@ -530,8 +534,10 @@ class _ZedPressScaleState extends State<ZedPressScale>
 
   // Unbounded: the Glass press target is 1.07 — a bounded controller
   // clamps the spring at 1.0 and the press never renders.
-  late final AnimationController _controller =
-      AnimationController.unbounded(vsync: this, value: 1);
+  late final AnimationController _controller = AnimationController.unbounded(
+    vsync: this,
+    value: 1,
+  );
 
   void _to(double target) {
     // Returning to rest is always allowed: if the widget is

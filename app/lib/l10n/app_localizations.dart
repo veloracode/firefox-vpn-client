@@ -1029,6 +1029,18 @@ abstract class AppLocalizations {
   /// **'Saved'**
   String get saved;
 
+  /// No description provided for @settingsPathBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save: the settings data has an unexpected shape.'**
+  String get settingsPathBlocked;
+
+  /// No description provided for @settingsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the settings.'**
+  String get settingsLoadFailed;
+
   /// No description provided for @dataFolder.
   ///
   /// In en, this message translates to:

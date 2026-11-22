@@ -211,8 +211,7 @@ class _BentoSlideConnectState extends State<BentoSlideConnect>
     // transition, where active stays false but a crossed drag has
     // already sent the knob to the on end.
     final becameError =
-        widget.spec.phase == ZedPhase.error &&
-        old.spec.phase != ZedPhase.error;
+        widget.spec.phase == ZedPhase.error && old.spec.phase != ZedPhase.error;
     if (!_dragging && (_engaged != old.spec.active || becameError)) {
       _settleTo(_engaged ? 1 : 0);
     }
@@ -260,6 +259,7 @@ class _BentoSlideConnectState extends State<BentoSlideConnect>
     return Semantics(
       button: true,
       toggled: spec.on,
+      enabled: spec.enabled,
       label: spec.stateLabel,
       child: Listener(
         onPointerDown: (e) {
@@ -423,7 +423,9 @@ class _SlidePainter extends CustomPainter {
     final knobR = 20.0;
     final cy = size.height / 2;
     final range = size.width - knobR * 2;
-    final knobX = rtl ? size.width - (knobR + range * pos) : knobR + range * pos;
+    final knobX = rtl
+        ? size.width - (knobR + range * pos)
+        : knobR + range * pos;
     // Wave phase coordinate: measured from the track's start edge
     // (the left edge in LTR, the right edge in RTL).
     double phaseX(double x) => rtl ? size.width - x : x;
@@ -436,7 +438,7 @@ class _SlidePainter extends CustomPainter {
       final wavelength = range * 2 / halves;
       Path wavePath(double from, double to) {
         final p = Path();
-        final start = math.max(from, knobR - knobR);
+        final start = math.max(from, 0.0);
         final end = math.min(to, size.width);
         if (end <= start) return p;
         p.moveTo(start, cy);
@@ -558,6 +560,7 @@ class BentoButtonConnect extends StatelessWidget {
       child: Semantics(
         button: true,
         toggled: spec.on,
+        enabled: spec.enabled,
         label: spec.stateLabel,
         child: GestureDetector(
           onTap: spec.enabled ? spec.onToggle : null,
@@ -745,6 +748,7 @@ class _BentoMorphConnectState extends State<BentoMorphConnect>
     return Semantics(
       button: true,
       toggled: spec.on,
+      enabled: spec.enabled,
       label: spec.stateLabel,
       child: GestureDetector(
         onTap: spec.enabled ? spec.onToggle : null,
@@ -910,6 +914,7 @@ class _BentoRailConnectState extends State<BentoRailConnect>
     return Semantics(
       button: true,
       toggled: spec.on,
+      enabled: spec.enabled,
       label: spec.stateLabel,
       child: GestureDetector(
         onTap: spec.enabled ? spec.onToggle : null,
@@ -1364,6 +1369,7 @@ class _BentoTileConnectState extends State<BentoTileConnect>
       child: Semantics(
         button: true,
         toggled: spec.on,
+        enabled: spec.enabled,
         label: spec.stateLabel,
         child: GestureDetector(
           onTap: spec.enabled ? spec.onToggle : null,
@@ -1553,6 +1559,7 @@ class _PixelPillConnectState extends State<PixelPillConnect> {
     return Semantics(
       button: true,
       toggled: spec.on,
+      enabled: spec.enabled,
       label: spec.stateLabel,
       child: Listener(
         onPointerDown: (_) => setState(() => _pressed = true),
@@ -1692,6 +1699,7 @@ class _PixelHeroConnectState extends State<PixelHeroConnect>
     return Semantics(
       button: true,
       toggled: spec.on,
+      enabled: spec.enabled,
       label: spec.stateLabel,
       child: GestureDetector(
         onTap: spec.enabled ? spec.onToggle : null,
@@ -1776,6 +1784,7 @@ class PixelRingConnect extends StatelessWidget {
     return Semantics(
       button: true,
       toggled: spec.on,
+      enabled: spec.enabled,
       label: spec.stateLabel,
       child: ZedPressScale(
         pressedScale: 0.94,
@@ -1829,6 +1838,7 @@ class PixelBarConnect extends StatelessWidget {
     return Semantics(
       button: true,
       toggled: spec.on,
+      enabled: spec.enabled,
       label: spec.stateLabel,
       child: GestureDetector(
         onTap: spec.enabled ? spec.onToggle : null,
@@ -1899,6 +1909,7 @@ class _PixelIconConnectState extends State<PixelIconConnect> {
     return Semantics(
       button: true,
       toggled: spec.on,
+      enabled: spec.enabled,
       label: spec.stateLabel,
       child: Listener(
         onPointerDown: (_) => setState(() => _pressed = true),
@@ -1944,6 +1955,7 @@ class PixelSwitchConnect extends StatelessWidget {
     return Semantics(
       button: true,
       toggled: spec.on,
+      enabled: spec.enabled,
       label: spec.stateLabel,
       child: GestureDetector(
         onTap: spec.enabled ? spec.onToggle : null,

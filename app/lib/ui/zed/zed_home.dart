@@ -187,8 +187,10 @@ class _BentoHero extends StatelessWidget {
         (Icons.arrow_downward_rounded, downText),
       ],
     ];
+    // Either action is enough: requiring both suppressed a lone
+    // available action when the other callback was absent.
     final showQuick =
-        prefs.homeQuick && onOpenServers != null && onOpenAccounts != null;
+        prefs.homeQuick && (onOpenServers != null || onOpenAccounts != null);
     return Column(
       children: [
         Text(
@@ -219,23 +221,26 @@ class _BentoHero extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _QuickAction(
-                icon: Icons.public_rounded,
-                label: serversLabel,
-                background: colors.surface,
-                foreground: colors.ink,
-                radius: bentoChipRadius(prefs.corners),
-                onTap: onOpenServers!,
-              ),
-              const SizedBox(width: 8),
-              _QuickAction(
-                icon: Icons.people_rounded,
-                label: accountsLabel,
-                background: colors.surface,
-                foreground: colors.ink,
-                radius: bentoChipRadius(prefs.corners),
-                onTap: onOpenAccounts!,
-              ),
+              if (onOpenServers != null)
+                _QuickAction(
+                  icon: Icons.public_rounded,
+                  label: serversLabel,
+                  background: colors.surface,
+                  foreground: colors.ink,
+                  radius: bentoChipRadius(prefs.corners),
+                  onTap: onOpenServers!,
+                ),
+              if (onOpenServers != null && onOpenAccounts != null)
+                const SizedBox(width: 8),
+              if (onOpenAccounts != null)
+                _QuickAction(
+                  icon: Icons.people_rounded,
+                  label: accountsLabel,
+                  background: colors.surface,
+                  foreground: colors.ink,
+                  radius: bentoChipRadius(prefs.corners),
+                  onTap: onOpenAccounts!,
+                ),
             ],
           ),
         ],
@@ -268,22 +273,30 @@ class _QuickAction extends StatelessWidget {
     child: InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(radius),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: foreground),
-            const SizedBox(width: 7),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13.5,
-                fontWeight: FontWeight.w600,
-                color: foreground,
-              ),
+      // The pill's content is ~37 dp tall; the tap target gets a
+      // 44 dp floor without changing the pill's width.
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 44),
+        child: Center(
+          widthFactor: 1,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 16, color: foreground),
+                const SizedBox(width: 7),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    color: foreground,
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     ),

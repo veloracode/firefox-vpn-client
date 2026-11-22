@@ -59,7 +59,7 @@ class _WelcomePageState extends State<WelcomePage> {
   Future<void> _start() async {
     setState(() => _saving = true);
     final region = _region;
-    await runShowingErrors(
+    final ok = await runShowingErrors(
       context,
       () => widget.core.editSettings((config) {
         final routing = config['routing'];
@@ -68,6 +68,15 @@ class _WelcomePageState extends State<WelcomePage> {
         if (region.isNotEmpty) routing['region'] = region;
       }),
     );
+    if (!mounted) return;
+    if (!ok) {
+      // The core refused the routing write (the error was shown):
+      // stay on the welcome page with Start live again, so the
+      // region the user picked is not silently dropped by marking
+      // the first run done anyway.
+      setState(() => _saving = false);
+      return;
+    }
     widget.settings.update(language: _language, firstRun: false);
   }
 
@@ -191,6 +200,7 @@ class _WelcomePageState extends State<WelcomePage> {
           for (final p in BentoPalette.values)
             bentoTokensFor(p, dark).violet.container,
         ],
+        names: [for (final p in BentoPalette.values) zl.bentoPaletteName(p)],
         selected: prefs.bento.palette.index,
         onSelect: (i) {
           final next = widget.settings.zedPrefs;
@@ -221,6 +231,7 @@ class _WelcomePageState extends State<WelcomePage> {
       ZedDesign.glass => ZedSwatchRow(
         title: l.zedTint,
         colors: [for (final t in GlassTint.values) glassTintColor(t, dark)],
+        names: [for (final t in GlassTint.values) zl.glassTintName(t)],
         selected: prefs.glass.tint.index,
         onSelect: (i) {
           final next = widget.settings.zedPrefs;

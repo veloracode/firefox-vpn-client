@@ -365,6 +365,8 @@
   "regionBr": "Brazil",
   "regionNone": "None",
   "saved": "Saved",
+  "settingsPathBlocked": "Couldn't save: the settings data has an unexpected shape.",
+  "settingsLoadFailed": "Couldn't load the settings.",
   "dataFolder": "Data folder",
   "openFolder": "Open folder",
   "unofficialNote": "Unofficial client. Not affiliated with Mozilla.",

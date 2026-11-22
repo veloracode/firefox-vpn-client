@@ -228,22 +228,31 @@ class _DockItem extends StatelessWidget {
       button: true,
       selected: selected,
       label: tab.label,
+      // The visible label below would be announced twice.
+      excludeSemantics: true,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(tab.icon, size: 22, color: color),
-            if (showLabel) ...[
-              const SizedBox(height: 1),
-              Text(
-                tab.label,
-                style: TextStyle(fontSize: 9, color: color),
-                maxLines: 1,
-              ),
+        // The source's dock item grows to 1.03 on hold/press
+        // (ζ0.55, StiffnessMedium) — the port had no press feedback
+        // on dock items at all.
+        child: ZedPressScale(
+          pressedScale: 1.03,
+          spring: springDockHold,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(tab.icon, size: 22, color: color),
+              if (showLabel) ...[
+                const SizedBox(height: 1),
+                Text(
+                  tab.label,
+                  style: TextStyle(fontSize: 9, color: color),
+                  maxLines: 1,
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -449,21 +458,25 @@ class _GlassTabBarState extends State<GlassTabBar>
                     child: Transform.scale(
                       scale: 0.9 + 0.1 * t,
                       child: Center(
-                        child: GestureDetector(
-                          onTap: () {
-                            _downAccum = 0;
-                            _setShrunk(false);
-                          },
-                          child: GlassChromeSurface(
-                            tokens: tokens,
-                            radius: BorderRadius.circular(31),
-                            child: SizedBox(
-                              width: 62,
-                              height: 62,
-                              child: Icon(
-                                tab.icon,
-                                size: 24,
-                                color: tokens.label,
+                        child: Semantics(
+                          button: true,
+                          label: tab.label,
+                          child: GestureDetector(
+                            onTap: () {
+                              _downAccum = 0;
+                              _setShrunk(false);
+                            },
+                            child: GlassChromeSurface(
+                              tokens: tokens,
+                              radius: BorderRadius.circular(31),
+                              child: SizedBox(
+                                width: 62,
+                                height: 62,
+                                child: Icon(
+                                  tab.icon,
+                                  size: 24,
+                                  color: tokens.label,
+                                ),
                               ),
                             ),
                           ),
@@ -508,31 +521,37 @@ class _GlassTabBarState extends State<GlassTabBar>
                     children: [
                       for (var i = 0; i < widget.tabs.length; i++)
                         Expanded(
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: () => widget.onSelect(i),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  widget.tabs[i].icon,
-                                  size: 22,
-                                  color: i == widget.index
-                                      ? tokens.label
-                                      : tokens.label2,
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  widget.tabs[i].label,
-                                  style: TextStyle(
-                                    fontSize: 10,
+                          child: Semantics(
+                            button: true,
+                            selected: i == widget.index,
+                            label: widget.tabs[i].label,
+                            excludeSemantics: true,
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => widget.onSelect(i),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    widget.tabs[i].icon,
+                                    size: 22,
                                     color: i == widget.index
                                         ? tokens.label
                                         : tokens.label2,
                                   ),
-                                  maxLines: 1,
-                                ),
-                              ],
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    widget.tabs[i].label,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: i == widget.index
+                                          ? tokens.label
+                                          : tokens.label2,
+                                    ),
+                                    maxLines: 1,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -552,9 +571,24 @@ class _GlassTabBarState extends State<GlassTabBar>
 // Pixel / Old bottom bar (§5)
 // ---------------------------------------------------------------------------
 
-/// Bottom navigation for the Pixel and Old designs, shaped by the
-/// shared navStyle: expressive pill (72 dp, floating), floating bar
-/// (64 dp), flat bar (64 dp, square), minimal (56 dp, icons only).
+/// Bottom navigation shaped by the nav style, reimplemented from
+/// the source's `ZedNavBar` (ui/navigation/NavBar.kt): each style is
+/// its own bar there, not one bar with seven sizes —
+///  * floatingPill / dock: the floating toolbar — circular icon
+///    buttons in a pill, the selected one filled, no labels;
+///  * compactDock: the same toolbar, smaller (38 dp buttons);
+///  * expressivePill: a surface pill whose selected item is a filled
+///    primary pill carrying icon + label; unselected items are
+///    icon-only;
+///  * fullBar: the Material bar — indicator pill + labels;
+///  * underline: the Material bar with NO indicator; a 24×3 primary
+///    bar sits over the selected icon instead;
+///  * minimal: icon buttons in a row, a 5 dp dot under the selected
+///    one, no labels.
+/// (Before +259 every style rendered the same indicator-pill bar at
+/// three heights — underline had no underline, expressive had no
+/// filled pill, and the floating styles showed labels the source
+/// never shows.)
 class ZedBottomBar extends StatelessWidget {
   const ZedBottomBar({
     super.key,
@@ -569,36 +603,216 @@ class ZedBottomBar extends StatelessWidget {
   final int index;
   final ValueChanged<int> onSelect;
 
+  /// The bar's own height per style (the shell's content inset is
+  /// derived from the same numbers).
+  static double heightFor(ZedNavStyle style) => switch (style) {
+    ZedNavStyle.floatingPill || ZedNavStyle.dock => 64,
+    ZedNavStyle.compactDock => 54,
+    ZedNavStyle.expressivePill => 58,
+    ZedNavStyle.fullBar || ZedNavStyle.underline => 80,
+    ZedNavStyle.minimal => 68,
+  };
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final (height, radius, margin) = switch (style) {
-      ZedNavStyle.floatingPill => (72.0, 36.0, 16.0),
-      ZedNavStyle.expressivePill => (72.0, 36.0, 16.0),
-      ZedNavStyle.dock => (72.0, 36.0, 16.0),
-      ZedNavStyle.fullBar => (64.0, 0.0, 0.0),
-      ZedNavStyle.underline => (64.0, 0.0, 0.0),
-      ZedNavStyle.compactDock => (56.0, 28.0, 16.0),
-      ZedNavStyle.minimal => (56.0, 28.0, 16.0),
+    return switch (style) {
+      ZedNavStyle.floatingPill ||
+      ZedNavStyle.dock => _floatingPill(scheme, compact: false),
+      ZedNavStyle.compactDock => _floatingPill(scheme, compact: true),
+      ZedNavStyle.expressivePill => _expressivePill(scheme),
+      ZedNavStyle.fullBar => _materialBar(scheme, underline: false),
+      ZedNavStyle.underline => _materialBar(scheme, underline: true),
+      ZedNavStyle.minimal => _minimalBar(scheme),
     };
-    final showLabels = style != ZedNavStyle.minimal;
-    return Container(
+  }
+
+  Widget _item({
+    required int i,
+    required Widget child,
+    double? width,
+    double? height,
+  }) => Semantics(
+    button: true,
+    selected: i == index,
+    label: tabs[i].label,
+    child: GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () => onSelect(i),
+      child: SizedBox(width: width, height: height, child: child),
+    ),
+  );
+
+  /// FloatingPillBar: a centred pill of circular icon buttons; the
+  /// selected one is a filled circle (the source's FilledIconButton),
+  /// its icon a step larger (25, compact 21) than the rest (22/19).
+  Widget _floatingPill(ColorScheme scheme, {required bool compact}) {
+    final size = compact ? 38.0 : 48.0;
+    final height = heightFor(compact ? ZedNavStyle.compactDock : style);
+    // A fixed-height row centring the pill: an Align here would
+    // grow to the whole overlay area in the shell's Positioned and
+    // swallow touches meant for the page.
+    return SizedBox(
       height: height,
-      margin: EdgeInsets.symmetric(horizontal: margin),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainer,
-        borderRadius: BorderRadius.circular(radius),
-      ),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          for (var i = 0; i < tabs.length; i++)
-            Expanded(
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => onSelect(i),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
+          Container(
+            height: height,
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainer,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (var i = 0; i < tabs.length; i++) ...[
+                  if (i > 0) const SizedBox(width: 4),
+                  _item(
+                    i: i,
+                    width: size,
+                    height: size,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: i == index ? scheme.primary : Colors.transparent,
+                      ),
+                      child: Icon(
+                        tabs[i].icon,
+                        size: i == index
+                            ? (compact ? 21 : 25)
+                            : (compact ? 19 : 22),
+                        color: i == index
+                            ? scheme.onPrimary
+                            : scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// ExpressivePillBar: a centred surface pill (radius 28); the
+  /// selected item is a filled primary pill with icon + label, the
+  /// rest are icon-only.
+  Widget _expressivePill(ColorScheme scheme) => SizedBox(
+    height: heightFor(ZedNavStyle.expressivePill),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          height: heightFor(ZedNavStyle.expressivePill),
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainer,
+            borderRadius: BorderRadius.circular(28),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 0; i < tabs.length; i++) ...[
+                if (i > 0) const SizedBox(width: 4),
+                _item(
+                  i: i,
+                  height: 42,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    curve: zedFastOutSlowIn,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: i == index ? 14 : 12,
+                      vertical: 10,
+                    ),
+                    decoration: BoxDecoration(
+                      color: i == index ? scheme.primary : Colors.transparent,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          tabs[i].icon,
+                          size: 22,
+                          color: i == index
+                              ? scheme.onPrimary
+                              : scheme.onSurfaceVariant,
+                        ),
+                        if (i == index) ...[
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              tabs[i].label,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: scheme.onPrimary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+
+  /// MaterialBar (NavigationBar): full width, labels always; the
+  /// underline variant drops the indicator pill for a 24×3 primary
+  /// bar over the selected icon.
+  Widget _materialBar(
+    ColorScheme scheme, {
+    required bool underline,
+  }) => Container(
+    height: heightFor(underline ? ZedNavStyle.underline : ZedNavStyle.fullBar),
+    decoration: BoxDecoration(color: scheme.surfaceContainer),
+    child: Row(
+      children: [
+        for (var i = 0; i < tabs.length; i++)
+          Expanded(
+            child: _item(
+              i: i,
+              width: double.infinity,
+              height: heightFor(
+                underline ? ZedNavStyle.underline : ZedNavStyle.fullBar,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (underline) ...[
+                    Container(
+                      key: i == index ? const Key('zed-nav-underline') : null,
+                      width: 24,
+                      height: 3,
+                      decoration: BoxDecoration(
+                        color: i == index ? scheme.primary : Colors.transparent,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                  ],
+                  if (underline)
+                    Icon(
+                      tabs[i].icon,
+                      size: 24,
+                      color: i == index
+                          ? scheme.onSurface
+                          : scheme.onSurfaceVariant,
+                    )
+                  else
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 250),
                       curve: zedFastOutSlowIn,
@@ -620,30 +834,70 @@ class ZedBottomBar extends StatelessWidget {
                             : scheme.onSurfaceVariant,
                       ),
                     ),
-                    if (showLabels) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        tabs[i].label,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: i == index
-                              ? FontWeight.w600
-                              : FontWeight.w500,
-                          color: i == index
-                              ? scheme.onSurface
-                              : scheme.onSurfaceVariant,
-                        ),
-                        maxLines: 1,
-                      ),
-                    ],
-                  ],
-                ),
+                  const SizedBox(height: 2),
+                  Text(
+                    tabs[i].label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: i == index
+                          ? FontWeight.w600
+                          : FontWeight.w500,
+                      color: i == index
+                          ? scheme.onSurface
+                          : scheme.onSurfaceVariant,
+                    ),
+                    maxLines: 1,
+                  ),
+                ],
               ),
             ),
-        ],
-      ),
-    );
-  }
+          ),
+      ],
+    ),
+  );
+
+  /// MinimalBar: icon buttons spread across the width, the selected
+  /// one primary with a 5 dp dot under it; no labels.
+  Widget _minimalBar(ColorScheme scheme) => Container(
+    height: heightFor(ZedNavStyle.minimal),
+    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        for (var i = 0; i < tabs.length; i++)
+          _item(
+            i: i,
+            width: 48,
+            height: 52,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  height: 40,
+                  child: Icon(
+                    tabs[i].icon,
+                    size: 24,
+                    color: i == index
+                        ? scheme.primary
+                        : scheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Container(
+                  key: i == index ? const Key('zed-nav-minimal-dot') : null,
+                  width: 5,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: i == index ? scheme.primary : Colors.transparent,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    ),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -801,7 +1055,12 @@ class ZedSwitchRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final glass = ZedGlass.of(context);
     final trailing = glass != null
-        ? GlassSwitch(tokens: glass, value: value, onChanged: onChanged)
+        ? GlassSwitch(
+            tokens: glass,
+            value: value,
+            onChanged: onChanged,
+            semanticLabel: title,
+          )
         : Switch(value: value, onChanged: onChanged);
     return ZedSettingRow(
       title: title,
@@ -849,23 +1108,28 @@ class ZedSegmentedRow<T> extends StatelessWidget {
         fg = selected ? scheme.onSecondaryContainer : scheme.onSurfaceVariant;
       }
       return Expanded(
-        child: GestureDetector(
-          onTap: () => onChanged(v),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-            curve: zedFastOutSlowIn,
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            decoration: BoxDecoration(
-              color: bg,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                color: fg,
+        child: Semantics(
+          button: true,
+          selected: selected,
+          label: label,
+          child: GestureDetector(
+            onTap: () => onChanged(v),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: zedFastOutSlowIn,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(
+                color: bg,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                  color: fg,
+                ),
               ),
             ),
           ),
@@ -940,6 +1204,7 @@ class ZedSwatchRow extends StatelessWidget {
     required this.selected,
     required this.onSelect,
     this.subtitle,
+    this.names,
   });
 
   final String title;
@@ -947,6 +1212,10 @@ class ZedSwatchRow extends StatelessWidget {
   final List<Color> colors;
   final int selected;
   final ValueChanged<int> onSelect;
+
+  /// Per-swatch names for screen readers (palette/tint names where
+  /// the values have them); falls back to the row's title.
+  final List<String>? names;
 
   @override
   Widget build(BuildContext context) {
@@ -975,32 +1244,49 @@ class ZedSwatchRow extends StatelessWidget {
             ),
           const SizedBox(height: 10),
           Wrap(
-            spacing: 10,
-            runSpacing: 10,
+            // The hit box is 44 dp around the 34 dp circle (44 + 0
+            // spacing keeps the circles on the same 44 dp rhythm
+            // the 34 + 10 layout had), and each swatch is a named,
+            // selected-aware button for screen readers — before
+            // +259 the circles were bare 34 dp gesture targets.
+            spacing: 0,
+            runSpacing: 0,
             children: [
               for (var i = 0; i < colors.length; i++)
-                GestureDetector(
-                  onTap: () => onSelect(i),
-                  child: Container(
-                    width: 34,
-                    height: 34,
-                    decoration: BoxDecoration(
-                      color: colors[i],
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: i == selected
-                            ? scheme.primary
-                            : scheme.outlineVariant,
-                        width: i == selected ? 3 : 1,
+                Semantics(
+                  button: true,
+                  selected: i == selected,
+                  label: names != null && i < names!.length ? names![i] : title,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => onSelect(i),
+                    child: SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: Center(
+                        child: Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: colors[i],
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: i == selected
+                                  ? scheme.primary
+                                  : scheme.outlineVariant,
+                              width: i == selected ? 3 : 1,
+                            ),
+                          ),
+                          child: i == selected
+                              ? Icon(
+                                  Icons.check_rounded,
+                                  size: 18,
+                                  color: _readableOn(colors[i]),
+                                )
+                              : null,
+                        ),
                       ),
                     ),
-                    child: i == selected
-                        ? Icon(
-                            Icons.check_rounded,
-                            size: 18,
-                            color: _readableOn(colors[i]),
-                          )
-                        : null,
                   ),
                 ),
             ],

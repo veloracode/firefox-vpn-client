@@ -33,6 +33,21 @@ class _AccountsPageState extends State<AccountsPage> {
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => widget.core.refreshStaleQuotas(),
     );
+    // The list is the core's accounts, read in build: the page
+    // follows the core itself. (It silently rode on the shell's
+    // per-poll rebuild until +259 narrowed the shell — without its
+    // own listener the list, and its loading spinner, would freeze.)
+    widget.core.addListener(_coreChanged);
+  }
+
+  void _coreChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    widget.core.removeListener(_coreChanged);
+    super.dispose();
   }
 
   @override
@@ -396,7 +411,10 @@ class _CreateAccountGuide extends StatelessWidget {
 /// the unset case must not wrap at all.)
 Widget _maybeCardText(Color? cardText, Widget child) => cardText == null
     ? child
-    : DefaultTextStyle.merge(style: TextStyle(color: cardText), child: child);
+    : DefaultTextStyle.merge(
+        style: TextStyle(color: cardText),
+        child: child,
+      );
 
 class _AccountCard extends StatelessWidget {
   const _AccountCard({

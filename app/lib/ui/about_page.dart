@@ -29,6 +29,20 @@ class _AboutPageState extends State<AboutPage> {
   void initState() {
     super.initState();
     _release = Updates.available.value;
+    // The page reads the core's status (version, state) in build;
+    // it refreshes with the core, as it did when the shell rebuilt
+    // it on every poll (+259 narrowed the shell, not this page).
+    widget.core.addListener(_coreChanged);
+  }
+
+  void _coreChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    widget.core.removeListener(_coreChanged);
+    super.dispose();
   }
 
   Future<void> _check() async {

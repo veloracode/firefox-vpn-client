@@ -92,6 +92,30 @@ class Shell extends StatefulWidget {
   State<Shell> createState() => _ShellState();
 }
 
+/// The facts the shell's STRUCTURE is built from: whether the core
+/// has answered at all, whether it is lost (and why), and how many
+/// accounts need sign-in (the rail badge). The core notifies on
+/// every 2 s poll, but the shell rebuilds only when one of these
+/// changes — the live values (traffic, status, quotas) are listened
+/// to by the widgets that show them (the traffic panel, the pages),
+/// not by the whole shell. Before +259 a single ListenableBuilder
+/// on the core rebuilt the rail AND the open page on every poll.
+typedef ShellStructure = ({
+  bool hasStatus,
+  CoreProblem? problem,
+  String problemDetail,
+  int needsAttention,
+});
+
+ShellStructure shellStructureOf(CoreController core) => (
+  hasStatus: core.status != null,
+  problem: core.unavailable?.problem,
+  problemDetail: core.unavailable?.detail ?? '',
+  needsAttention: (core.accounts?.accounts ?? const [])
+      .where((a) => a.enabled && a.needsSignIn)
+      .length,
+);
+
 enum _Page { overview, servers, accounts, settings, logs, about }
 
 /// The desktop rail's leading when extended: logo + app title.
@@ -102,9 +126,8 @@ Widget _railTitle(BuildContext context, AppLocalizations l) => Row(
     const SizedBox(width: 10),
     Text(
       l.appTitle,
-      style: Theme.of(
-        context,
-      ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+      style: Theme.of(context).textTheme.titleMedium
+          ?.copyWith(fontWeight: FontWeight.w600),
     ),
   ],
 );
@@ -117,10 +140,23 @@ class _ShellState extends State<Shell> {
   /// page is chosen.
   SettingsSection? _settingsOpening;
 
+  /// The last shell structure a core notification produced; a poll
+  /// that changes none of it does not rebuild the shell.
+  ShellStructure? _structure;
+
   @override
   void initState() {
     super.initState();
     AndroidCore.homeRequests.addListener(_openHome);
+    _structure = shellStructureOf(widget.core);
+    widget.core.addListener(_coreChanged);
+  }
+
+  void _coreChanged() {
+    final next = shellStructureOf(widget.core);
+    if (next == _structure) return;
+    _structure = next;
+    setState(() {});
   }
 
   void _openHome() {
@@ -134,203 +170,205 @@ class _ShellState extends State<Shell> {
   @override
   void dispose() {
     AndroidCore.homeRequests.removeListener(_openHome);
+    widget.core.removeListener(_coreChanged);
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => ListenableBuilder(
-    listenable: widget.core,
-    builder: (context, _) {
-      final l = AppLocalizations.of(context);
-      final core = widget.core;
-      final status = core.status;
-      final needsAttention = (core.accounts?.accounts ?? const [])
-          .where((a) => a.enabled && a.needsSignIn)
-          .length;
-      if (widget.settings.firstRun && status != null) {
-        return WelcomePage(core: core, settings: widget.settings);
-      }
-      final pages = [
-        _Page.overview,
-        _Page.servers,
-        _Page.accounts,
-        _Page.settings,
-        _Page.logs,
-        _Page.about,
-      ];
-      final page = pages.contains(_page) ? _page : _Page.overview;
-      Widget accountsIcon(IconData icon) => Badge(
-        isLabelVisible: needsAttention > 0,
-        label: Text('$needsAttention'),
-        child: Icon(icon),
-      );
-      // Each page's icons and name, for the side menu and the bottom bar.
-      final items = [
-        for (final page in pages)
-          switch (page) {
-            _Page.overview => (
-              const Icon(Icons.dashboard_outlined),
-              const Icon(Icons.dashboard_rounded),
-              l.navOverview,
-            ),
-            _Page.servers => (
-              const Icon(Icons.public_outlined),
-              const Icon(Icons.public_rounded),
-              l.navServers,
-            ),
-            _Page.accounts => (
-              accountsIcon(Icons.people_outline_rounded),
-              accountsIcon(Icons.people_rounded),
-              l.navAccounts,
-            ),
-            _Page.settings => (
-              const Icon(Icons.settings_outlined),
-              const Icon(Icons.settings_rounded),
-              l.navSettings,
-            ),
-            _Page.logs => (
-              const Icon(Icons.receipt_long_outlined),
-              const Icon(Icons.receipt_long_rounded),
-              l.navLogs,
-            ),
-            _Page.about => (
-              const Icon(Icons.info_outline_rounded),
-              const Icon(Icons.info_rounded),
-              l.navAbout,
-            ),
-          },
-      ];
-      final prefs = widget.settings.zedPrefs;
-      final pageIndex = pages.indexOf(page);
-      final forward = pageIndex >= _prevIndex;
-      _prevIndex = pageIndex;
-      final pageContent = ZedPageTransition(
-        style: prefs.transition,
-        forward: forward,
-        reduceMotion: prefs.reduceMotion,
-        child: KeyedSubtree(
-          key: ValueKey(page),
-          child: status == null
-              ? _NoCore(core: core)
-              : switch (page) {
-                  // Its cards open the pages beside it.
-                  _Page.overview => OverviewPage(
-                    core: core,
-                    settings: widget.settings,
-                    onOpenServers: () => setState(() => _page = _Page.servers),
-                    onOpenAccounts: () =>
-                        setState(() => _page = _Page.accounts),
-                    onOpenConnection: () => setState(() {
-                      _page = _Page.settings;
-                      _settingsOpening = SettingsSection.connection;
-                    }),
-                    onOpenUpstreamProxy: () => setState(() {
-                      _page = _Page.settings;
-                      _settingsOpening = SettingsSection.upstreamProxy;
-                    }),
-                  ),
-                  _Page.servers => ServersPage(
-                    core: core,
-                    settings: widget.settings,
-                  ),
-                  _Page.accounts => AccountsPage(
-                    core: core,
-                    settings: widget.settings,
-                  ),
-                  _Page.settings => SettingsPage(
-                    key: ValueKey(_settingsOpening),
-                    core: core,
-                    settings: widget.settings,
-                    opening: _settingsOpening,
-                    onOpenLogs: () => setState(() => _page = _Page.logs),
-                  ),
-                  _Page.logs => LogsPage(core: core, settings: widget.settings),
-                  _Page.about => AboutPage(core: core),
-                },
-        ),
-      );
-      final content = Column(
-        children: [
-          if (core.unavailable != null && status != null) const _LostBanner(),
-          Expanded(child: pageContent),
-        ],
-      );
-      void select(int i) => setState(() {
-        _page = pages[i];
-        _settingsOpening = null;
-      });
-      // Android (a phone, or a tablet in either orientation) and a narrow
-      // window: the phone layout, Home and Settings. The computer layout
-      // offers computer-only choices, such as Windows' system proxy.
-      if (Platform.isAndroid || MediaQuery.sizeOf(context).width < 640) {
-        return MobileShell(
-          core: core,
-          settings: widget.settings,
-          banner: core.unavailable != null && status != null
-              ? const _LostBanner()
-              : null,
-          noCore: status == null ? _NoCore(core: core) : null,
-        );
-      }
-      final dark = Theme.of(context).brightness == Brightness.dark;
-      return Scaffold(
-        body: AnnouncementOverlay(
-          settings: widget.settings,
-          onOpenUpdates: () => setState(() => _page = _Page.about),
-          child: Stack(
-            children: [
-              if (prefs.design == ZedDesign.glass)
-                Positioned.fill(
-                  child: GlassWallpaperView(
-                    tokens: glassTokensFor(prefs.glass, dark),
-                    wallpaper: prefs.glass.wallpaper,
-                  ),
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final core = widget.core;
+    final status = core.status;
+    final needsAttention = (core.accounts?.accounts ?? const [])
+        .where((a) => a.enabled && a.needsSignIn)
+        .length;
+    if (widget.settings.firstRun && status != null) {
+      return WelcomePage(core: core, settings: widget.settings);
+    }
+    final pages = [
+      _Page.overview,
+      _Page.servers,
+      _Page.accounts,
+      _Page.settings,
+      _Page.logs,
+      _Page.about,
+    ];
+    final page = pages.contains(_page) ? _page : _Page.overview;
+    Widget accountsIcon(IconData icon) => Badge(
+      isLabelVisible: needsAttention > 0,
+      label: Text('$needsAttention'),
+      child: Icon(icon),
+    );
+    // Each page's icons and name, for the side menu and the bottom bar.
+    final items = [
+      for (final page in pages)
+        switch (page) {
+          _Page.overview => (
+            const Icon(Icons.dashboard_outlined),
+            const Icon(Icons.dashboard_rounded),
+            l.navOverview,
+          ),
+          _Page.servers => (
+            const Icon(Icons.public_outlined),
+            const Icon(Icons.public_rounded),
+            l.navServers,
+          ),
+          _Page.accounts => (
+            accountsIcon(Icons.people_outline_rounded),
+            accountsIcon(Icons.people_rounded),
+            l.navAccounts,
+          ),
+          _Page.settings => (
+            const Icon(Icons.settings_outlined),
+            const Icon(Icons.settings_rounded),
+            l.navSettings,
+          ),
+          _Page.logs => (
+            const Icon(Icons.receipt_long_outlined),
+            const Icon(Icons.receipt_long_rounded),
+            l.navLogs,
+          ),
+          _Page.about => (
+            const Icon(Icons.info_outline_rounded),
+            const Icon(Icons.info_rounded),
+            l.navAbout,
+          ),
+        },
+    ];
+    final prefs = widget.settings.zedPrefs;
+    final pageIndex = pages.indexOf(page);
+    final forward = pageIndex >= _prevIndex;
+    _prevIndex = pageIndex;
+    final pageContent = ZedPageTransition(
+      style: prefs.transition,
+      forward: forward,
+      reduceMotion: prefs.reduceMotion,
+      child: KeyedSubtree(
+        key: ValueKey(page),
+        child: status == null
+            ? _NoCore(core: core)
+            : switch (page) {
+                // Its cards open the pages beside it.
+                _Page.overview => OverviewPage(
+                  core: core,
+                  settings: widget.settings,
+                  onOpenServers: () => setState(() => _page = _Page.servers),
+                  onOpenAccounts: () => setState(() => _page = _Page.accounts),
+                  onOpenConnection: () => setState(() {
+                    _page = _Page.settings;
+                    _settingsOpening = SettingsSection.connection;
+                  }),
+                  onOpenUpstreamProxy: () => setState(() {
+                    _page = _Page.settings;
+                    _settingsOpening = SettingsSection.upstreamProxy;
+                  }),
                 ),
-              Row(
-                children: [
-                  NavigationRail(
-                    selectedIndex: pages.indexOf(page),
-                    onDestinationSelected: select,
-                    // Icons with their names beside them; the minimal nav
-                    // style collapses the rail to icons (under Bento, the
-                    // bento block's own nav style decides).
-                    extended: switch (prefs.design) {
+                _Page.servers => ServersPage(
+                  core: core,
+                  settings: widget.settings,
+                ),
+                _Page.accounts => AccountsPage(
+                  core: core,
+                  settings: widget.settings,
+                ),
+                _Page.settings => SettingsPage(
+                  key: ValueKey(_settingsOpening),
+                  core: core,
+                  settings: widget.settings,
+                  opening: _settingsOpening,
+                  onOpenLogs: () => setState(() => _page = _Page.logs),
+                ),
+                _Page.logs => LogsPage(core: core, settings: widget.settings),
+                _Page.about => AboutPage(core: core),
+              },
+      ),
+    );
+    final content = Column(
+      children: [
+        if (core.unavailable != null && status != null) const _LostBanner(),
+        Expanded(child: pageContent),
+      ],
+    );
+    void select(int i) => setState(() {
+      _page = pages[i];
+      _settingsOpening = null;
+    });
+    // Android (a phone, or a tablet in either orientation) and a narrow
+    // window: the phone layout, Home and Settings. The computer layout
+    // offers computer-only choices, such as Windows' system proxy.
+    if (Platform.isAndroid || MediaQuery.sizeOf(context).width < 640) {
+      return MobileShell(
+        core: core,
+        settings: widget.settings,
+        banner: core.unavailable != null && status != null
+            ? const _LostBanner()
+            : null,
+        noCore: status == null ? _NoCore(core: core) : null,
+      );
+    }
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Scaffold(
+      body: AnnouncementOverlay(
+        settings: widget.settings,
+        onOpenUpdates: () => setState(() => _page = _Page.about),
+        child: Stack(
+          children: [
+            if (prefs.design == ZedDesign.glass)
+              Positioned.fill(
+                child: GlassWallpaperView(
+                  tokens: glassTokensFor(prefs.glass, dark),
+                  wallpaper: prefs.glass.wallpaper,
+                ),
+              ),
+            Row(
+              children: [
+                NavigationRail(
+                  selectedIndex: pages.indexOf(page),
+                  onDestinationSelected: select,
+                  // Icons with their names beside them; the minimal nav
+                  // style collapses the rail to icons (under Bento, the
+                  // bento block's own nav style decides).
+                  extended: switch (prefs.design) {
+                    ZedDesign.bento =>
+                      prefs.bento.navStyle != ZedNavStyle.minimal &&
+                          prefs.bento.navStyle != ZedNavStyle.compactDock,
+                    _ => prefs.navStyle != ZedNavStyle.minimal,
+                  },
+                  minExtendedWidth: 190,
+                  // The leading collapses with the rail: the full
+                  // logo+title row is wider than the collapsed
+                  // rail and would overflow it.
+                  leading: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+                    child: switch (prefs.design) {
                       ZedDesign.bento =>
                         prefs.bento.navStyle != ZedNavStyle.minimal &&
-                            prefs.bento.navStyle != ZedNavStyle.compactDock,
-                      _ => prefs.navStyle != ZedNavStyle.minimal,
+                                prefs.bento.navStyle != ZedNavStyle.compactDock
+                            ? _railTitle(context, l)
+                            : const AppLogo(size: 34),
+                      _ =>
+                        prefs.navStyle != ZedNavStyle.minimal
+                            ? _railTitle(context, l)
+                            : const AppLogo(size: 34),
                     },
-                    minExtendedWidth: 190,
-                    // The leading collapses with the rail: the full
-                    // logo+title row is wider than the collapsed
-                    // rail and would overflow it.
-                    leading: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-                      child: switch (prefs.design) {
-                        ZedDesign.bento =>
-                          prefs.bento.navStyle != ZedNavStyle.minimal &&
-                                  prefs.bento.navStyle !=
-                                      ZedNavStyle.compactDock
-                              ? _railTitle(context, l)
-                              : const AppLogo(size: 34),
-                        _ =>
-                          prefs.navStyle != ZedNavStyle.minimal
-                              ? _railTitle(context, l)
-                              : const AppLogo(size: 34),
-                      },
-                    ),
-                    destinations: [
-                      for (final (icon, selected, label) in items)
-                        NavigationRailDestination(
-                          icon: icon,
-                          selectedIcon: selected,
-                          label: Text(label),
-                        ),
-                    ],
-                    // The traffic at the bottom of the menu; in a short window the
-                    // pages above it scroll rather than run under it.
-                    trailing: _TrafficPanel(
-                      traffic: status?.traffic,
+                  ),
+                  destinations: [
+                    for (final (icon, selected, label) in items)
+                      NavigationRailDestination(
+                        icon: icon,
+                        selectedIcon: selected,
+                        label: Text(label),
+                      ),
+                  ],
+                  // The traffic at the bottom of the menu; in a short window the
+                  // pages above it scroll rather than run under it.
+                  // The panel listens to the core itself: the live
+                  // rates change on every poll, the shell does not
+                  // rebuild for them any more (+259).
+                  trailing: ListenableBuilder(
+                    listenable: core,
+                    builder: (context, _) => _TrafficPanel(
+                      traffic: core.status?.traffic,
                       showLive:
                           prefs.design != ZedDesign.bento ||
                           prefs.bento.liveTiles,
@@ -356,30 +394,30 @@ class _ShellState extends State<Shell> {
                           ? Color(prefs.activePixel.customDownload!)
                           : null,
                     ),
-                    trailingAtBottom: true,
-                    scrollable: true,
                   ),
-                  // A maximized window: the pages stay as wide as reads well; the
-                  // home page, centered by itself, keeps its colors to the edges.
-                  Expanded(
-                    child: page == _Page.overview || status == null
-                        ? content
-                        : Align(
-                            alignment: Alignment.topCenter,
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 1000),
-                              child: content,
-                            ),
+                  trailingAtBottom: true,
+                  scrollable: true,
+                ),
+                // A maximized window: the pages stay as wide as reads well; the
+                // home page, centered by itself, keeps its colors to the edges.
+                Expanded(
+                  child: page == _Page.overview || status == null
+                      ? content
+                      : Align(
+                          alignment: Alignment.topCenter,
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 1000),
+                            child: content,
                           ),
-                  ),
-                ],
-              ),
-            ],
-          ),
+                        ),
+                ),
+              ],
+            ),
+          ],
         ),
-      );
-    },
-  );
+      ),
+    );
+  }
 }
 
 /// The side menu's traffic: the speed now and the total since the core

@@ -70,7 +70,14 @@ class _MobileShellState extends State<MobileShell> {
       MaterialPageRoute<void>(
         builder: (context) => ListenableBuilder(
           listenable: Listenable.merge([widget.core, widget.settings]),
-          builder: (context, _) {
+          // The page is the builder's child: it is built once and
+          // passed through, so a core poll restyles the route's
+          // chrome without rebuilding the page itself (the pages
+          // listen for what they show — +259). Before, page() ran
+          // inside the builder and every 2 s poll rebuilt the
+          // pushed page whole.
+          child: _readable(page()),
+          builder: (context, child) {
             // Read the prefs inside the builder: a design or
             // wallpaper change made while this route is open (the
             // settings sections are pushed routes) must restyle the
@@ -94,10 +101,7 @@ class _MobileShellState extends State<MobileShell> {
                         wallpaper: prefs.glass.wallpaper,
                       ),
                     ),
-                  SafeArea(
-                    top: false,
-                    child: OwnTopBar(child: _readable(page())),
-                  ),
+                  SafeArea(top: false, child: OwnTopBar(child: child!)),
                 ],
               ),
             );
@@ -173,8 +177,20 @@ class _MobileShellState extends State<MobileShell> {
       ZedTab(icon: Icons.settings_rounded, label: l.navSettings),
     ];
     void select(int i) => setState(() => _tab = i);
+    // The source's rule (MainScaffold): under Bento, the Bento dock
+    // renders ONLY for the Dock style; every other Bento nav style —
+    // and every Pixel/Old style — renders the shared bar shaped by
+    // that style. (Before +259 the phone always showed the dock
+    // under Bento, so the Bento nav-style setting changed nothing
+    // there.)
+    final bentoDock =
+        prefs.design == ZedDesign.bento &&
+        prefs.bento.navStyle == ZedNavStyle.dock;
+    final navStyle = prefs.design == ZedDesign.bento
+        ? prefs.bento.navStyle
+        : prefs.navStyle;
     final Widget bar = switch (prefs.design) {
-      ZedDesign.bento => BentoDock(
+      ZedDesign.bento when bentoDock => BentoDock(
         tokens: bentoTokensFor(
           prefs.bento.palette,
           dark,
@@ -195,7 +211,7 @@ class _MobileShellState extends State<MobileShell> {
         shrinkEnabled: prefs.glass.shrinkTabBar,
       ),
       _ => ZedBottomBar(
-        style: prefs.navStyle,
+        style: navStyle,
         tabs: tabs,
         index: _tab,
         onSelect: select,
@@ -204,12 +220,12 @@ class _MobileShellState extends State<MobileShell> {
     // Overlay chrome: the bar floats over the page (outside the page
     // transition) and the page pads its bottom by the design's inset.
     final (barBottom, contentInset) = switch (prefs.design) {
-      ZedDesign.bento => (12.0, 84.0),
+      ZedDesign.bento when bentoDock => (12.0, 84.0),
       ZedDesign.glass => (16.0, 94.0),
-      _ => switch (prefs.navStyle) {
-        ZedNavStyle.fullBar || ZedNavStyle.underline => (0.0, 64.0),
-        ZedNavStyle.compactDock || ZedNavStyle.minimal => (12.0, 80.0),
-        _ => (12.0, 96.0),
+      _ => switch (navStyle) {
+        ZedNavStyle.fullBar ||
+        ZedNavStyle.underline => (0.0, ZedBottomBar.heightFor(navStyle)),
+        _ => (12.0, ZedBottomBar.heightFor(navStyle) + 20.0),
       },
     };
     final forward = _tab >= _prevTab;

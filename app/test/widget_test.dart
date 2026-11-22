@@ -332,9 +332,16 @@ class FakeApi implements CoreApi {
   Future<Map<String, Object?>> settings() async =>
       jsonDecode(jsonEncode(config)) as Map<String, Object?>;
 
+  /// True: saving the core's settings fails, as a refused write does.
+  bool failSaveSettings = false;
+
   @override
-  Future<void> saveSettings(Map<String, Object?> config) async =>
-      this.config = config;
+  Future<void> saveSettings(Map<String, Object?> config) async {
+    if (failSaveSettings) {
+      throw const CoreApiException(500, 'settings refused');
+    }
+    this.config = config;
+  }
 
   String? relayTestAddress;
   Stream<RelayTestEvent> relayEvents = const Stream.empty();
@@ -989,6 +996,45 @@ void main() {
     core.dispose();
   });
 
+  testWidgets('the welcome page stays when the routing save fails', (
+    tester,
+  ) async {
+    stillMotion(tester);
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final api = FakeApi()..failSaveSettings = true;
+    final core = CoreController(
+      () async => api,
+      pollInterval: const Duration(hours: 1),
+    );
+    final settings = AppSettings()
+      ..firstRun = true
+      ..language = 'en';
+    await tester.pumpWidget(VpnApp(core: core, settings: settings));
+    core.start();
+    await tester.pumpAndSettle();
+    expect(find.text('Welcome'), findsOneWidget);
+
+    await tester.tap(find.text('Start'));
+    await tester.pumpAndSettle();
+    // The refusal is shown, the welcome page stays, and the first
+    // run is NOT marked done: the picked region is not dropped.
+    expect(find.text('settings refused'), findsOneWidget);
+    expect(find.text('Welcome'), findsOneWidget);
+    expect(settings.firstRun, isTrue);
+
+    // Start is live again: with the failure gone, it completes.
+    api.failSaveSettings = false;
+    await tester.tap(find.text('Start'));
+    await tester.pumpAndSettle();
+    expect(settings.firstRun, isFalse);
+
+    await tester.pumpWidget(const SizedBox());
+    core.dispose();
+  });
+
   testWidgets(
     'Android first-run routing saves the detected country and keeps English',
     (tester) async {
@@ -1544,9 +1590,7 @@ void main() {
       // rail's text label.
       final settingsTab = find.bySemanticsLabel('Settings');
       await tester.tap(
-        settingsTab.evaluate().isNotEmpty
-            ? settingsTab
-            : find.text('Settings'),
+        settingsTab.evaluate().isNotEmpty ? settingsTab : find.text('Settings'),
       );
       await tester.pumpAndSettle();
       await tester.tap(find.text('Relay server'));
@@ -1731,10 +1775,7 @@ void main() {
           }),
         );
         await tester.pumpAndSettle();
-        expect(
-          find.text(l.relayTestFailed),
-          findsOneWidget,
-        );
+        expect(find.text(l.relayTestFailed), findsOneWidget);
         expect(find.textContaining('HTTP 429:'), findsOneWidget);
         final closeButton = find.widgetWithText(FilledButton, l.close);
         final copyLabel = tester.getRect(find.text(l.relayTestCopy));
@@ -3927,9 +3968,8 @@ void _connectingRingTests() {
   // connect control carries the busy state now. These tests assert
   // the same contract through it — progress shows only while
   // connecting, and with motion off nothing keeps animating.
-  Finder busyControl() => find.byWidgetPredicate(
-    (w) => w is BentoSlideConnect && w.spec.busy,
-  );
+  Finder busyControl() =>
+      find.byWidgetPredicate((w) => w is BentoSlideConnect && w.spec.busy);
 
   for (final desktop in [false, true]) {
     final layout = desktop ? 'desktop' : 'phone';

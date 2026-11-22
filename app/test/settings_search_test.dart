@@ -28,7 +28,23 @@ Set<(SettingsSection, String)> _titlesInSource(String source) {
       r'\n  Widget _(\w+)\(AppLocalizations l',
     ).allMatches(source))
       (m.start, m.group(1)!),
-  ];
+    // The upstream-proxy section is a widget class of its own, far
+    // below its one-line builder: its titles belong to its section,
+    // not to _advanced, the builder that happens to precede it.
+    for (final m in RegExp(
+      r'\nclass _UpstreamProxy extends',
+    ).allMatches(source))
+      (m.start, 'upstreamProxy'),
+    // …and the classes after it fall back to the old attribution.
+    for (final m in RegExp(r'\nclass _PortRow extends').allMatches(source))
+      (m.start, 'advanced'),
+    // The remove-TUN-service dialog belongs to _advanced (its only
+    // caller), though the method sits between two other builders.
+    for (final m in RegExp(
+      r'\n  Future<void> _confirmRemoveTunService',
+    ).allMatches(source))
+      (m.start, 'advanced'),
+  ]..sort((a, b) => a.$1.compareTo(b.$1));
   SettingsSection? sectionAt(int position) {
     SettingsSection? found;
     for (final (at, name) in starts) {

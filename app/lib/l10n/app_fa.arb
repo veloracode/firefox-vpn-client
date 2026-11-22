@@ -151,6 +151,8 @@
   "regionBr": "برزیل",
   "regionNone": "هیچ‌کدام",
   "saved": "ذخیره شد",
+  "settingsPathBlocked": "ذخیره نشد: شکل داده‌های تنظیمات غیرمنتظره است.",
+  "settingsLoadFailed": "تنظیمات بارگذاری نشد.",
   "dataFolder": "پوشه داده",
   "openFolder": "باز کردن پوشه",
   "unofficialNote": "کلاینت غیررسمی. وابسته به Mozilla نیست.",

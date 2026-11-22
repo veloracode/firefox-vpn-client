@@ -1,0 +1,202 @@
+# Findings index — DeepSeek +259 review passes (merged, NOT adjudicated)
+
+Every finding from the three raw passes, in the order DeepSeek returned them. IDs: A = Pass A (bugs), B = Pass B (fidelity), C = Pass C (lag). Chunk labels refer to the sections of the raw files. Claims are DeepSeek's, condensed to one line; see the raw files for evidence quotes.
+
+## Pass A — bugs (A1–A53)
+
+- **A1** (a1-1) — settings_page.dart, `_load` — load failure leaves `_config == null`; non-general sections show an indefinite spinner with no retry/error state.
+- **A2** (a1-1) — settings_page.dart, `_save` — path traversal silently replaces an existing non-map node with `{}`, dropping unshown config data.
+- **A3** (a1-1) — settings_page.dart, `settingsIndex` — `l.upstreamProxy` indexed under `SettingsSection.advanced` while the section list exposes `SettingsSection.upstreamProxy`; search opens the wrong section (advanced absent on Android).
+- **A4** (a1-1) — settings_page.dart, search hit `ListTile` — tapping a hit only opens the parent section, not the matching control.
+- **A5** (a1-1) — settings_page.dart, `_removeTunService` — success is reported through `showError`, presenting a success message as an error.
+- **A6** (a1-1) — settings_page.dart, `_removeTunService` — after `TunServiceDone` there is no `_load()`/status refresh, so removed-TUN state can remain stale.
+- **A7** (a1-1) — settings_page.dart, `_pickLanguage` — routing config read before `_config` loads (general renders before the null guard); unknown config treated as routing disabled, can trigger an unnecessary region prompt.
+- **A8** (a1-1) — settings_page.dart, `_saving` — written but not read in the provided ranges; likely dead state or missing disabled-control semantics (DeepSeek: uncertain).
+- **A9** (a1-1) — settings_page.dart, `settingsIndex` — informational titles indexed as settings; search can return non-controls that only open a section.
+- **A10** (a1-1) — settings_page.dart, `settingOnThisPlatform` — does not filter `l.removeTunService`/`l.tunMtu`; Android search may surface absent settings (DeepSeek: uncertain).
+- **A11** (a1-1) — settings_page.dart, `settingsIndex` — duplicate `l.removeTunService` entries under routing and advanced may yield duplicate hits (DeepSeek: uncertain).
+- **A12** (a1-2) — settings_page.dart, autoConnect row (~L785) — switch row bypasses the glass-aware `sw()` helper (declared later at L803), so on Glass design it renders a plain Material `Switch`.
+- **A13** (a1-2) — settings_page.dart, autoConnect row (~L787) — row `onTap` and child switch both toggle the same value; overlapping tap region could queue two toggles = net no-op (DeepSeek: uncertain).
+- **A14** (a1-2) — settings_page.dart, `boolRow` (L807) — whole-row toggle plus switch toggle share `onChanged(!value)`; correctness depends on arena resolution; row has no `Semantics`/`MergeSemantics` naming the setting.
+- **A15** (a1-2) — settings_page.dart, `_ChoiceChip` (L2713) — tap target ≈36dp tall, below the 48dp minimum.
+- **A16** (a1-2) — settings_page.dart, `_ChoiceChip` (L2698) — `Semantics(label:)` wraps a `Text` with the same label without `excludeSemantics: true`; screen readers announce chip text twice.
+- **A17** (a1-2) — settings_page.dart, `_ChoiceChip` (L2698) — `button: true` set unconditionally, so disabled (`onTap == null`) chips are still announced as actionable; no `enabled: false`.
+- **A18** (a1-2) — settings_page.dart, `_ChoiceChip` (L2697) — no disabled visual: a null-`onTap` chip keeps full-onSurface text and normal outline, indistinguishable from enabled.
+- **A19** (a1-2) — settings_page.dart, `_Choice` doc (L2611) — doc comment describes a centered dialog with radio buttons but the widget renders inline chips; stale doc contradicts implementation.
+- **A20** (a1-2) — zed_prefs.dart, `ZedPrefs.navStyle` + `BentoPrefs.navStyle` — same user setting persisted twice (top-level `nav_style` and inside `bento`); one writer leaves the other stale, nav style can silently revert depending on reader.
+- **A21** (a1-2) — zed_prefs.dart, `BentoPrefs.navStyle` vs `ZedPrefs.navStyle` defaults — same enum, two different defaults (`dock` vs `expressivePill`); initial value depends on which field is read.
+- **A22** (a1-2) — zed_prefs.dart, `_intOrNull`/`_stringOrNull` — rejects `num`/`double`-encoded values; a stored `1.0`-style custom colour reads as `null` and is written back as `null` on next save (silent loss).
+- **A23** (a1-2) — zed_prefs.dart, `PixelPrefs.accentIndex` — out-of-range accents silently clamped and then persisted; original choice unrecoverable.
+- **A24** (a1-2) — zed_prefs.dart, `_enum` + `toJson` — values matched by exact Dart enum name; any legacy/source convention falls back to default on read and is durably overwritten on next save (DeepSeek: uncertain).
+- **A25** (a1-2) — zed_prefs.dart, `GlassPrefs.translucent` — `material` (clear/tinted) persisted but not consulted by the flag driving the glass rim/highlight; tinted-vs-clear choice may be written-never-read.
+- **A26** (a1-2) — zed_prefs.dart, `_bool`/`_int`/`_enum` + `setZed` — every wrong-typed/unknown value coerced to a default with no diagnostic, and the coerced model is written back wholesale, making the loss permanent.
+- **A27** (a2-1) — app.dart, `_ShellState.build` — NavigationRail stays active while core status is null, but every destination renders the same `_NoCore`; selections are no-op.
+- **A28** (a2-1) — mobile_shell.dart, `_MobileShellState.build` — when `noCore` is non-null the page ignores `_tab`; Home/Settings tab taps only mutate state.
+- **A29** (a2-1) — app.dart, `_TrafficCard.build` — up/down traffic icons have no semantic labels; screen readers get values without direction.
+- **A30** (a2-1) — mobile_shell.dart, `_MobileShellState._openHome` — Home request only resets tab, does not dismiss pushed routes itself (DeepSeek: uncertain, masked by ancestor Shell listener).
+- **A31** (a2-1) — mobile_shell.dart, `_MobileShellState.build` — `barBottom` destructured but its use not visible in the excerpt (DeepSeek: uncertain).
+- **A32** (a2-2) — file not shown in excerpt, `_SettingsListState.group` — search ignores visible group headings; a query matching only a group title can show "no match".
+- **A33** (a2-2) — file not shown, `_SettingsListState.build` hit `ListTile.onTap` — a search hit opens only its section, not the setting; `name` discarded for navigation.
+- **A34** (a2-2) — file not shown, `_SettingsListState.build` search `TextField` — `TextInputAction.search` declared but no `onSubmitted`; keyboard search action is a no-op.
+- **A35** (a2-2) — file not shown, `_SettingsListState.build` suffix clear `IconButton` — visibility reads raw `_search.text` while filtering uses folded `_query`; whitespace-only input shows clear but does not filter.
+- **A36** (a2-2) — file not shown, `_SettingsListState.build.hits` — `settingOnThisPlatform(l, entry.$2)` passes localized display text; if it expects a setting key, platform filtering is wrong (DeepSeek: uncertain).
+- **A37** (a2-2) — file not shown, `GlassTopEdge` overlay in build — full-width top `Positioned` child has no visible `IgnorePointer`; possible touch-stealing overlay (DeepSeek: uncertain).
+- **A38** (a3-1) — zed_kit.dart, `GlassTabBar._fullBar` — tab controls lack button/selected semantics (bare `GestureDetector`, no `Semantics(selected:)`).
+- **A39** (a3-1) — zed_kit.dart, `GlassTabBar` mini tab — icon-only tap control has no semantic label.
+- **A40** (a3-1) — zed_connect_glass.dart, `_GlassZConnectState.didUpdateWidget` — reduced-motion setting does not gate phase color animation; `_blend.forward(from: 0)` runs without checking `_animate`/`MediaQuery.disableAnimationsOf`.
+- **A41** (a3-1) — zed_kit.dart, `_DockItem` — Semantics label duplicates child Text label without `excludeSemantics: true`.
+- **A42** (a3-2) — zed_connect_glass.dart (file unnamed in excerpt), `_ZPainter.shouldRepaint` — under-compares painted look state; changes to `look.caust/shine/spec/shade/hi/lo/rim` or `tint` may not repaint.
+- **A43** (a3-2) — zed_connect_glass.dart (unnamed in excerpt), `Semantics` in `_Z...build` — disabled state not exposed to accessibility (no `enabled: spec.enabled`).
+- **A44** (a3-2) — zed_connect_glass.dart (unnamed in excerpt), `GlassButtonConnect` — excerpt truncates at class start; controls/semantics cannot be assessed (DeepSeek: uncertain).
+- **A45** (a4-1) — zed_home.dart, `_QuickAction` — tap target below 48dp; no minimum size constraint (padding 14×9, icon 16).
+- **A46** (a4-1) — zed_home.dart, `_TrafficStripState` (graph style) — graph bars expose no semantic label/value for screen readers.
+- **A47** (a4-1) — zed_home.dart, `_TrafficStripState` — empty-history fallback unreachable because `initState` always samples.
+- **A48** (a4-1) — zed_home.dart, `_BentoHero.showQuick` — one available quick action is suppressed when the other callback is null (requires both `onOpenServers` and `onOpenAccounts`).
+- **A49** (a4-1) — zed_connect.dart, `ZedConnectControl` — public dispatcher throws `StateError` for the glass design instead of handling/redirecting it.
+- **A50** (a4-2) — zed_connect.dart (file unnamed in excerpt), toggle `build`/`Semantics` — button+toggled semantics but no semantic activation action; accessibility activation cannot toggle it.
+- **A51** (a4-2) — zed_connect.dart (unnamed in excerpt), toggle `build`/`Semantics` — disabled state not exposed to semantics (no `enabled:`).
+- **A52** (a4-2) — zed_connect.dart (unnamed in excerpt), `onPointerMove`/`onPointerUp` — while busy, drag movement is ignored but `_dragging` stays true, so release sees `moved < 0.02` and calls `onToggle()` as a tap.
+- **A53** (a4-2) — zed_connect.dart (unnamed in excerpt), `_SlidePainter.wavePath` — no-op clamp expression `knobR - knobR`; start clamps against a constant 0.
+
+## Pass B — fidelity vs ZedSecure v3.2.0 (B1–B78)
+
+- **B1** (b1-1) — zed_motion.dart, `_specFor` fade — page fade 260/180 ms Kotlin vs 260/180 Dart: match (DeepSeek).
+- **B2** (b1-1) — zed_motion.dart, `_specFor` reduceMotion — Kotlin 120/90 ms fade + disables colour animation vs Dart 120/90 ms only; colour-animation gate absent from this file (unverified).
+- **B3** (b1-1) — zed_motion.dart, slide — Kotlin 320 ms @ ⅓ width vs Dart 320 ms ±width/3; transform matches, but Dart's 220/180 ms opacity sub-fades are Dart-invented.
+- **B4** (b1-1) — zed_motion.dart, push — Kotlin 340 ms, enter full width / exit −⅓ vs Dart 340 ms same geometry: match; opacity split undocumented.
+- **B5** (b1-1) — zed_motion.dart, depth — Kotlin scale 0.88↔1.12 vs Dart 0.88/1.12: scale matches; Dart's 300 ms duration and 220/180 fades unsourced.
+- **B6** (b1-1) — zed_motion.dart, flip — Kotlin `cameraDistance = 14×density` vs Dart fixed `0.0018` (~555px): divergence — perspective is density-independent, 3D strength varies per device.
+- **B7** (b1-1) — zed_motion.dart, flip — Kotlin 78°/360 ms vs Dart 78°/360 ms: angle/duration match; Dart's angle-derived alpha ramp is added decoration.
+- **B8** (b1-1) — zed_motion.dart, curtain — Kotlin ½ height + 0.94 counter-scale vs Dart height/2, 1−0.06t / 0.94+0.06t: geometry matches; 360 ms and 200/260 fades unsourced.
+- **B9** (b1-1) — zed_motion.dart, `springMediumBouncyLow` — Kotlin medium-bouncy/low stiffness vs Dart ζ0.5/200: match.
+- **B10** (b1-1) — zed_motion.dart, elastic entrance — Kotlin rise/scale not specified in playbook vs Dart dy=height/8, scale 0.9+0.1t, 180 ms elapsed fade: constants unverifiable; elapsed fade is a documented deliberate fix.
+- **B11** (b1-1) — zed_motion.dart, `springPressGlass` — Kotlin press 1.07 scale, ζ0.5, StiffnessMedium vs Dart ζ0.5/1500: spring matches; scale value lives in components.
+- **B12** (b1-1) — zed_motion.dart, spring set — Kotlin dock hold-scale 1.03, ζ0.55, StiffnessMedium (1500) vs Dart: no ζ0.55/1500 spring defined: divergence/gap — hold-scale spring missing.
+- **B13** (b1-1) — zed_motion.dart, `springKnob`/`springPlatter` — Kotlin knob (0.62, MediumLow) / platter+thumb (0.72, MediumLow=400) vs Dart 0.62/400 and 0.72/400: match.
+- **B14** (b1-1) — zed_motion.dart, `springEntrance` — Kotlin 800 ms window, delay min(i,12)×45 ms, spring 0.62/380, +26dp rise, scale 0.96→1 vs Dart only the spring constant in this file; rest unverified here.
+- **B15** (b1-1) — zed_motion.dart, file scope — Kotlin dock scroll thresholds, radii (cell 26/module 24/sheet 38/menu 24), blur sites (12dp, chrome only) vs Dart: none in this file: coverage gap for the chunk, not a proven divergence.
+- **B16** (b1-2a) — zed_transition.dart, `ZedTransition.detail` duration — Dart 1000 ms + springMediumBouncyLow; Kotlin value absent in chunk: unverified.
+- **B17** (b1-2a) — zed_transition.dart, `ZedTransition.detail` reduced — Dart 220 ms, spring null; Kotlin absent: unverified.
+- **B18** (b1-2a) — zed_transition.dart, `ZedTransition.curtain` — Dart 360 ms, spring null; Kotlin absent: unverified.
+- **B19** (b1-2a) — zed_transition.dart, `ZedTransition.flip` — Dart 360 ms, spring null; Kotlin absent: unverified.
+- **B20** (b1-2a) — zed_transition.dart, `ZedEntrance._start` — Dart `SpringSimulation(springEntrance, 0, 1, 0)`; spring defined outside chunk: unverified.
+- **B21** (b1-2a) — zed_transition.dart, `ZedEntrance._start` delay — Dart min(index,12)×45 ms; Kotlin absent: unverified.
+- **B22** (b1-2a) — zed_transition.dart, `ZedEntrance` window — Dart 800 ms from first build; Kotlin absent: unverified.
+- **B23** (b1-2a) — zed_transition.dart, `ZedEntrance.build` rise — Dart 26dp; Kotlin absent: unverified.
+- **B24** (b1-2a) — zed_transition.dart, `ZedEntrance.build` scale — Dart 0.96→1.0; Kotlin absent: unverified.
+- **B25** (b1-2a) — zed_transition.dart, `ZedEntrance.build` alpha — Dart `t.clamp(0,1)`; Kotlin absent: unverified.
+- **B26** (b1-2a) — zed_transition.dart, `ZedPressScale` — Dart doc cites Bento 0.965/0.985, Glass 1.07 but constants are caller-supplied; Kotlin absent: unverified.
+- **B27** (b1-2a) — zed_glass.dart, `GlassSurface` radius — Dart default `BorderRadius.circular(24)`; Kotlin default absent: unverified.
+- **B28** (b1-2a) — zed_glass.dart, `glassRimGradient` stops — Dart [0.0, 0.28, 0.48, 0.64, 1.0]; Kotlin absent: unverified.
+- **B29** (b1-2a) — zed_glass.dart, blur sites — Dart `GlassSurface` has no blur; blur only claimed in `GlassChromeSurface`/`GlassTopEdge` (not in chunk); Kotlin inventory absent: unverified.
+- **B30** (b1-2a) — zed_glass.dart, `_GlassEdgePainter` — Dart strokeWidth 1, deflate(0.5), 1dp top sliver; Kotlin absent: unverified.
+- **B31** (b1-2b) — zed_glass.dart, `GlassChromeSurface.blur` — Kotlin 12 vs Dart 12: match (as reported).
+- **B32** (b1-2b) — zed_glass.dart, `GlassTopEdge.build` — Kotlin top+14, 10, 0.35, 0.55, 0.96/0.90/0 vs Dart identical values: match (as reported).
+- **B33** (b1-2b) — zed_glass.dart, `_WallpaperPainter.shouldRepaint` — Kotlin value-compare vs Dart `old.kind != kind || old.dark != dark` (as reported).
+- **B34** (b1-2b) — zed_glass.dart, `_WallpaperPainter.paint`/`_glow` — Kotlin stops 0/0.52/1 and 0/0.72 vs Dart identical: match (as reported).
+- **B35** (b2-1) — zed_theme.dart 1–700 — Kotlin duration tokens (fade 260/180, slide 320, push 340, elastic spring, flip 360, chrome crossfade+scale 0.9) vs Dart: no duration/easing tokens in this range (deferred to later chunk).
+- **B36** (b2-1) — zed_theme.dart 1–700 — Kotlin spring tokens (press 1.07 ζ0.5/Medium, knob 0.62/MediumLow, platter 0.72/MediumLow, bar hold 1.03 ζ0.55/Medium, scheme StiffnessMediumLow) vs Dart: no spring constants in this range.
+- **B37** (b2-1) — zed_theme.dart 1–700 — Kotlin sizes/radii (cells 26, modules 24, sheet-top 38, menus 24, tab bar 62+22 margin, switch 63×28 knob 37×24, segmented 34, corners 6/22/34) vs Dart: no shape/metric tokens in this range.
+- **B38** (b2-1) — zed_theme.dart 1–700 — Kotlin exactly 4 backdrop blurs (tab pill 12dp lens 14/26; hold bubble lens 12/24 1.2×; glassChrome 12dp lens 12/22 shadow r24; status edge 10dp) vs Dart: no blur constants in this range.
+- **B39** (b2-1) — zed_theme.dart 1–700 — Kotlin control behaviours (connect styles incl. Hold 650 ms, dock labels, hide-on-scroll −4/+4/+24px, sensor tilt off by default) vs Dart: none in this range (only `pingColor` + `colorful` bool).
+- **B40** (b2-1) — zed_theme.dart, `_bentoDark` (L221) — Kotlin 12 palettes vs Dart only 8 hardcoded in this range (brand, citrus, matcha, neon, pistachio, ocean, sunset + cut); derived Accent/Pastel/Vivid/Mono absent here.
+- **B41** (b2-1) — zed_theme.dart, `_bentoDark.brand` (L222–241) — Kotlin Brand seeded from accent/dynamic colour vs Dart fully hardcoded hex; no accent-seed path visible in this range.
+- **B42** (b2-1) — zed_theme.dart, `chipOnStage` — Kotlin value not stated vs Dart dark `0x1FFFFFFF` (12.5%) / light `0x24FFFFFF` (14.1%): internally asymmetric; unverifiable vs Kotlin.
+- **B43** (b2-1) — zed_theme.dart, `dockLine` — Kotlin not in master vs Dart dark `0x24FFFFFF` (14%) / light `0x1A16161C` (10%): cannot cross-check.
+- **B44** (b2-1) — zed_theme.dart, `goodOnStage` — Kotlin not stated vs Dart `0xFF9BF0AE` identical in dark and light: verify low contrast on light stage (DeepSeek note).
+- **B45** (b2-1) — zed_theme.dart, good/mid/bad tones — Kotlin not enumerated vs Dart brightness-specific sets (dark 7BE495/F2C14E/FF8A80; light 16803F/8A5A00/B3261E): no Kotlin hex to compare.
+- **B46** (b2-1) — zed_theme.dart, `BentoTokens.pingColor` (L84) — Kotlin master silent vs Dart thresholds ms≤0→bad, <300→good, <800→mid, else bad: unverifiable; 0 and ≥800 both map to bad.
+- **B47** (b2-1) — zed_theme.dart (L1) — Kotlin "where the source computes a colour (HCT), same algorithm" vs Dart imports material_color_utilities: consistent, but no computed-palette function appears in 1–700.
+- **B48** (b2-2) — zed_theme.dart, `bentoTokensFor` AMOLED ground (L686) — Dart `0xFF000000` pure-black override; Kotlin not in chunk: divergence unverified.
+- **B49** (b2-2) — zed_theme.dart, AMOLED surface/surface2/dock (L687–689) — Dart `0xFF111015`/`0xFF1B1A21`/`0xFF141319`; only 4 tokens overridden; unverified.
+- **B50** (b2-2) — zed_theme.dart, `_tonalTokens` `chipOnStage` alpha (L597) — Dart 0.12 dark / 0.14 light; `_monoTokens` flat 0.12 (L641): asymmetric vs flat; unverified.
+- **B51** (b2-2) — zed_theme.dart, `dockLine` alpha (L611–613, 655–657) — Dart 0.08 dark-white / 0.10 light-black in tonal and mono: unverified.
+- **B52** (b2-2) — zed_theme.dart, `_tonalTokens` accent chroma floor (L558) — Dart `seedChroma > 56 ? seedChroma : 56.0`; stage chroma 64.0: unverified.
+- **B53** (b2-2) — zed_theme.dart, pastel chroma (L559) — Dart accent 40.0 / stage 40.0: unverified.
+- **B54** (b2-2) — zed_theme.dart, vivid chroma (L560) — Dart accent 92.0 / stage 64.0: unverified.
+- **B55** (b2-2) — zed_theme.dart, neutral/neutralVariant chromas (L562–563) — Dart 6 and 10: unverified.
+- **B56** (b2-2) — zed_theme.dart, semantic good/mid/bad chromas tonal (L566–568) — Dart 145/48, 80/60, 25/70: unverified.
+- **B57** (b2-2) — zed_theme.dart, tile chroma by kind (L570–573) — Dart accent 36.0, pastel 26.0, vivid 66.0: unverified.
+- **B58** (b2-2) — zed_theme.dart, pastel tile tones (L578–581) — Dart (dark 82, light 92) / (dark 16, light 24): unverified.
+- **B59** (b2-2) — zed_theme.dart, vivid tile tones (L582) — Dart (dark 38, light 76) / (dark 96, light 10): unverified.
+- **B60** (b2-2) — zed_theme.dart, default (accent) tile tones (L583) — Dart (dark 20, light 90) / (dark 88, light 24): unverified.
+- **B61** (b2-2) — zed_theme.dart, `_monoTokens` (L623–626) — Dart mono chroma n=3, good 145/40, mid 80/50, bad 25/64: unverified.
+- **B62** (b2-2) — zed_theme.dart, `_algorithmicSeeds` (L543–546) — Dart accent 0xFF5646D6, pastel 0xFFD77FA1, vivid 0xFFE64A19, mono 0xFF616161: unverified.
+- **B63** (b3-1) — zed_kit.dart, `ZedBottomBar.build` (L576) — documented dock height 64dp ("floating bar") vs Dart 72.0: dock renders 8dp taller than documented.
+- **B64** (b3-1) — zed_kit.dart, `ZedBottomBar` (L581) — spec 56dp compactDock "icons only" vs Dart `showLabels = style != minimal` (true at 56dp): compactDock keeps text; only minimal hides it.
+- **B65** (b3-1) — zed_connect_glass.dart, `_GlassSwitchState.build` (L689) — Compose default disabled opacity 0.38 vs Dart 0.4: 0.02 divergence.
+- **B66** (b3-1) — zed_connect_glass.dart, `_GlassSwitchState` (L715) — visual 63×28 vs Dart hit box 63×48: detector extends 20dp vertically beyond paint.
+- **B67** (b3-1) — zed_connect_glass.dart, `_GlassSwitchState` (L738) — continuous ease vs Dart thresholded knob alpha (`squash > 0.05 ? 0.55+0.45*(1−s) : 1`): alpha pops discontinuously at squash 0.05.
+- **B68** (b3-1) — zed_connect_glass.dart, `_GlassSwitchState` (L731) — uniform/unknown vs Dart scaleX 1+0.22s, scaleY 1+0.12s: asymmetric stretch, not shrink.
+- **B69** (b3-1) — zed_connect_glass.dart, `_GlassSwitchState` (L694) — Compose symmetric press/release vs Dart `composeSpring(1.0, 1500)` both directions: same stiffness, no release damping.
+- **B70** (b3-1) — zed_connect_glass.dart, connect button (L580) — typical shrink (≤1.0) vs Dart `pressedScale: 1.07`: scales UP on press.
+- **B71** (b3-1) — zed_connect_glass.dart, connect button gradient (L610) — spec highlight 0.26 vs Dart 0.18 when busy: busy dims highlight by 0.08.
+- **B72** (b3-1) — zed_connect_glass.dart, connect button glow (L593) — no documented shadow vs Dart tint α0.5, blurRadius 14: 14dp glow present.
+- **B73** (b3-1) — zed_connect_glass.dart, `GlassSwitchConnect` (L785) — spec §2.7 unquantified vs Dart card h74, disc 42, icon 22.
+- **B74** (b3-1) — zed_connect_glass.dart, `_GlassSliderConnectState` (L857) — spec unknown vs Dart shimmer period 2600 ms.
+- **B75** (b3-1) — zed_kit.dart, `ZedCard.build` (L696) — single spec radius vs Dart Glass 26, Pixel 20, Bento `cardTheme.shape`: three distinct radii per design.
+- **B76** (b3-1) — zed_kit.dart, `ZedSectionHeader.build` (L664) — spec unknown vs Dart padding 4/18/4/8, size 13, w700, letter-spacing 0.4.
+- **B77** (b3-1) — zed_kit.dart, `ZedSegmentedRow.build` (L854) — spec 250 ms vs Dart 250 ms `zedFastOutSlowIn`: matches duration; unverified vs Compose spring.
+- **B78** (b3-2) — zed_theme.dart toggle area — DeepSeek reported a reference gap: no Kotlin value was supplied in that chunk, so no side-by-side fidelity finding was possible.
+
+## Pass C — lag suspects (C1–C59)
+
+- **C1** (c1-1) — app.dart, `_ShellState.build` — `ListenableBuilder(listenable: widget.core)` wraps Scaffold/MobileShell, NavigationRail and page content; whole shell rebuilds on every core notification (traffic poll ~1–2 s).
+- **C2** (c1-1) — app.dart, `_ShellState.build` — page widgets recreated inside the core listener; `ValueKey(page)` preserves state only, subtree still rebuilds every poll.
+- **C3** (c1-1) — app.dart, `_TrafficPanel`/`_TrafficCard` — rebuilt with shell; formatting closures/decorations recreated each poll, no RepaintBoundary.
+- **C4** (c1-1) — app.dart, `VpnApp.build` — `ListenableBuilder(listenable: settings)` wraps `MaterialApp`; `ZedTheme.build(...)` recomputed and whole app rebuilt on any settings change.
+- **C5** (c1-1) — app.dart, `_ShellState.build` — `needsAttention` recomputed via `.where(...).length` and rail items rebuilt every core tick: O(accounts) scan + badge tree per poll.
+- **C6** (c1-1) — app.dart, `_ShellState.build` — `pages`/`items`/destination tuples and `select` closure allocated every build; NavigationRail destinations recreated each poll.
+- **C7** (c1-1) — app.dart, glass root `GlassWallpaperView` — instantiated inside the core-listener rebuild; recreated each tick; possible full-screen blur/repaint per poll.
+- **C8** (c1-1) — app.dart, `NavigationRail(trailing: _TrafficPanel, scrollable: true)` — traffic updates force rail relayout; no isolation/RepaintBoundary.
+- **C9** (c1-1) — mobile_shell.dart, `_MobileShellState.build` — parent Shell already rebuilds on core; build constructs pages/tabs/offsets/push closures: mobile page subtree rebuild every poll.
+- **C10** (c1-1) — mobile_shell.dart, `_push` — `ListenableBuilder(Listenable.merge([core, settings]))` wraps whole route Scaffold + AppBar + GlassWallpaperView; new merged listenable per push; full route rebuild every core tick while open.
+- **C11** (c1-1) — mobile_shell.dart, `_push`/shell/tab bar — GlassWallpaperView per pushed route + shell one + GlassTabBar blur: stacked BackdropFilter/blur layers; GPU overdraw scales with route depth.
+- **C12** (c1-1) — mobile_shell.dart, `_MobileShellState.build` — `ZedTab` list, tabs, bar-offset switch and `select` closure allocated each rebuild: minor churn per poll.
+- **C13** (c1-1) — mobile_shell.dart, `_MobileShellState.build` — `KeyedSubtree(key: ValueKey(_tab))` does not prevent rebuild when tab unchanged; page recreated each poll.
+- **C14** (c1-1) — app.dart, `_TrafficCard.build` — `value` copyWith, `line` closures, Container decoration allocated each rebuild: minor per-tick allocation.
+- **C15** (c1-1) — app.dart / mobile_shell.dart, `GlassWallpaperView` call sites — no `cacheWidth`/`cacheHeight`/decode-size hint; wallpaper re-passed every rebuild and per pushed route: risk of full-size image decode and large memory.
+- **C16** (c1-2) — settings_page.dart, `_SettingsListState.build` — search `TextField.onChanged` calls `setState` per keystroke, rebuilding the entire settings ListView/groups/rows/hits: typing jank.
+- **C17** (c1-2) — settings_page.dart, `_SettingsListState.build` — `group(...)` arguments eagerly construct every section/row tile before filtering; hidden rows still allocated/built per rebuild.
+- **C18** (c1-2) — settings_page.dart, `_SettingsListState.build` — `settingsIndex(l)` and repeated `foldForSearch` run inside build for a nonempty query; index recreated/scanned each keystroke.
+- **C19** (c1-2) — settings_page.dart, `_SettingsListState.build` — `ListView(children: [...])` eagerly builds all children, no lazy builder; offscreen tiles built on every rebuild.
+- **C20** (c1-2) — settings_page.dart, `_SettingsListState.build` — local closures/records/lists allocated every rebuild: GC churn per keystroke/parent rebuild.
+- **C21** (c1-2) — shell file (not shown), `GlassTopEdge` — full-width glass top edge inside shell Stack; if it uses BackdropFilter alongside a glass bar, two blur layers per frame.
+- **C22** (c1-2) — shell file (not shown), shell `bar` + `GlassTopEdge` — inline shell overlays with no RepaintBoundary; parent shell rebuilds (~2 s poll) repaint bar/glass subtree.
+- **C23** (c2-1) — overview_page.dart, OverviewPage/`_DesktopHome` — consumes `core.status!`/settings with no scoped listenable builder; whole Stack, `_Glow`s, scroll view and `_content` rebuild on every core status tick (~2 s).
+- **C24** (c2-1) — overview_page.dart, `_DesktopHome.build` — three static `_Glow` background widgets recreated in the Stack every shell rebuild; no const/RepaintBoundary isolation.
+- **C25** (c2-1) — zed_glass.dart, `_GlassEdgePainter.paint` — per-paint `Path`, `Path.combine`, `Paint`, `LinearGradient.createShader` allocations; no cache keyed by size/radius/tokens.
+- **C26** (c2-1) — zed_glass.dart, `GlassSurface.build` — new `_GlassEdgePainter`/`CustomPaint` every build; shouldRepaint prevents paint but not widget/painter allocation.
+- **C27** (c2-1) — zed_glass.dart, `GlassSurface` — per-cell/module ClipRRect + foreground edge painter, no RepaintBoundary; many glass cells clip/repaint together during scroll.
+- **C28** (c2-1) — zed_glass.dart, `GlassChromeSurface` — each instance adds BackdropFilter blur 12 + BoxShadow blur 24; RepaintBoundary isolates repaint but not backdrop sampling/saveLayer; cost multiplies with chrome count.
+- **C29** (c2-1) — zed_glass.dart, `GlassTopEdge` — ShaderMask + ClipRect + BackdropFilter blur 10 across the full-width status strip; no RepaintBoundary; gradient shader recreated in shaderCallback.
+- **C30** (c2-1) — zed_glass.dart, `GlassTopEdge` — BackdropFilter clipped but not cached; shell rebuilds (~2 s) re-run blur sampling on the status strip.
+- **C31** (c2-1) — zed_glass.dart, `GlassWallpaperView`/`_WallpaperPainter` — RepaintBoundary and value shouldRepaint present, but build recreates the painter and paint allocates gradients/shaders: low cost unless resize/theme change.
+- **C32** (c2-1) — overview_page.dart, `_DesktopHome._content` — all derived status values and the card list rebuilt inside every shell rebuild; no memoization/scoped sections.
+- **C33** (c2-2) — overview/home chunk (DeepSeek labelled it `home_screen.dart`), `build`/Column@444 — status/core listener causes full Column rebuild on every ~2 s poll.
+- **C34** (c2-2) — overview/home chunk, `ZedHero@447` — receives fresh rate text/rates/spec every build; no RepaintBoundary/isolated rate area.
+- **C35** (c2-2) — overview/home chunk, `_zedSpec@449` — spec object and closures recreated each build; identity churn forces Hero update.
+- **C36** (c2-2) — overview/home chunk, `_ModeSwitch@577` — fresh `modes` record list + `onSelected` closure every build.
+- **C37** (c2-2) — overview/home chunk, `onToggle@462` — new closure passed to Hero each build: callback identity churn (low).
+- **C38** (c2-2) — overview/home chunk, `_HomeData@437` — new data records each build: equality/rebuild churn (low).
+- **C39** (c2-2) — overview/home chunk, `Text@486`/`Text@518` — `textTheme...copyWith` allocates a TextStyle every rebuild (low).
+- **C40** (c2-2) — overview/home chunk, `formatRate@466-469` — repeated formatting and `toDouble` per build (low).
+- **C41** (c2-2) — overview/home chunk, `Wrap@477` — dynamic delay/IP/upstream pills rebuilt with parent; no RepaintBoundary around the updating pill area.
+- **C42** (c2-2) — overview/home chunk, `FilledButton.tonalIcon@554` — async `onPressed` closure allocated each build (low).
+- **C43** (c2-2) — overview/home chunk, `Tooltip@514` — tooltip state/message rebuilt on status ticks (low).
+- **C44** (c2-2) — overview/home chunk — DeepSeek reported no BackdropFilter, AnimatedBuilder, or full-size image decode findings in that chunk.
+- **C45** (c3-1) — zed_connect.dart, `_SlidePainter` — rebuilt in `AnimatedBuilder(Listenable.merge([_pos,_wave]))`; new merged listenable + new painter allocated every frame; full card repaint.
+- **C46** (c3-1) — zed_connect.dart, rail card — `AnimatedBuilder(_travel,_wave)` wraps the whole Stack (Positioned.fill + CustomPaint + label); whole card subtree rebuilt per frame.
+- **C47** (c3-1) — zed_connect.dart, morph card — `BlobPainter` allocated inside `AnimatedBuilder(Listenable.merge([_morph,_spin,_drift]))`: new painter each frame.
+- **C48** (c3-1) — zed_connect.dart, 4-pt toggle — `BlobPainter` allocated inside `AnimatedBuilder(_morph,_spin)`: new painter each frame.
+- **C49** (c3-1) — zed_connect.dart, 6+ CustomPaints (SlidePainter/RailWavePainter/HoldDialPainter/BlobPainter) — no RepaintBoundary; repaints propagate to card AnimatedContainer and siblings.
+- **C50** (c3-1) — zed_connect.dart, press buttons — `Listener.onPointerDown/Up` calls `setState(_pressed)`; rebuilds the entire button Row each press.
+- **C51** (c3-1) — zed_connect_glass.dart, parallax card — `MouseRegion.onHover` `setState(_tiltX)` on every pointer move, no throttle: full card rebuild per micro-move.
+- **C52** (c3-1) — zed_connect_glass.dart, `_ZPainter` — `AnimatedBuilder(Listenable.merge([_clock,_blend]))` wraps the whole CustomPaint: new painter per frame, clock-driven.
+- **C53** (c3-1) — zed_connect_glass.dart, `_ZPainter` under-glow — `MaskFilter.blur(BlurStyle.normal, 22)` every frame, no cached layer/RepaintBoundary: expensive GPU blur per tick.
+- **C54** (c3-1) — zed_connect_glass.dart, switch — `AnimatedBuilder(_knob,_squash)` wraps full track+knob with BoxShadows: whole switch rebuilt per frame.
+- **C55** (c3-1) — zed_connect_glass.dart, mini toggle — `_MiniZPainter` CustomPaint re-instantiated inside `AnimatedBuilder(_pos,_shimmer)`: new painter per frame.
+- **C56** (c3-1) — zed_kit.dart, `_onScroll` — `setState(scrollingDown)` on every delta + 1600 ms idle Timer: rebuilds the entire dock shell per scroll tick.
+- **C57** (c3-1) — zed_kit.dart, dock auto-hide — `AnimatedSlide` + `AnimatedOpacity` wrap the whole dock Container: full dock subtree repaint on every hide/show transition.
+- **C58** (c3-1) — zed_kit.dart, bar morph — `AnimatedBuilder(_platter)` wraps LayoutBuilder→Stack with AnimatedPositionedDirectional + labels: whole bar rebuilt per morph frame.
+- **C59** (c3-1) — zed_connect_glass.dart, BackdropFilter — none present in the excerpts (explicit comment: "static-shape blur, not backdrop blur"); count = 0, no placement issue in that chunk.
