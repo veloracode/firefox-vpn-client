@@ -288,7 +288,30 @@ class _GlassTabBarState extends State<GlassTabBar>
   late final AnimationController _platter = AnimationController.unbounded(
     vsync: this,
   );
+
+  // The bar↔mini morph value: 0 = full bar, 1 = mini circle. Driven
+  // by springMediumLow — the spring behind the source's
+  // AnimatedContent mode transition (fadeIn + scaleIn(0.9) together
+  // with fadeOut + scaleOut(0.9); Compose's default fade/scale specs
+  // are spring(dampingRatio = 1.0, stiffness = 400)). The mode flip
+  // must animate this value, never swap the subtree outright: the
+  // +257 build swapped subtrees on the boolean and the change
+  // snapped on device (defect I2).
+  late final AnimationController _morph = AnimationController.unbounded(
+    vsync: this,
+    value: 0,
+  );
   bool _shrunk = false;
+
+  /// Flips the shrunk state and springs the morph to match.
+  void _setShrunk(bool value) {
+    if (_shrunk == value) return;
+    setState(() => _shrunk = value);
+    _morph.animateWith(
+      SpringSimulation(springMediumLow, _morph.value, value ? 1.0 : 0.0, 0),
+    );
+  }
+
   double _downAccum = 0;
   double _upAccum = 0;
   double _lastSeen = 0;
@@ -306,9 +329,9 @@ class _GlassTabBarState extends State<GlassTabBar>
     super.didUpdateWidget(old);
     _shrinkAnchorStale = true; // page changes rebuild the bar too
     if (widget.shrinkEnabled != old.shrinkEnabled) _downAccum = 0;
-    if (!widget.shrinkEnabled && _shrunk) _shrunk = false;
+    if (!widget.shrinkEnabled && _shrunk) _setShrunk(false);
     if (widget.index != old.index) {
-      _shrunk = false;
+      _setShrunk(false);
       _downAccum = 0;
       _platter.animateWith(
         SpringSimulation(
@@ -361,7 +384,7 @@ class _GlassTabBarState extends State<GlassTabBar>
     if (d > 0) {
       _upAccum = 0;
       _downAccum += d;
-      if (_downAccum > 48 && !_shrunk) setState(() => _shrunk = true);
+      if (_downAccum > 48 && !_shrunk) _setShrunk(true);
     } else if (d < 0) {
       // Accumulate: a slow up-scroll moves <2 dp per event and
       // would never reach a per-event threshold.
@@ -369,13 +392,13 @@ class _GlassTabBarState extends State<GlassTabBar>
       if (_upAccum > 8) {
         _upAccum = 0;
         _downAccum = 0;
-        if (_shrunk) setState(() => _shrunk = false);
+        if (_shrunk) _setShrunk(false);
       }
     }
     if (c.offset <= 0 && _shrunk) {
       _downAccum = 0;
       _upAccum = 0;
-      setState(() => _shrunk = false);
+      _setShrunk(false);
     }
   }
 
@@ -383,35 +406,81 @@ class _GlassTabBarState extends State<GlassTabBar>
   void dispose() {
     _shrinkController?.removeListener(_shrinkListener);
     _platter.dispose();
+    _morph.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final tokens = widget.tokens;
-    if (_shrunk) {
-      final tab = widget.tabs[widget.index];
-      return SizedBox(
-        height: 62,
-        child: Center(
-          child: GestureDetector(
-          onTap: () => setState(() {
-            _shrunk = false;
-            _downAccum = 0;
-          }),
-          child: GlassChromeSurface(
-            tokens: tokens,
-            radius: BorderRadius.circular(31),
-            child: SizedBox(
-              width: 62,
-              height: 62,
-              child: Icon(tab.icon, size: 24, color: tokens.label),
-            ),
+    final tab = widget.tabs[widget.index];
+    // Both states stay in the tree and crossfade/scale with the
+    // morph value (the source's AnimatedContent transition): the
+    // outgoing state fades out while scaling to 0.9, the incoming
+    // one fades in while scaling from 0.9. Only the state the morph
+    // has mostly reached takes taps.
+    return AnimatedBuilder(
+      animation: _morph,
+      builder: (context, _) {
+        // springMediumLow is critically damped (no overshoot); the
+        // clamp keeps opacity/scale in range regardless.
+        final t = _morph.value.clamp(0.0, 1.0);
+        return SizedBox(
+          height: 62,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: IgnorePointer(
+                  ignoring: t > 0.5,
+                  child: Opacity(
+                    opacity: 1 - t,
+                    child: Transform.scale(
+                      scale: 1 - 0.1 * t,
+                      child: _fullBar(tokens),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned.fill(
+                child: IgnorePointer(
+                  ignoring: t <= 0.5,
+                  child: Opacity(
+                    opacity: t,
+                    child: Transform.scale(
+                      scale: 0.9 + 0.1 * t,
+                      child: Center(
+                        child: GestureDetector(
+                          onTap: () {
+                            _downAccum = 0;
+                            _setShrunk(false);
+                          },
+                          child: GlassChromeSurface(
+                            tokens: tokens,
+                            radius: BorderRadius.circular(31),
+                            child: SizedBox(
+                              width: 62,
+                              height: 62,
+                              child: Icon(
+                                tab.icon,
+                                size: 24,
+                                color: tokens.label,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-          ),
-        ),
-      );
-    }
+        );
+      },
+    );
+  }
+
+  Widget _fullBar(GlassTokens tokens) {
     return GlassChromeSurface(
       tokens: tokens,
       child: SizedBox(

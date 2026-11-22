@@ -698,6 +698,13 @@ class _GlassSwitchState extends State<GlassSwitch>
           ),
           onPointerCancel: (_) => _squash.value = 0,
           child: GestureDetector(
+            // Opaque + a padded hit box: with the default
+            // deferToChild the stadium's corner cut-outs and any
+            // point outside the 63x28 paint missed the detector
+            // entirely, and 28 dp is under a finger's reliable
+            // height — taps were lost on device (defect I1). The
+            // detector now owns a 63x48 box with the visual centred.
+            behavior: HitTestBehavior.opaque,
             onTap: widget.enabled && widget.onChanged != null
                 ? () => widget.onChanged!(!widget.value)
                 : null,
@@ -705,42 +712,48 @@ class _GlassSwitchState extends State<GlassSwitch>
               animation: Listenable.merge([_knob, _squash]),
               builder: (context, _) {
                 final trackColor = Color.lerp(c.fill, c.green, _knob.value)!;
-                return Container(
+                return SizedBox(
                   width: 63,
-                  height: 28,
-                  decoration: BoxDecoration(
-                    color: trackColor,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Stack(
-                    children: [
-                      PositionedDirectional(
-                        start: 2 + 22 * _knob.value,
-                        top: 2,
-                        child: Transform.scale(
-                          scaleX: 1 + 0.22 * _squash.value,
-                          scaleY: 1 + 0.12 * _squash.value,
-                          child: Container(
-                            width: 37,
-                            height: 24,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(
-                                alpha: _squash.value > 0.05
-                                    ? 0.55 + 0.45 * (1 - _squash.value)
-                                    : 1,
-                              ),
-                              borderRadius: BorderRadius.circular(999),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x33000000),
-                                  blurRadius: 3,
+                  height: 48,
+                  child: Center(
+                    child: Container(
+                      width: 63,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: trackColor,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Stack(
+                        children: [
+                          PositionedDirectional(
+                            start: 2 + 22 * _knob.value,
+                            top: 2,
+                            child: Transform.scale(
+                              scaleX: 1 + 0.22 * _squash.value,
+                              scaleY: 1 + 0.12 * _squash.value,
+                              child: Container(
+                                width: 37,
+                                height: 24,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(
+                                    alpha: _squash.value > 0.05
+                                        ? 0.55 + 0.45 * (1 - _squash.value)
+                                        : 1,
+                                  ),
+                                  borderRadius: BorderRadius.circular(999),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Color(0x33000000),
+                                      blurRadius: 3,
+                                    ),
+                                  ],
                                 ),
-                              ],
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 );
               },

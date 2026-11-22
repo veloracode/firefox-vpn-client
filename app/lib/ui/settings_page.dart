@@ -711,6 +711,7 @@ class _SettingsPageState extends State<SettingsPage> {
           _Row(
             icon: Icons.visibility_outlined,
             label: l.showPublicIp,
+            onTap: () => s.update(showPublicIp: !s.showPublicIp),
             child: Switch(
               value: s.showPublicIp,
               onChanged: (v) => s.update(showPublicIp: v),
@@ -720,6 +721,7 @@ class _SettingsPageState extends State<SettingsPage> {
             _Row(
               icon: Icons.apps_rounded,
               label: l.showAppModeSwitch,
+              onTap: () => s.update(showAppModeSwitch: !s.showAppModeSwitch),
               child: Switch(
                 value: s.showAppModeSwitch,
                 onChanged: (v) => s.update(showAppModeSwitch: v),
@@ -731,6 +733,10 @@ class _SettingsPageState extends State<SettingsPage> {
               builder: (context, on, _) => _Row(
                 icon: Icons.speed_rounded,
                 label: l.speedInNotification,
+                onTap: () => runShowingErrors(
+                  context,
+                  () => AndroidCore.setShowSpeed(!on),
+                ),
                 child: Switch(
                   value: on,
                   onChanged: (v) => runShowingErrors(
@@ -744,6 +750,7 @@ class _SettingsPageState extends State<SettingsPage> {
             _Row(
               icon: Icons.power_settings_new_rounded,
               label: l.startOnBoot,
+              onTap: () => s.update(autostart: !s.autostart),
               child: Switch(
                 value: s.autostart,
                 onChanged: (v) => s.update(autostart: v),
@@ -758,6 +765,11 @@ class _SettingsPageState extends State<SettingsPage> {
                 under: true,
                 icon: Icons.open_in_new_rounded,
                 label: l.autostartShowsWindow,
+                onTap: s.autostart
+                    ? () => s.update(
+                        autostartShowsWindow: !s.autostartShowsWindow,
+                      )
+                    : null,
                 child: Switch(
                   value: s.autostartShowsWindow,
                   onChanged: s.autostart
@@ -772,6 +784,9 @@ class _SettingsPageState extends State<SettingsPage> {
                 under: true,
                 icon: Icons.link_rounded,
                 label: l.connectOnStartup,
+                onTap: s.autostart
+                    ? () => s.update(autoConnect: !s.autoConnect)
+                    : null,
                 child: Switch(
                   value: s.autoConnect,
                   onChanged: s.autostart
@@ -794,7 +809,15 @@ class _SettingsPageState extends State<SettingsPage> {
       required String label,
       required bool value,
       required ValueChanged<bool> onChanged,
-    }) => _Row(icon: icon, label: label, child: sw(value, onChanged));
+    }) => _Row(
+      icon: icon,
+      label: label,
+      // The whole row toggles, not just the switch: a tap on the
+      // label that misses the small switch read as a dead button on
+      // device (defect I1).
+      onTap: () => onChanged(!value),
+      child: sw(value, onChanged),
+    );
 
     Widget bentoLook(ZedPrefs prefs, VoidCallback save) {
       final b = prefs.bento;
@@ -1112,6 +1135,10 @@ class _SettingsPageState extends State<SettingsPage> {
           _Row(
             icon: Icons.brightness_1_outlined,
             label: l.zedAmoled,
+            onTap: () {
+              p.amoled = !p.amoled;
+              save();
+            },
             child: sw(p.amoled, (v) {
               p.amoled = v;
               save();
@@ -1882,6 +1909,11 @@ class _SettingsPageState extends State<SettingsPage> {
               _Row(
                 icon: Icons.alt_route_rounded,
                 label: l.routingDirect,
+                onTap: _saving
+                    ? null
+                    : () => _save({
+                        ['routing', 'enabled']: !on,
+                      }),
                 child: Switch(
                   value: on,
                   onChanged: _saving
@@ -1895,6 +1927,9 @@ class _SettingsPageState extends State<SettingsPage> {
               _Row(
                 icon: Icons.block_rounded,
                 label: l.blockAds,
+                onTap: _saving || !on
+                    ? null
+                    : () => _setBlockAds(!(on && _blocksAds)),
                 child: Switch(
                   value: on && _blocksAds,
                   onChanged: _saving || !on ? null : _setBlockAds,
@@ -1947,6 +1982,14 @@ class _SettingsPageState extends State<SettingsPage> {
               _Row(
                 icon: Icons.travel_explore_rounded,
                 label: l.resolveDomains,
+                onTap: _saving
+                    ? null
+                    : () => _save({
+                        ['routing', 'resolve_domains']: !_bool([
+                          'routing',
+                          'resolve_domains',
+                        ]),
+                      }),
                 child: Switch(
                   value: _bool(['routing', 'resolve_domains']),
                   onChanged: _saving
@@ -2151,6 +2194,7 @@ class _SettingsPageState extends State<SettingsPage> {
             child: _Row(
               icon: Icons.call_rounded,
               label: l.udpNoticeSetting,
+              onTap: () => s.update(udpNotice: !s.udpNotice),
               child: Switch(
                 value: s.udpNotice,
                 onChanged: (v) => s.update(udpNotice: v),
@@ -2303,6 +2347,14 @@ class _SettingsPageState extends State<SettingsPage> {
           _Row(
             icon: Icons.settings_backup_restore_rounded,
             label: l.dnsFallback,
+            onTap: _saving
+                ? null
+                : () => _save({
+                    ['dns', 'fallback_to_system']: !_bool([
+                      'dns',
+                      'fallback_to_system',
+                    ]),
+                  }),
             child: Switch(
               value: _bool(['dns', 'fallback_to_system']),
               onChanged: _saving
@@ -2577,24 +2629,114 @@ class _Choice<T> extends StatelessWidget {
   final List<(T, String, TextStyle?)> options;
   final ValueChanged<T>? onChanged;
 
-  Future<void> _open(BuildContext context) async {
-    final picked = await _pickOne<T>(
-      context,
-      title: title,
-      value: value,
-      options: options,
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    // The design's real control (defect I3): every option inline as
+    // a chip, the selected one filled and checked — ZedSecure's
+    // SettingsChoiceRow with its ConnectedChoices/ChoiceChips — not
+    // a name-and-value row hiding the choices behind a dialog (the
+    // +257 device verdict: «فقط اسم نوشته بودی»). Tapping a chip
+    // applies the value at once through [onChanged].
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(4, 10, 4, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: muted),
+              const SizedBox(width: 16),
+              Expanded(child: Text(title, style: theme.textTheme.bodyLarge)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsetsDirectional.only(start: 40),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final (v, label, style) in options)
+                  _ChoiceChip(
+                    label: label,
+                    style: style,
+                    selected: v == value,
+                    onTap: onChanged == null ? null : () => onChanged!(v),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
-    if (picked != null && picked != value) onChanged?.call(picked);
   }
+}
+
+/// One option of a [_Choice]: a stadium chip; the selected one is
+/// filled and carries the check glyph, as in ZedSecure's
+/// ConnectedChoice.
+class _ChoiceChip extends StatelessWidget {
+  const _ChoiceChip({
+    required this.label,
+    required this.style,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final TextStyle? style;
+  final bool selected;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final current = options.where((o) => o.$1 == value).firstOrNull;
-    return _Row(
-      icon: icon,
-      label: title,
-      value: current?.$2 ?? '',
-      onTap: onChanged == null ? null : () => _open(context),
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final fg = selected ? scheme.onSecondaryContainer : scheme.onSurface;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: Material(
+        color: selected ? scheme.secondaryContainer : Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(999),
+          side: BorderSide(
+            color: selected ? Colors.transparent : scheme.outlineVariant,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (selected) ...[
+                  Icon(Icons.check_rounded, size: 16, color: fg),
+                  const SizedBox(width: 6),
+                ],
+                // Flexible: a long option name (a language, a DNS
+                // preset) must ellipsize at the wrap's width instead
+                // of overflowing the chip.
+                Flexible(
+                  child: Text(
+                    label,
+                    softWrap: false,
+                    overflow: TextOverflow.ellipsis,
+                    style: (style ?? theme.textTheme.labelLarge)?.copyWith(
+                      color: fg,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

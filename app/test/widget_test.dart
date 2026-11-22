@@ -2384,13 +2384,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('DNS'), findsOneWidget);
 
-    // Choices open in a dialog in the middle of the window.
+    // Choices are inline chips (defect I3): every option is on the
+    // page and tapping one applies it at once — no dialog opens.
     await tester.tap(find.text('General').last);
     await tester.pumpAndSettle();
     await tester.tap(find.text('System default'));
-    await tester.pumpAndSettle();
-    expect(find.byType(AlertDialog), findsOneWidget);
-    await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(find.byType(AlertDialog), findsNothing);
     await tester.tap(find.byTooltip('Back'));
@@ -2418,7 +2416,10 @@ void main() {
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
 
-    // The proxy login: one form, both fields saved together.
+    // The proxy login: one form, both fields saved together. (The
+    // inline choice chips make the page taller; scroll it into view.)
+    await tester.ensureVisible(find.text('Proxy login'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Proxy login'));
     await tester.pumpAndSettle();
     // Its form's Save: after the MTU's in the connection section, before
